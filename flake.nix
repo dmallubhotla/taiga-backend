@@ -14,7 +14,12 @@
   };
 
   outputs =
-    { nixpkgs, gomod2nix, ... }@inputs:
+    {
+      self,
+      nixpkgs,
+      gomod2nix,
+      ...
+    }@inputs:
     let
       supportedSystems = [ "x86_64-linux" ];
       pkgsFor =
@@ -26,8 +31,54 @@
       eachSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f (pkgsFor system));
 
       treefmtEval = eachSystem (pkgs: inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix);
+
+      goTestFor =
+        pkgs:
+        pkgs.stdenvNoCC.mkDerivation {
+          name = "go-test";
+          dontBuild = true;
+          src = ./.;
+          doCheck = true;
+          nativeBuildInputs = with pkgs; [
+            go
+            writableTmpDirAsHomeHook
+          ];
+          checkPhase = ''
+            go test ./...
+          '';
+          installPhase = ''
+            mkdir "$out"
+          '';
+        };
+
+      goLintFor =
+        pkgs:
+        pkgs.stdenvNoCC.mkDerivation {
+          name = "go-lint";
+          dontBuild = true;
+          src = ./.;
+          doCheck = true;
+          nativeBuildInputs = with pkgs; [
+            go
+            golangci-lint
+            writableTmpDirAsHomeHook
+          ];
+          checkPhase = ''
+            golangci-lint run
+          '';
+          installPhase = ''
+            mkdir "$out"
+          '';
+        };
     in
     {
+      checks = eachSystem (pkgs: {
+
+        formatting = treefmtEval.${pkgs.system}.config.build.check self;
+        go-lint = goLintFor pkgs;
+        go-test = goTestFor pkgs;
+
+      });
       # nix fmt formatter
       formatter = eachSystem (pkgs: treefmtEval.${pkgs.system}.config.build.wrapper);
 
