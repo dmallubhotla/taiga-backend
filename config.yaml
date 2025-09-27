@@ -1,18 +1,16 @@
 # Sample configuration file
 # Copy this to config.yaml and modify as needed
-
 port: "8080"
 environment: "development"
-
 database:
-  driver: "sqlite"        # "sqlite" or "postgres"
-  filepath: "./data.db"   # for sqlite
+  driver: "sqlite" # "sqlite" or "postgres"
+  filepath: "./data.db" # for sqlite
 
-  # Uncomment for PostgreSQL
-  # driver: "postgres"
-  # host: "localhost"
-  # port: "5432"
-  # user: "trygo"
-  # password: "password"
-  # name: "trygo_db"
-  # sslmode: "disable"
+# Uncomment for PostgreSQL
+# driver: "postgres"
+# host: "localhost"
+# port: "5432"
+# user: "trygo"
+# password: "password"
+# name: "trygo_db"
+# sslmode: "disable"

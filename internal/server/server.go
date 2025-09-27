@@ -9,11 +9,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/lib/pq"           // PostgreSQL driver
-	_ "modernc.org/sqlite"          // SQLite driver
+	_ "github.com/lib/pq"  // PostgreSQL driver
+	_ "modernc.org/sqlite" // SQLite driver
 
-	"github.com/user/trygo/internal/config"
-	"github.com/user/trygo/internal/handlers"
+	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/trygo/internal/handlers"
 )
 
 // Server represents the HTTP server
@@ -91,7 +91,10 @@ func (s *Server) Start() error {
 func (s *Server) Shutdown(ctx context.Context) error {
 	// Close database connection
 	if s.db != nil {
-		s.db.Close()
+		if err := s.db.Close(); err != nil {
+			// Log error but don't return it since we're shutting down
+			fmt.Printf("Error closing database connection: %v\n", err)
+		}
 	}
 
 	// Shutdown HTTP server
@@ -112,7 +115,9 @@ func initDB(cfg *config.Config) (*sql.DB, error) {
 
 	// Test the connection
 	if err := db.Ping(); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			fmt.Printf("Error closing database after ping failure: %v\n", closeErr)
+		}
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 

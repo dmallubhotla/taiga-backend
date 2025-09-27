@@ -12,7 +12,7 @@
 
 # Code coverage profiles and other test artifacts
 *.out
-coverage.*
+**/coverage*
 *.coverprofile
 profile.cov
 
@@ -30,3 +30,5 @@ go.work.sum
 # .idea/
 # .vscode/
 
+# For lcoal dev maiy use sqlite here
+data.db

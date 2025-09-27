@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/user/trygo/internal/config"
-	"github.com/user/trygo/internal/server"
+	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/trygo/internal/server"
 )
 
 func main() {

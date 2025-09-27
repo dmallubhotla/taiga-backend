@@ -1,0 +1,11 @@
+port: "9090"
+environment: "production"
+database:
+  driver: "postgres"
+  host: "db.example.com"
+  port: "5433"
+  user: "testuser"
+  password: "testpass"
+  name: "testdb"
+  sslmode: "require"
+  filepath: "/custom/path.db"

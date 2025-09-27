@@ -41,7 +41,9 @@
             pkgs.go
             pkgs.gopls
             pkgs.gotools
+            pkgs.golangci-lint
             pkgs.go-tools
+            pkgs.sqlc
           ];
 
           # Will be executed before entering the shell

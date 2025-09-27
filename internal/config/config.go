@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -16,7 +16,7 @@ type Config struct {
 
 // DB holds database configuration
 type DB struct {
-	Driver   string `mapstructure:"driver"`   // "postgres" or "sqlite"
+	Driver   string `mapstructure:"driver"` // "postgres" or "sqlite"
 	Host     string `mapstructure:"host"`
 	Port     string `mapstructure:"port"`
 	User     string `mapstructure:"user"`
@@ -36,25 +36,24 @@ func Load() (*Config, error) {
 	v.SetDefault("database.driver", "sqlite")
 	v.SetDefault("database.host", "localhost")
 	v.SetDefault("database.port", "5432")
+	v.SetDefault("database.user", "")
+	v.SetDefault("database.password", "")
 	v.SetDefault("database.name", "trygo")
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("database.filepath", "./data.db")
 
 	// Environment variable support
 	v.SetEnvPrefix("TRYGO")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
 	// Allow environment variables to override config file
-	v.BindEnv("port", "PORT")
-	v.BindEnv("environment", "ENVIRONMENT")
-	v.BindEnv("database.driver", "DB_DRIVER")
-	v.BindEnv("database.host", "DB_HOST")
-	v.BindEnv("database.port", "DB_PORT")
-	v.BindEnv("database.user", "DB_USER")
-	v.BindEnv("database.password", "DB_PASSWORD")
-	v.BindEnv("database.name", "DB_NAME")
-	v.BindEnv("database.sslmode", "DB_SSLMODE")
-	v.BindEnv("database.filepath", "DB_FILEPATH")
+	// With AutomaticEnv and SetEnvPrefix, Viper automatically maps:
+	// TRYGO_PORT -> port
+	// TRYGO_ENVIRONMENT -> environment
+	// TRYGO_DATABASE_DRIVER -> database.driver
+	// TRYGO_DATABASE_HOST -> database.host
+	// etc.
 
 	// Try to read config file if it exists
 	v.SetConfigName("config")
