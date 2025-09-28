@@ -26,11 +26,19 @@
         system:
         nixpkgs.legacyPackages.${system}.extend (
           nixpkgs.lib.composeManyExtensions [ gomod2nix.overlays.default ]
-          # nixpkgs.lib.composeManyExtensions ([ ] ++ builtins.attrValues self.overlays)
         );
       eachSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f (pkgsFor system));
 
       treefmtEval = eachSystem (pkgs: inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix);
+
+      goPackageFor =
+        pkgs:
+        pkgs.buildGoApplication {
+          pname = "gomod2nix-example";
+          version = "0.1";
+          src = ./.;
+          modules = ./gomod2nix.toml;
+        };
 
       goTestFor =
         pkgs:
@@ -81,6 +89,10 @@
       });
       # nix fmt formatter
       formatter = eachSystem (pkgs: treefmtEval.${pkgs.system}.config.build.wrapper);
+
+      packages = eachSystem (pkgs: {
+        default = goPackageFor pkgs;
+      });
 
       # default devshell
 
