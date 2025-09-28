@@ -1,4 +1,5 @@
 # by default list all just commands
+
 default:
     just --list
 
