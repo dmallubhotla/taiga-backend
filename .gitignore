@@ -35,3 +35,6 @@ data.db
 
 result
 result-*
+
+# Don't need root config.yaml stored
+config.yaml
