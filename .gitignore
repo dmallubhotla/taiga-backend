@@ -32,3 +32,6 @@ go.work.sum
 
 # For lcoal dev maiy use sqlite here
 data.db
+
+result
+result-*
