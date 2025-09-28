@@ -9,9 +9,10 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Port        string `mapstructure:"port"`
-	Environment string `mapstructure:"environment"`
-	Database    DB     `mapstructure:"database"`
+	Port        string    `mapstructure:"port"`
+	Environment string    `mapstructure:"environment"`
+	Database    DB        `mapstructure:"database"`
+	Migration   Migration `mapstructure:"migration"`
 }
 
 // DB holds database configuration
@@ -24,6 +25,13 @@ type DB struct {
 	Name     string `mapstructure:"name"`
 	SSLMode  string `mapstructure:"sslmode"`
 	FilePath string `mapstructure:"filepath"` // for sqlite
+}
+
+// Migration holds migration configuration
+type Migration struct {
+	Path     string `mapstructure:"path"`      // path to migration files
+	AutoUp   bool   `mapstructure:"auto_up"`   // automatically run up migrations on startup
+	AutoDown bool   `mapstructure:"auto_down"` // automatically run down migrations on shutdown (dev only)
 }
 
 // Load reads configuration from environment variables and config files
@@ -41,6 +49,9 @@ func Load() (*Config, error) {
 	v.SetDefault("database.name", "trygo")
 	v.SetDefault("database.sslmode", "disable")
 	v.SetDefault("database.filepath", "./data.db")
+	v.SetDefault("migration.path", "./migrations")
+	v.SetDefault("migration.auto_up", true)
+	v.SetDefault("migration.auto_down", false)
 
 	// Environment variable support
 	v.SetEnvPrefix("TRYGO")

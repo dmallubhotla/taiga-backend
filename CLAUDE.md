@@ -59,6 +59,7 @@ just fmt     # Formats code using nix fmt
 
 - **Go 1.23** with modern module structure
 - **sqlc** for type-safe SQL code generation
+- **golang-migrate** for database migrations
 - **Chi v5** router with middleware support
 - **Viper** for configuration management
 - **PostgreSQL** (production) and **SQLite** (development) support
@@ -83,11 +84,63 @@ just fmt     # Formats code using nix fmt
    user, err := queries.GetUser(ctx, userID)
    ```
 
-### Migrations
+### Database Migrations
 
-- SQL migrations in `migrations/` directory
-- Naming: `001_initial.sql`, `002_add_table.sql`
-- Auto-executed on PostgreSQL container startup
+The project uses **golang-migrate** for database schema management with proper up and down migrations.
+
+#### Migration Files
+- Located in `migrations/` directory
+- Naming convention: `NNNNNN_description.up.sql` and `NNNNNN_description.down.sql`
+- Example: `000001_create_users_table.up.sql`, `000001_create_users_table.down.sql`
+
+#### Migration Commands
+
+**Using the CLI tool:**
+```bash
+# Run all up migrations
+go run cmd/migrate/main.go -command=up
+
+# Rollback all migrations
+go run cmd/migrate/main.go -command=down
+
+# Check current version
+go run cmd/migrate/main.go -command=version
+
+# Step up/down by N migrations
+go run cmd/migrate/main.go -command=steps -steps=1   # up 1
+go run cmd/migrate/main.go -command=steps -steps=-1  # down 1
+
+# Migrate to specific version
+go run cmd/migrate/main.go -command=goto -version=2
+```
+
+**Automatic migrations:**
+- Migrations run automatically on server startup when `migration.auto_up: true` (default)
+- In development, can auto-rollback on shutdown with `migration.auto_down: true`
+
+#### Creating New Migrations
+
+1. **Create up migration:**
+   ```sql
+   -- migrations/000004_add_posts_comments.up.sql
+   CREATE TABLE comments (
+       id SERIAL PRIMARY KEY,
+       post_id INTEGER REFERENCES posts(id),
+       content TEXT NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+2. **Create down migration:**
+   ```sql
+   -- migrations/000004_add_posts_comments.down.sql
+   DROP TABLE IF EXISTS comments;
+   ```
+
+3. **Run migrations:**
+   ```bash
+   go run cmd/migrate/main.go -command=up
+   ```
 
 ## Configuration
 
@@ -98,11 +151,17 @@ environment: "development"
 database:
   driver: "sqlite"        # or "postgres"
   filepath: "./data.db"   # for sqlite
+
+# Migration configuration
+migration:
+  path: "./migrations"    # path to migration files
+  auto_up: true          # automatically run up migrations on startup
+  auto_down: false       # automatically run down migrations on shutdown (dev only)
 ```
 
 ### Environment Variables
 - Prefix: `TRYGO_`
-- Examples: `TRYGO_PORT`, `TRYGO_DB_DRIVER`, `TRYGO_DB_HOST`
+- Examples: `TRYGO_PORT`, `TRYGO_DB_DRIVER`, `TRYGO_DB_HOST`, `TRYGO_MIGRATION_AUTO_UP`
 - Override any config file setting
 
 ## API Endpoints
@@ -113,11 +172,12 @@ database:
 
 ## Development Workflow
 
-1. **Modify SQL queries** in `queries/`
-2. **Run `sqlc generate`** to update Go code
-3. **Update handlers** to use new database operations
-4. **Test with `go run cmd/server/main.go`**
-5. **Use Docker Compose** for PostgreSQL testing
+1. **Create migrations** if changing database schema
+2. **Run migrations**: `go run cmd/migrate/main.go -command=up`
+3. **Modify SQL queries** in `queries/`
+4. **Run `sqlc generate`** to update Go code
+5. **Update handlers** to use new database operations
+6. **Test with `go run cmd/server/main.go`** (auto-runs migrations)
 
 ## Database Switching
 

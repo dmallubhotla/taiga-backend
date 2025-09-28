@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,13 +15,15 @@ import (
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/handlers"
+	"gitea.deepak.science/deepak/trygo/internal/migration"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	config *config.Config
-	db     *sql.DB
-	server *http.Server
+	config   *config.Config
+	db       *sql.DB
+	server   *http.Server
+	migrator *migration.Migrator
 }
 
 // New creates a new server instance
@@ -29,6 +32,25 @@ func New(cfg *config.Config) (*Server, error) {
 	db, err := initDB(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
+
+	// Initialize migrations
+	migrator, err := migration.New(db, cfg.Database.Driver, cfg.Migration.Path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize migrator: %w", err)
+	}
+
+	// Run migrations if auto_up is enabled
+	if cfg.Migration.AutoUp {
+		log.Println("Running database migrations...")
+		if err := migrator.Up(); err != nil {
+			return nil, fmt.Errorf("failed to run migrations: %w", err)
+		}
+
+		// Log current migration version
+		if version, dirty, err := migrator.Version(); err == nil {
+			log.Printf("Database migration version: %d (dirty: %v)", version, dirty)
+		}
 	}
 
 	// Create handlers
@@ -76,9 +98,10 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	return &Server{
-		config: cfg,
-		db:     db,
-		server: server,
+		config:   cfg,
+		db:       db,
+		server:   server,
+		migrator: migrator,
 	}, nil
 }
 
@@ -89,6 +112,21 @@ func (s *Server) Start() error {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
+	// Run down migrations if auto_down is enabled and in development
+	if s.config.Migration.AutoDown && s.config.IsDevelopment() {
+		log.Println("Running down migrations...")
+		if err := s.migrator.Down(); err != nil {
+			log.Printf("Warning: failed to run down migrations: %v", err)
+		}
+	}
+
+	// Close migrator
+	if s.migrator != nil {
+		if err := s.migrator.Close(); err != nil {
+			log.Printf("Error closing migrator: %v", err)
+		}
+	}
+
 	// Close database connection
 	if s.db != nil {
 		if err := s.db.Close(); err != nil {

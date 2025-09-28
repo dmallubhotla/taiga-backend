@@ -5,12 +5,18 @@ environment: "development"
 database:
   driver: "sqlite" # "sqlite" or "postgres"
   filepath: "./data.db" # for sqlite
+# Migration configuration
+migration:
+  path: "./migrations" # path to migration files
+  auto_up: true # automatically run up migrations on startup
+  auto_down: false # automatically run down migrations on shutdown (dev only)
 
 # Uncomment for PostgreSQL
-# driver: "postgres"
-# host: "localhost"
-# port: "5432"
-# user: "trygo"
-# password: "password"
-# name: "trygo_db"
-# sslmode: "disable"
+# database:
+#   driver: "postgres"
+#   host: "localhost"
+#   port: "5432"
+#   user: "trygo"
+#   password: "password"
+#   name: "trygo_db"
+#   sslmode: "disable"

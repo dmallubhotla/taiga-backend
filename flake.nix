@@ -107,6 +107,7 @@
             pkgs.golangci-lint
             pkgs.go-tools
             pkgs.sqlc
+            pkgs.sqlite
           ];
 
           # Will be executed before entering the shell

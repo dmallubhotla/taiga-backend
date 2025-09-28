@@ -18,5 +18,8 @@
   programs.yamlfmt.enable = true;
   programs.just.enable = true;
   programs.gofmt.enable = true;
+  programs.sqlfluff.enable = true;
+  programs.sqlfluff-lint.enable = true;
+  settings.formatter.sqlfluff.dialect = "postgres";
 
 }
