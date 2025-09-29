@@ -10,9 +10,7 @@ test:
 
     echo "testing..."
     nix flake check
-    go test ./...
-
-#
+    go test:./...
 
 # format code
 fmt:
