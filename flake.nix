@@ -69,6 +69,7 @@
             pkgs.go-tools
             pkgs.sqlc
             pkgs.sqlite
+            pkgs.postgresql
           ];
 
           # Will be executed before entering the shell

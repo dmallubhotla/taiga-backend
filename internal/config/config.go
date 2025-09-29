@@ -58,14 +58,6 @@ func Load() (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	// Allow environment variables to override config file
-	// With AutomaticEnv and SetEnvPrefix, Viper automatically maps:
-	// TRYGO_PORT -> port
-	// TRYGO_ENVIRONMENT -> environment
-	// TRYGO_DATABASE_DRIVER -> database.driver
-	// TRYGO_DATABASE_HOST -> database.host
-	// etc.
-
 	// Try to read config file if it exists
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
