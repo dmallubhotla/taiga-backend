@@ -39,6 +39,17 @@
           src = ./.;
           modules = ./gomod2nix.toml;
         };
+      otherGoPackageFor =
+        pkgs:
+
+        pkgs.buildGoModule {
+          src = ./.;
+          pname = "build-go-module-example";
+          version = "0.1";
+
+          vendorHash = "sha256-R3zS72aVorekTiJ9iIGI8jMoeVRcXdo/CglvuiRoWnc=";
+
+        };
     in
     {
       checks = eachSystem (pkgs: {
@@ -53,6 +64,7 @@
 
       packages = eachSystem (pkgs: {
         default = goPackageFor pkgs;
+        goother = otherGoPackageFor pkgs;
       });
 
       # default devshell
