@@ -34,7 +34,7 @@ func (h *Handlers) SetupRoutes() *chi.Mux {
 
 // Hello handles the root endpoint with a simple greeting
 func (h *Handlers) Hello(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
+	response := map[string]any{
 		"message": "Hello, World!",
 		"status":  "success",
 		"service": "trygo-template",
