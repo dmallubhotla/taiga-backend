@@ -57,7 +57,7 @@ func Load(filename string) (*Config, error) {
 	v.SetDefault("database.name", "trygo")
 	v.SetDefault("database.ssl_mode", "disable")
 	v.SetDefault("database.filepath", "./data.db")
-	v.SetDefault("database.drop_on_stat", false)
+	v.SetDefault("database.drop_on_start", false)
 
 	// Environment variable support
 	v.SetEnvPrefix("TRYGO")
