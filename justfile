@@ -38,4 +38,6 @@ cover:
     #!/usr/bin/env bash
     set -euxo pipefail
 
-    go tool -coverprofile profile.cov ./...
+    mkdir -p ./coverage
+    go test -coverprofile ./coverage/profile.cov ./...
+    go tool cover -html ./coverage/profile.cov -o ./coverage/cover.html
