@@ -9,28 +9,28 @@ import (
 
 // Config represents the application configuration
 type AppConfig struct {
-	Port        string
-	Environment string
-	// Database    DB
-	// Migration   Migration `mapstructure:"migration"`
+	Port        string `mapstructure:"port"`
+	Environment string `mapstructure:"environment"`
 }
 
 // DB holds database configuration
 type DBConfig struct {
-	Driver     string //`mapstructure:"driver"` // "postgres" or "sqlite"
-	Host       string //`mapstructure:"host"`
-	Port       string //`mapstructure:"port"`
-	User       string //`mapstructure:"user"`
-	Password   string //`mapstructure:"password"`
-	Name       string //`mapstructure:"name"`
-	SSLMode    string // `mapstructure`: "ssl_mode"
-	FilePath   string //`mapstructure:"filepath"` // for sqlite
-	DropOnStat bool   //`mapstructure:"drop_on_stat"`
+	Driver        string `mapstructure:"driver"` // "postgres" or "sqlite"
+	Host          string `mapstructure:"host"`
+	Port          string `mapstructure:"port"`
+	User          string `mapstructure:"user"`
+	Password      string `mapstructure:"password"`
+	Name          string `mapstructure:"name"`
+	SSLMode       string `mapstructure:"ssl_mode"`
+	FilePath      string `mapstructure:"filepath"`      // for sqlite
+	DropOnStart   bool   `mapstructure:"drop_on_start"` // dev only
+	AutoMigrateUp bool   `mapstructure:"auto_migrate_up"`
+	MigrationPath string `mapstructure:"migration_path"`
 }
 
 type Config struct {
-	App AppConfig //`mapstructure: "app"`
-	Db  DBConfig  //`mapstructure: "db"`
+	App AppConfig `mapstructure:"app"`
+	Db  DBConfig  `mapstructure:"db"`
 }
 
 // Migration holds migration configuration
@@ -49,15 +49,16 @@ func Load(filename string) (*Config, error) {
 	v.SetDefault("app.port", "8080")
 	v.SetDefault("app.environment", "development")
 
-	v.SetDefault("database.driver", "sqlite")
-	v.SetDefault("database.host", "localhost")
-	v.SetDefault("database.port", "5432")
-	v.SetDefault("database.user", "")
-	v.SetDefault("database.password", "")
-	v.SetDefault("database.name", "trygo")
-	v.SetDefault("database.ssl_mode", "disable")
-	v.SetDefault("database.filepath", "./data.db")
-	v.SetDefault("database.drop_on_start", false)
+	v.SetDefault("db.driver", "sqlite")
+	v.SetDefault("db.host", "localhost")
+	v.SetDefault("db.port", "5432")
+	v.SetDefault("db.user", "")
+	v.SetDefault("db.password", "")
+	v.SetDefault("db.name", "trygo")
+	v.SetDefault("db.ssl_mode", "disable")
+	v.SetDefault("db.filepath", "./data.db")
+	v.SetDefault("db.drop_on_start", false)
+	v.SetDefault("db.auto_migrate_up", true)
 
 	// Environment variable support
 	v.SetEnvPrefix("TRYGO")

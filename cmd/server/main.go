@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// Load configuration
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
@@ -27,7 +27,7 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("Starting server on port %s", cfg.Port)
+		log.Printf("Starting server on port %s", cfg.App.Port)
 		if err := srv.Start(); err != nil {
 			log.Fatalf("Server failed to start: %v", err)
 		}

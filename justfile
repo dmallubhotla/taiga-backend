@@ -12,6 +12,14 @@ test:
     nix flake check
     go test ./...
 
+# Vet sqlc
+vet_sqlc:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    sqlc diff
+    sqlc vet
+
 # format code
 fmt:
     #!/usr/bin/env bash
@@ -23,3 +31,11 @@ chores:
     #!/usr/bin/env bash
     set -euxo pipefail
     gomod2nix
+    sqlc generate
+
+# Generate coverage to ./profile.cov
+cover:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    go tool -coverprofile profile.cov ./...

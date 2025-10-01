@@ -35,13 +35,21 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	// Initialize migrations
-	migrator, err := migration.New(db, cfg.Database.Driver, cfg.Migration.Path)
+	migrator, err := migration.New(db, cfg.Db.Driver, cfg.Db.MigrationPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize migrator: %w", err)
 	}
 
+	// Run down migrations if auto_down is enabled and in development
+	if cfg.Db.DropOnStart && cfg.App.IsDevelopment() {
+		log.Println("Running down migrations...")
+		if err := migrator.Down(); err != nil {
+			log.Printf("Warning: failed to run down migrations: %v", err)
+		}
+	}
+
 	// Run migrations if auto_up is enabled
-	if cfg.Migration.AutoUp {
+	if cfg.Db.AutoMigrateUp {
 		log.Println("Running database migrations...")
 		if err := migrator.Up(); err != nil {
 			return nil, fmt.Errorf("failed to run migrations: %w", err)
@@ -90,7 +98,7 @@ func New(cfg *config.Config) (*Server, error) {
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:         ":" + cfg.Port,
+		Addr:         ":" + cfg.App.Port,
 		Handler:      r,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -112,13 +120,6 @@ func (s *Server) Start() error {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
-	// Run down migrations if auto_down is enabled and in development
-	if s.config.Migration.AutoDown && s.config.IsDevelopment() {
-		log.Println("Running down migrations...")
-		if err := s.migrator.Down(); err != nil {
-			log.Printf("Warning: failed to run down migrations: %v", err)
-		}
-	}
 
 	// Close migrator
 	if s.migrator != nil {
@@ -141,12 +142,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // initDB initializes the database connection
 func initDB(cfg *config.Config) (*sql.DB, error) {
-	dsn := cfg.Database.DSN()
+	dsn := cfg.Db.DSN()
 	if dsn == "" {
 		return nil, fmt.Errorf("invalid database configuration")
 	}
 
-	db, err := sql.Open(cfg.Database.Driver, dsn)
+	db, err := sql.Open(cfg.Db.Driver, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}

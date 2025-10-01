@@ -24,19 +24,19 @@ func TestLoadDefaults(t *testing.T) {
 	err = os.Chdir(tempDir)
 	require.NoError(t, err)
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
 	// Test default values
-	assert.Equal(t, "8080", cfg.Port)
-	assert.Equal(t, "development", cfg.Environment)
-	assert.Equal(t, "sqlite", cfg.Database.Driver)
-	assert.Equal(t, "localhost", cfg.Database.Host)
-	assert.Equal(t, "5432", cfg.Database.Port)
-	assert.Equal(t, "trygo", cfg.Database.Name)
-	assert.Equal(t, "disable", cfg.Database.SSLMode)
-	assert.Equal(t, "./data.db", cfg.Database.FilePath)
+	assert.Equal(t, "8080", cfg.App.Port)
+	assert.Equal(t, "development", cfg.App.Environment)
+	assert.Equal(t, "sqlite", cfg.Db.Driver)
+	assert.Equal(t, "localhost", cfg.Db.Host)
+	assert.Equal(t, "5432", cfg.Db.Port)
+	assert.Equal(t, "trygo", cfg.Db.Name)
+	assert.Equal(t, "disable", cfg.Db.SSLMode)
+	assert.Equal(t, "./data.db", cfg.Db.FilePath)
 }
 
 func TestLoadFullConfig(t *testing.T) {
@@ -54,21 +54,21 @@ func TestLoadFullConfig(t *testing.T) {
 	copyFile(t, "config-full.yaml", "config.yaml")
 	defer func() { _ = os.Remove("config.yaml") }()
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
 	// Test loaded values
-	assert.Equal(t, "9090", cfg.Port)
-	assert.Equal(t, "production", cfg.Environment)
-	assert.Equal(t, "postgres", cfg.Database.Driver)
-	assert.Equal(t, "db.example.com", cfg.Database.Host)
-	assert.Equal(t, "5433", cfg.Database.Port)
-	assert.Equal(t, "testuser", cfg.Database.User)
-	assert.Equal(t, "testpass", cfg.Database.Password)
-	assert.Equal(t, "testdb", cfg.Database.Name)
-	assert.Equal(t, "require", cfg.Database.SSLMode)
-	assert.Equal(t, "/custom/path.db", cfg.Database.FilePath)
+	assert.Equal(t, "9090", cfg.App.Port)
+	assert.Equal(t, "production", cfg.App.Environment)
+	assert.Equal(t, "postgres", cfg.Db.Driver)
+	assert.Equal(t, "db.example.com", cfg.Db.Host)
+	assert.Equal(t, "5433", cfg.Db.Port)
+	assert.Equal(t, "testuser", cfg.Db.User)
+	assert.Equal(t, "testpass", cfg.Db.Password)
+	assert.Equal(t, "testdb", cfg.Db.Name)
+	assert.Equal(t, "require", cfg.Db.SSLMode)
+	assert.Equal(t, "/custom/path.db", cfg.Db.FilePath)
 }
 
 func TestLoadPartialConfig(t *testing.T) {
@@ -86,28 +86,28 @@ func TestLoadPartialConfig(t *testing.T) {
 	copyFile(t, "config-partial.yaml", "config.yaml")
 	defer func() { _ = os.Remove("config.yaml") }()
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
 	// Test partial config with defaults
-	assert.Equal(t, "3000", cfg.Port)
-	assert.Equal(t, "development", cfg.Environment) // default
-	assert.Equal(t, "sqlite", cfg.Database.Driver)
-	assert.Equal(t, "localhost", cfg.Database.Host) // default
-	assert.Equal(t, "5432", cfg.Database.Port)      // default
-	assert.Equal(t, "./test.db", cfg.Database.FilePath)
+	assert.Equal(t, "3000", cfg.App.Port)
+	assert.Equal(t, "development", cfg.App.Environment) // default
+	assert.Equal(t, "sqlite", cfg.Db.Driver)
+	assert.Equal(t, "localhost", cfg.Db.Host) // default
+	assert.Equal(t, "5432", cfg.Db.Port)      // default
+	assert.Equal(t, "./test.db", cfg.Db.FilePath)
 }
 
 func TestEnvironmentVariables(t *testing.T) {
 	clearEnvVars(t)
 
 	// Set environment variables
-	t.Setenv("TRYGO_PORT", "7777")
-	t.Setenv("TRYGO_ENVIRONMENT", "testing")
-	t.Setenv("TRYGO_DATABASE_DRIVER", "postgres")
-	t.Setenv("TRYGO_DATABASE_HOST", "env-db-host")
-	t.Setenv("TRYGO_DATABASE_USER", "env-user")
+	t.Setenv("TRYGO_APP_PORT", "7777")
+	t.Setenv("TRYGO_APP_ENVIRONMENT", "testing")
+	t.Setenv("TRYGO_DB_DRIVER", "postgres")
+	t.Setenv("TRYGO_DB_HOST", "env-db-host")
+	t.Setenv("TRYGO_DB_USER", "env-user")
 
 	// Change to a directory without config files
 	tempDir := t.TempDir()
@@ -118,27 +118,27 @@ func TestEnvironmentVariables(t *testing.T) {
 	err = os.Chdir(tempDir)
 	require.NoError(t, err)
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
 	// Environment variables should override defaults
-	assert.Equal(t, "7777", cfg.Port)
-	assert.Equal(t, "testing", cfg.Environment)
-	assert.Equal(t, "postgres", cfg.Database.Driver)
-	assert.Equal(t, "env-db-host", cfg.Database.Host)
-	assert.Equal(t, "env-user", cfg.Database.User)
+	assert.Equal(t, "7777", cfg.App.Port)
+	assert.Equal(t, "testing", cfg.App.Environment)
+	assert.Equal(t, "postgres", cfg.Db.Driver)
+	assert.Equal(t, "env-db-host", cfg.Db.Host)
+	assert.Equal(t, "env-user", cfg.Db.User)
 	// Defaults should still apply for unset env vars
-	assert.Equal(t, "5432", cfg.Database.Port)
-	assert.Equal(t, "trygo", cfg.Database.Name)
+	assert.Equal(t, "5432", cfg.Db.Port)
+	assert.Equal(t, "trygo", cfg.Db.Name)
 }
 
 func TestEnvironmentVariablesOverrideConfig(t *testing.T) {
 	clearEnvVars(t)
 
 	// Set environment variables that should override config file
-	t.Setenv("TRYGO_PORT", "8888")
-	t.Setenv("TRYGO_DATABASE_DRIVER", "sqlite")
+	t.Setenv("TRYGO_APP_PORT", "8888")
+	t.Setenv("TRYGO_DB_DRIVER", "sqlite")
 
 	// Change to testdata directory
 	oldWd, err := os.Getwd()
@@ -152,19 +152,19 @@ func TestEnvironmentVariablesOverrideConfig(t *testing.T) {
 	copyFile(t, "config-full.yaml", "config.yaml")
 	defer func() { _ = os.Remove("config.yaml") }()
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
 	// Environment variables should override config file
-	assert.Equal(t, "8888", cfg.Port)                    // from env
-	assert.Equal(t, "sqlite", cfg.Database.Driver)       // from env
-	assert.Equal(t, "production", cfg.Environment)       // from config file
-	assert.Equal(t, "db.example.com", cfg.Database.Host) // from config file
+	assert.Equal(t, "8888", cfg.App.Port)              // from env
+	assert.Equal(t, "sqlite", cfg.Db.Driver)           // from env
+	assert.Equal(t, "production", cfg.App.Environment) // from config file
+	assert.Equal(t, "db.example.com", cfg.Db.Host)     // from config file
 }
 
 func TestDSNPostgreSQL(t *testing.T) {
-	db := &config.DB{
+	db := &config.DBConfig{
 		Driver:   "postgres",
 		Host:     "localhost",
 		Port:     "5432",
@@ -179,7 +179,7 @@ func TestDSNPostgreSQL(t *testing.T) {
 }
 
 func TestDSNSQLite(t *testing.T) {
-	db := &config.DB{
+	db := &config.DBConfig{
 		Driver:   "sqlite",
 		FilePath: "./test.db",
 	}
@@ -188,7 +188,7 @@ func TestDSNSQLite(t *testing.T) {
 }
 
 func TestDSNUnknownDriver(t *testing.T) {
-	db := &config.DB{
+	db := &config.DBConfig{
 		Driver: "unknown",
 	}
 
@@ -210,7 +210,7 @@ func TestIsDevelopment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.env, func(t *testing.T) {
-			cfg := &config.Config{Environment: tt.env}
+			cfg := &config.AppConfig{Environment: tt.env}
 			assert.Equal(t, tt.expected, cfg.IsDevelopment())
 		})
 	}
@@ -231,7 +231,7 @@ func TestIsProduction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.env, func(t *testing.T) {
-			cfg := &config.Config{Environment: tt.env}
+			cfg := &config.AppConfig{Environment: tt.env}
 			assert.Equal(t, tt.expected, cfg.IsProduction())
 		})
 	}
@@ -253,7 +253,7 @@ func TestInvalidConfigFile(t *testing.T) {
 	err = os.Chdir(tempDir)
 	require.NoError(t, err)
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	assert.Nil(t, cfg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error reading config file")
@@ -274,7 +274,7 @@ func TestInvalidConfigStructure(t *testing.T) {
 	copyFile(t, "config-invalid-structure.yaml", "config.yaml")
 	defer func() { _ = os.Remove("config.yaml") }()
 
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	assert.Nil(t, cfg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error unmarshaling config")
@@ -284,16 +284,16 @@ func TestInvalidConfigStructure(t *testing.T) {
 
 func clearEnvVars(t *testing.T) {
 	envVars := []string{
-		"TRYGO_PORT",
-		"TRYGO_ENVIRONMENT",
-		"TRYGO_DATABASE_DRIVER",
-		"TRYGO_DATABASE_HOST",
-		"TRYGO_DATABASE_PORT",
-		"TRYGO_DATABASE_USER",
-		"TRYGO_DATABASE_PASSWORD",
-		"TRYGO_DATABASE_NAME",
-		"TRYGO_DATABASE_SSLMODE",
-		"TRYGO_DATABASE_FILEPATH",
+		"TRYGO_APP_PORT",
+		"TRYGO_APP_ENVIRONMENT",
+		"TRYGO_DB_DRIVER",
+		"TRYGO_DB_HOST",
+		"TRYGO_DB_PORT",
+		"TRYGO_DB_USER",
+		"TRYGO_DB_PASSWORD",
+		"TRYGO_DB_NAME",
+		"TRYGO_DB_SSLMODE",
+		"TRYGO_DB_FILEPATH",
 	}
 
 	for _, env := range envVars {

@@ -1,6 +1,7 @@
-port: "8080"
-environment: "development"
-database:
+app:
+  port: "8080"
+  environment: "development"
+db:
   driver: "sqlite"
   # This will cause unmarshal to fail because port should be a string but we'll make it an object
   port:

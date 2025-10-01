@@ -34,6 +34,15 @@ schema = 3
   [mod."github.com/hashicorp/hcl"]
     version = "v1.0.0"
     hash = "sha256-xsRCmYyBfglMxeWUvTZqkaRLSW+V2FvNodEDjTGg1WA="
+  [mod."github.com/jackc/pgpassfile"]
+    version = "v1.0.0"
+    hash = "sha256-H0nFbC34/3pZUFnuiQk9W7yvAMh6qJDrqvHp+akBPLM="
+  [mod."github.com/jackc/pgservicefile"]
+    version = "v0.0.0-20240606120523-5a60cdf6a761"
+    hash = "sha256-ETpGsLAA2wcm5xJBayr/mZrCE1YsWbnkbSSX3ptrFn0="
+  [mod."github.com/jackc/pgx/v5"]
+    version = "v5.7.6"
+    hash = "sha256-E6THwIqVXpH2TINRVh2ygwhAlLpJ9OBqNcs5zZd4K9g="
   [mod."github.com/lib/pq"]
     version = "v1.10.9"
     hash = "sha256-Gl6dLtL+yk6UrTTWfas43aM4lP/pNa2l7+ITXnjQyKs="
@@ -94,15 +103,18 @@ schema = 3
   [mod."go.uber.org/multierr"]
     version = "v1.11.0"
     hash = "sha256-Lb6rHHfR62Ozg2j2JZy3MKOMKdsfzd1IYTR57r3Mhp0="
+  [mod."golang.org/x/crypto"]
+    version = "v0.37.0"
+    hash = "sha256-9NwDEcii1e2JYM/+3y1yNzWnt/ChMm27e9OtfuF39OM="
   [mod."golang.org/x/exp"]
     version = "v0.0.0-20231108232855-2478ac86f678"
     hash = "sha256-cqOQQa51ugTqcK5e/C+3n0mPVmutdNfB3XTWoux6KGU="
   [mod."golang.org/x/sys"]
-    version = "v0.31.0"
-    hash = "sha256-aulv5obCrhheMlSq7seUgP3C29nfZABwiQ4IBNisgME="
+    version = "v0.36.0"
+    hash = "sha256-9h4SHGnlJzmTENUp6226hC8fQ73QrQC3D85NNMxLuXg="
   [mod."golang.org/x/text"]
-    version = "v0.23.0"
-    hash = "sha256-TiYX1K4DYpP1dEV06whOm43xyOntjrPFi+VAdncoeCY="
+    version = "v0.24.0"
+    hash = "sha256-qFbmteGOvJfvbLXiOSI8Fsz5Ixt2ZhSYx0/sIqApC7Y="
   [mod."gopkg.in/ini.v1"]
     version = "v1.67.0"
     hash = "sha256-V10ahGNGT+NLRdKUyRg1dos5RxLBXBk1xutcnquc/+4="

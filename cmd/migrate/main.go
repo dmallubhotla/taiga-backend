@@ -23,18 +23,18 @@ func main() {
 	flag.Parse()
 
 	// Load configuration
-	cfg, err := config.Load()
+	cfg, err := config.Load("config")
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
 	// Initialize database connection
-	dsn := cfg.Database.DSN()
+	dsn := cfg.Db.DSN()
 	if dsn == "" {
 		log.Fatal("Invalid database configuration")
 	}
 
-	db, err := sql.Open(cfg.Database.Driver, dsn)
+	db, err := sql.Open(cfg.Db.Driver, dsn)
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// Initialize migrator
-	migrator, err := migration.New(db, cfg.Database.Driver, cfg.Migration.Path)
+	migrator, err := migration.New(db, cfg.Db.Driver, "./migrations")
 	if err != nil {
 		log.Fatalf("Failed to initialize migrator: %v", err)
 	}
