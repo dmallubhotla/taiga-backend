@@ -9,11 +9,11 @@ import (
 )
 
 type Querier interface {
-	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteUser(ctx context.Context, id int32) error
-	GetUser(ctx context.Context, id int32) (GetUserRow, error)
-	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
-	ListUsers(ctx context.Context) ([]ListUsersRow, error)
+	GetUser(ctx context.Context, id int32) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	ListUsers(ctx context.Context) ([]User, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 }
 

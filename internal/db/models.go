@@ -8,23 +8,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Post struct {
-	ID        int32            `json:"id"`
-	UserID    int32            `json:"user_id"`
-	Title     string           `json:"title"`
-	Content   pgtype.Text      `json:"content"`
-	Published pgtype.Bool      `json:"published"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
-}
-
 type User struct {
-	ID        int32            `json:"id"`
-	Email     string           `json:"email"`
-	Name      string           `json:"name"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
-	Bio       pgtype.Text      `json:"bio"`
-	AvatarUrl pgtype.Text      `json:"avatar_url"`
-	IsActive  pgtype.Bool      `json:"is_active"`
+	ID        int32              `json:"id"`
+	Email     string             `json:"email"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
