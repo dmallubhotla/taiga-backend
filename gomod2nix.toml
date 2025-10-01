@@ -94,6 +94,9 @@ schema = 3
   [mod."github.com/spf13/viper"]
     version = "v1.19.0"
     hash = "sha256-MZ8EAvdgpGbw6kmUz8UOaAAAMdPPGd14TrCBAY+A1T4="
+  [mod."github.com/stretchr/objx"]
+    version = "v0.5.2"
+    hash = "sha256-VKYxrrFb1nkX6Wu3tE5DoP9+fCttwSl9pgLN6567nck="
   [mod."github.com/stretchr/testify"]
     version = "v1.10.0"
     hash = "sha256-fJ4gnPr0vnrOhjQYQwJ3ARDKPsOtA7d4olQmQWR+wpI="
