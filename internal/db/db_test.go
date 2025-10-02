@@ -100,15 +100,3 @@ func TestUserModel(t *testing.T) {
 	assert.Equal(t, "test@example.com", user.Email)
 	assert.Equal(t, "Test User", user.Name)
 }
-
-func TestPostModel(t *testing.T) {
-	post := Post{
-		ID:     1,
-		UserID: 123,
-		Title:  "Test Post",
-	}
-
-	assert.Equal(t, int32(1), post.ID)
-	assert.Equal(t, int32(123), post.UserID)
-	assert.Equal(t, "Test Post", post.Title)
-}

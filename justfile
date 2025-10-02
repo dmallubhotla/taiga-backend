@@ -3,6 +3,11 @@
 default:
     just --list
 
+# build
+build:
+    #!/usr/bin/env bash
+    nix build
+
 # run all tests
 test:
     #!/usr/bin/env bash

@@ -1,4 +1,4 @@
-package handlers
+package routes
 
 import (
 	"database/sql"
@@ -25,15 +25,15 @@ func (h *Handlers) SetupRoutes() *chi.Mux {
 	r := chi.NewRouter()
 
 	// Basic routes
-	r.Get("/", h.Hello)
-	r.Get("/ping", h.Ping)
-	r.Get("/health", h.Health)
+	r.Get("/", h.hello)
+	r.Get("/ping", h.ping)
+	r.Get("/health", h.health)
 
 	return r
 }
 
 // Hello handles the root endpoint with a simple greeting
-func (h *Handlers) Hello(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) hello(w http.ResponseWriter, r *http.Request) {
 	response := map[string]any{
 		"message": "Hello, World!",
 		"status":  "success",
@@ -50,7 +50,7 @@ func (h *Handlers) Hello(w http.ResponseWriter, r *http.Request) {
 }
 
 // Ping handles simple ping requests
-func (h *Handlers) Ping(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) ping(w http.ResponseWriter, r *http.Request) {
 	response := map[string]string{
 		"ping": "pong",
 	}
@@ -65,7 +65,7 @@ func (h *Handlers) Ping(w http.ResponseWriter, r *http.Request) {
 }
 
 // Health handles health check requests with database connectivity
-func (h *Handlers) Health(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) health(w http.ResponseWriter, r *http.Request) {
 	var dbStatus string
 	var dbHealthy bool
 

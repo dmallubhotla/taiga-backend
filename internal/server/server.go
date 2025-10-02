@@ -14,8 +14,8 @@ import (
 	_ "modernc.org/sqlite" // SQLite driver
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/handlers"
 	"gitea.deepak.science/deepak/trygo/internal/migration"
+	"gitea.deepak.science/deepak/trygo/internal/routes"
 )
 
 // Server represents the HTTP server
@@ -132,7 +132,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.db != nil {
 		if err := s.db.Close(); err != nil {
 			// Log error but don't return it since we're shutting down
-			fmt.Printf("Error closing database connection: %v\n", err)
+			log.Printf("Error closing database connection: %v\n", err)
 		}
 	}
 
@@ -155,7 +155,7 @@ func initDB(cfg *config.Config) (*sql.DB, error) {
 	// Test the connection
 	if err := db.Ping(); err != nil {
 		if closeErr := db.Close(); closeErr != nil {
-			fmt.Printf("Error closing database after ping failure: %v\n", closeErr)
+			log.Printf("Error closing database after ping failure: %v\n", closeErr)
 		}
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}

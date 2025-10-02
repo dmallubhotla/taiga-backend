@@ -1,4 +1,4 @@
-package handlers_test
+package routes_test
 
 import (
 	"database/sql"
@@ -11,28 +11,28 @@ import (
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 
-	"gitea.deepak.science/deepak/trygo/internal/handlers"
+	"gitea.deepak.science/deepak/trygo/internal/routes"
 )
 
 func TestNew(t *testing.T) {
 	db := &sql.DB{}
-	h := handlers.New(db)
+	h := routes.New(db)
 	assert.NotNil(t, h)
 }
 
 func TestNewWithNilDB(t *testing.T) {
-	h := handlers.New(nil)
+	h := routes.New(nil)
 	assert.NotNil(t, h)
 }
 
 func TestSetupRoutes(t *testing.T) {
-	h := handlers.New(nil)
+	h := routes.New(nil)
 	router := h.SetupRoutes()
 	assert.NotNil(t, router)
 }
 
 func TestHello(t *testing.T) {
-	h := handlers.New(nil)
+	h := routes.New(nil)
 	router := h.SetupRoutes()
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -53,7 +53,7 @@ func TestHello(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	h := handlers.New(nil)
+	h := routes.New(nil)
 	router := h.SetupRoutes()
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
@@ -72,7 +72,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestHealthWithNilDB(t *testing.T) {
-	h := handlers.New(nil)
+	h := routes.New(nil)
 	router := h.SetupRoutes()
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -102,7 +102,7 @@ func TestHealthWithHealthyDB(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	h := handlers.New(db)
+	h := routes.New(db)
 	router := h.SetupRoutes()
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -132,7 +132,7 @@ func TestHealthWithUnhealthyDB(t *testing.T) {
 	require.NoError(t, err)
 	db.Close() // Close immediately to make ping fail
 
-	h := handlers.New(db)
+	h := routes.New(db)
 	router := h.SetupRoutes()
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -157,7 +157,7 @@ func TestHealthWithUnhealthyDB(t *testing.T) {
 }
 
 func TestRoutesExist(t *testing.T) {
-	h := handlers.New(nil)
+	h := routes.New(nil)
 	router := h.SetupRoutes()
 
 	tests := []struct {
@@ -183,7 +183,7 @@ func TestRoutesExist(t *testing.T) {
 }
 
 func TestInvalidRoutes(t *testing.T) {
-	h := handlers.New(nil)
+	h := routes.New(nil)
 	router := h.SetupRoutes()
 
 	tests := []struct {
@@ -209,54 +209,6 @@ func TestInvalidRoutes(t *testing.T) {
 				// POST/PUT/DELETE on existing paths should return method not allowed
 				assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 			}
-		})
-	}
-}
-
-// Test JSON encoding error paths using an interface that can't be marshaled
-type unmarshalableStruct struct {
-	Channel chan int `json:"channel"` // channels can't be marshaled to JSON
-}
-
-func TestJSONEncodingErrorPaths(t *testing.T) {
-	// These tests verify that the error paths in JSON encoding are handled
-	// In practice, the handlers use simple map[string] types that should always marshal successfully
-	// But we test that the error handling code exists
-
-	h := handlers.New(nil)
-
-	// Test that basic responses work (no errors)
-	tests := []struct {
-		name    string
-		path    string
-		handler func(http.ResponseWriter, *http.Request)
-	}{
-		{"hello", "/", h.Hello},
-		{"ping", "/ping", h.Ping},
-		{"health", "/health", h.Health},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
-			w := httptest.NewRecorder()
-
-			tt.handler(w, req)
-
-			// Verify headers are set
-			assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-
-			// Health endpoint returns 503 with nil DB, others return 200
-			if tt.name == "health" {
-				assert.Equal(t, http.StatusServiceUnavailable, w.Code)
-			} else {
-				assert.Equal(t, http.StatusOK, w.Code)
-			}
-
-			// Verify response is valid JSON
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			assert.NoError(t, err, "Response should be valid JSON")
 		})
 	}
 }
