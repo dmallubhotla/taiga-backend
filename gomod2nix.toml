@@ -43,6 +43,9 @@ schema = 3
   [mod."github.com/jackc/pgx/v5"]
     version = "v5.7.6"
     hash = "sha256-E6THwIqVXpH2TINRVh2ygwhAlLpJ9OBqNcs5zZd4K9g="
+  [mod."github.com/jackc/puddle/v2"]
+    version = "v2.2.2"
+    hash = "sha256-IUxdu4JYfsCh/qlz2SiUWu7EVPHhyooiVA4oaS2Z6yk="
   [mod."github.com/lib/pq"]
     version = "v1.10.9"
     hash = "sha256-Gl6dLtL+yk6UrTTWfas43aM4lP/pNa2l7+ITXnjQyKs="
@@ -112,6 +115,9 @@ schema = 3
   [mod."golang.org/x/exp"]
     version = "v0.0.0-20231108232855-2478ac86f678"
     hash = "sha256-cqOQQa51ugTqcK5e/C+3n0mPVmutdNfB3XTWoux6KGU="
+  [mod."golang.org/x/sync"]
+    version = "v0.13.0"
+    hash = "sha256-CElRNe74Or/ysUkb/m3Wcz/juO/tB5fhQbAaxA5AizY="
   [mod."golang.org/x/sys"]
     version = "v0.36.0"
     hash = "sha256-9h4SHGnlJzmTENUp6226hC8fQ73QrQC3D85NNMxLuXg="
