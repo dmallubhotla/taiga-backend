@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/lib/pq"  // PostgreSQL driver
 	_ "modernc.org/sqlite" // SQLite driver
@@ -62,10 +61,9 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	// Create handlers
-	h := handlers.New(db)
+	r := routes.New(db)
 
 	// Setup router with middleware
-	r := chi.NewRouter()
 
 	// Add middleware
 	r.Use(middleware.Logger)
@@ -92,9 +90,6 @@ func New(cfg *config.Config) (*Server, error) {
 	// 		})
 	// 	})
 	// }
-
-	// Mount application routes
-	r.Mount("/", h.SetupRoutes())
 
 	// Create HTTP server
 	server := &http.Server{
