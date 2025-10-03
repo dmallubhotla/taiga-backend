@@ -27,7 +27,7 @@ type CreateUserParams struct {
 	Name  string `json:"name"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.Name)
 	var i User
 	err := row.Scan(
@@ -37,7 +37,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
 const deleteUser = `-- name: DeleteUser :exec
@@ -66,7 +66,7 @@ LIMIT
   1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
+func (q *Queries) GetUser(ctx context.Context, id int32) (*User, error) {
 	row := q.db.QueryRow(ctx, getUser, id)
 	var i User
 	err := row.Scan(
@@ -76,7 +76,7 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
@@ -94,7 +94,7 @@ LIMIT
   1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
@@ -104,7 +104,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
+	return &i, err
 }
 
 const listUsers = `-- name: ListUsers :many
@@ -120,13 +120,13 @@ ORDER BY
   name
 `
 
-func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
+func (q *Queries) ListUsers(ctx context.Context) ([]*User, error) {
 	rows, err := q.db.Query(ctx, listUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []*User{}
 	for rows.Next() {
 		var i User
 		if err := rows.Scan(
@@ -138,7 +138,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, &i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ type UpdateUserParams struct {
 	Name string `json:"name"`
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) error {
 	_, err := q.db.Exec(ctx, updateUser, arg.ID, arg.Name)
 	return err
 }
