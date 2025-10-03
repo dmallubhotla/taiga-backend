@@ -9,8 +9,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"gitea.deepak.science/deepak/trygo/internal/config"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // interface representing a backing store

@@ -2,11 +2,11 @@ package store
 
 import (
 	"context"
-	"fmt"
 	"database/sql"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5"
+	"fmt"
 	"gitea.deepak.science/deepak/trygo/internal/db"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type sqliteStore struct {
