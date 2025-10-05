@@ -23,6 +23,7 @@ type Store interface {
 func GetStore(cfg *config.Config) (Store, error) {
 	var store Store
 	var err error
+	log.Printf("Getting store with config %v", cfg)
 	switch cfg.Db.Driver {
 	case "postgres":
 		store, err = GetPostgresStore(cfg)
@@ -38,10 +39,11 @@ func GetStore(cfg *config.Config) (Store, error) {
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Db.Driver)
 	}
+	log.Printf("Obtained store, initializing...")
 	// init if all good
 	err = initDB(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to initialize DB")
+		return nil, fmt.Errorf("Failed to initialize DB: %w", err)
 	}
 	return store, nil
 
@@ -56,7 +58,7 @@ func initDB(cfg *config.Config) error {
 	// Use database/sql for SQLite (pgx doesn't support SQLite)
 	db, err := sql.Open(cfg.Db.Driver, dsn)
 	if err != nil {
-		return fmt.Errorf("could not open database")
+		return fmt.Errorf("could not open database: %w", err)
 	}
 
 	// Initialize migrations
