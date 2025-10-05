@@ -15,16 +15,15 @@ import (
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/migration"
-	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
-	"gitea.deepak.science/deepak/trygo/internal/store"
+	"gitea.deepak.science/deepak/trygo/internal/models"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	config *config.Config
-	db     *sql.DB
-	model  models.Model
+	config   *config.Config
+	db       *sql.DB
+	model    models.Model
 	// store    store.Store
 	server   *http.Server
 	migrator *migration.Migrator
@@ -35,56 +34,11 @@ func New(cfg *config.Config) (*Server, error) {
 	// Initialize store
 	m, err := models.New(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize model: %w", err)
-	}
-
-	// Initialize database connection for migrations (only needed for SQL databases)
-	var db *sql.DB
-	var migrator *migration.Migrator
-	if cfg.Db.Driver != "inmemory" {
-		db, err = initDB(cfg)
-		if err != nil {
-			s.Close()
-			return nil, fmt.Errorf("failed to initialize database: %w", err)
-		}
-
-		// Initialize migrations
-		migrator, err = migration.New(db, cfg.Db.Driver, cfg.Db.MigrationPath)
-		if err != nil {
-			s.Close()
-			if db != nil {
-				db.Close()
-			}
-			return nil, fmt.Errorf("failed to initialize migrator: %w", err)
-		}
-
-		// Run down migrations if auto_down is enabled and in development
-		if cfg.Db.DropOnStart && cfg.App.IsDevelopment() {
-			log.Println("Running down migrations...")
-			if err := migrator.Down(); err != nil {
-				log.Printf("Warning: failed to run down migrations: %v", err)
-			}
-		}
-
-		// Run migrations if auto_up is enabled
-		if cfg.Db.AutoMigrateUp {
-			log.Println("Running database migrations...")
-			if err := migrator.Up(); err != nil {
-				s.Close()
-				migrator.Close()
-				db.Close()
-				return nil, fmt.Errorf("failed to run migrations: %w", err)
-			}
-
-			// Log current migration version
-			if version, dirty, err := migrator.Version(); err == nil {
-				log.Printf("Database migration version: %d (dirty: %v)", version, dirty)
-			}
-		}
+		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
 	// Create routes handler
-	routesHandler := routes.New(s)
+	routesHandler := routes.New(m)
 
 	// Create chi router for middleware
 	r := chi.NewRouter()
@@ -131,10 +85,9 @@ func New(cfg *config.Config) (*Server, error) {
 
 	return &Server{
 		config:   cfg,
-		db:       db,
-		store:    s,
+		// db:       db,
+		model:    m,
 		server:   server,
-		migrator: migrator,
 	}, nil
 }
 
@@ -146,55 +99,12 @@ func (s *Server) Start() error {
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
 	// Close store
-	if s.store != nil {
-		if err := s.store.Close(); err != nil {
-			log.Printf("Error closing store: %v", err)
-		}
-	}
-
-	// Close migrator
-	if s.migrator != nil {
-		if err := s.migrator.Close(); err != nil {
-			log.Printf("Error closing migrator: %v", err)
-		}
-	}
-
-	// Close database connection
-	if s.db != nil {
-		if err := s.db.Close(); err != nil {
-			// Log error but don't return it since we're shutting down
-			log.Printf("Error closing database connection: %v\n", err)
+	if s.model != nil {
+		if err := s.model.Close(); err != nil {
+			log.Printf("Error closing model: %v", err)
 		}
 	}
 
 	// Shutdown HTTP server
 	return s.server.Shutdown(ctx)
-}
-
-// initDB initializes the database connection
-func initDB(cfg *config.Config) (*sql.DB, error) {
-	dsn := cfg.Db.DSN()
-	if dsn == "" {
-		return nil, fmt.Errorf("invalid database configuration")
-	}
-
-	db, err := sql.Open(cfg.Db.Driver, dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("Error closing database after ping failure: %v\n", closeErr)
-		}
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	return db, nil
 }

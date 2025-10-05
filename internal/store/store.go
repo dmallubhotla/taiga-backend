@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"time"
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/db"
@@ -22,50 +21,49 @@ type Store interface {
 }
 
 func GetStore(cfg *config.Config) (Store, error) {
+	var store Store
+	var err error
 	switch cfg.Db.Driver {
 	case "postgres":
-		return GetPostgresStore(cfg)
+		store, err = GetPostgresStore(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("tried to get postgres stored and failed")
+		}
 
 	case "sqlite":
-		return GetSqliteStore(cfg)
+		store, err = GetSqliteStore(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("tried to get sqlite stored and failed")
+		}
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Db.Driver)
 	}
+	// init if all good
+	err = initDB(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize DB")
+	}
+	return store, nil
 
 }
 
 // initDB initializes the database connection
-func initDB(cfg *config.Config) (*sql.DB, error) {
+func initDB(cfg *config.Config) error {
 	dsn := cfg.Db.DSN()
 	if dsn == "" {
-		return nil, fmt.Errorf("invalid database configuration")
+		return fmt.Errorf("invalid database configuration")
 	}
-
+	// Use database/sql for SQLite (pgx doesn't support SQLite)
 	db, err := sql.Open(cfg.Db.Driver, dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return fmt.Errorf("could not open database")
 	}
-
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("Error closing database after ping failure: %v\n", closeErr)
-		}
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	var migrator *migration.Migrator
 
 	// Initialize migrations
-	migrator, err = migration.New(db, cfg.Db.Driver, cfg.Db.MigrationPath)
+	migrator, err := migration.New(db, cfg.Db.Driver, cfg.Db.MigrationPath)
 	if err != nil {
 		db.Close()
-		return nil, fmt.Errorf("failed to initialize migrator: %w", err)
+		return fmt.Errorf("failed to initialize migrator: %w", err)
 	}
 
 	// Run down migrations if auto_down is enabled and in development
@@ -82,7 +80,7 @@ func initDB(cfg *config.Config) (*sql.DB, error) {
 		if err := migrator.Up(); err != nil {
 			migrator.Close()
 			db.Close()
-			return nil, fmt.Errorf("failed to run migrations: %w", err)
+			return fmt.Errorf("failed to run migrations: %w", err)
 		}
 
 		// Log current migration version
@@ -90,5 +88,5 @@ func initDB(cfg *config.Config) (*sql.DB, error) {
 			log.Printf("Database migration version: %d (dirty: %v)", version, dirty)
 		}
 	}
-	return db, nil
+	return nil
 }
