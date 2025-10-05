@@ -15,15 +15,17 @@ import (
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/migration"
+	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
 	"gitea.deepak.science/deepak/trygo/internal/store"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	config   *config.Config
-	db       *sql.DB
-	store    store.Store
+	config *config.Config
+	db     *sql.DB
+	model  models.Model
+	// store    store.Store
 	server   *http.Server
 	migrator *migration.Migrator
 }
@@ -31,9 +33,9 @@ type Server struct {
 // New creates a new server instance
 func New(cfg *config.Config) (*Server, error) {
 	// Initialize store
-	s, err := store.GetStore(cfg)
+	m, err := models.New(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize store: %w", err)
+		return nil, fmt.Errorf("failed to initialize model: %w", err)
 	}
 
 	// Initialize database connection for migrations (only needed for SQL databases)

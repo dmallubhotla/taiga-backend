@@ -4,7 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"time"
+
+	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/db"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -18,7 +23,7 @@ type sqliteWrapper struct {
 }
 
 // Exec implements db.DBTX interface for SQLite
-func (w *sqliteWrapper) Exec(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error) {
+func (w *sqliteWrapper) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
 	result, err := w.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return pgconn.CommandTag{}, err
@@ -28,14 +33,14 @@ func (w *sqliteWrapper) Exec(ctx context.Context, query string, args ...interfac
 }
 
 // Query implements db.DBTX interface for SQLite
-func (w *sqliteWrapper) Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+func (w *sqliteWrapper) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
 	// This is tricky - we need to return pgx.Rows but we have sql.Rows
 	// For now, we'll return an error since this gets complex
 	return nil, fmt.Errorf("Query method not implemented for SQLite wrapper - use QueryRow instead")
 }
 
 // QueryRow implements db.DBTX interface for SQLite
-func (w *sqliteWrapper) QueryRow(ctx context.Context, query string, args ...interface{}) pgx.Row {
+func (w *sqliteWrapper) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
 	row := w.db.QueryRowContext(ctx, query, args...)
 	return &sqliteRowWrapper{row: row}
 }
@@ -46,7 +51,7 @@ type sqliteRowWrapper struct {
 }
 
 // Scan implements pgx.Row interface for SQLite
-func (w *sqliteRowWrapper) Scan(dest ...interface{}) error {
+func (w *sqliteRowWrapper) Scan(dest ...any) error {
 	return w.row.Scan(dest...)
 }
 
@@ -61,6 +66,36 @@ func (w *sqliteRowWrapper) Scan(dest ...interface{}) error {
 // 	}
 // 	return user.ID, nil
 // }
+
+func GetSqliteStore(cfg *config.Config) (Store, error) {
+	dsn := cfg.Db.DSN()
+	if dsn == "" {
+		return nil, fmt.Errorf("invalid database configuration")
+	}
+	// Use database/sql for SQLite (pgx doesn't support SQLite)
+	dbconn, err := sql.Open(cfg.Db.Driver, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
+	}
+
+	// Test the connection
+	if err := dbconn.Ping(); err != nil {
+		if closeErr := dbconn.Close(); closeErr != nil {
+			log.Printf("Error closing sqlite database after ping failure: %v\n", closeErr)
+		}
+		return nil, fmt.Errorf("failed to ping sqlite database: %w", err)
+	}
+
+	// Configure connection pool
+	dbconn.SetMaxOpenConns(25)
+	dbconn.SetMaxIdleConns(25)
+	dbconn.SetConnMaxLifetime(5 * time.Minute)
+
+	s := &sqliteStore{
+		db: dbconn,
+	}
+	return s, nil
+}
 
 func (s *sqliteStore) GetQuerier() (db.Querier, error) {
 	wrapper := &sqliteWrapper{
