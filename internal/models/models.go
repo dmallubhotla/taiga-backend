@@ -13,6 +13,7 @@ type Model interface {
 	Healthy(ctx context.Context) error
 	CreateUser(ctx context.Context, req *CreateUserRequest) (int32, error)
 	Close() error
+	VerifyUserByUsernamePassword(username string, password string) (* UserNoPassword, error)
 }
 
 type storeModel struct {
