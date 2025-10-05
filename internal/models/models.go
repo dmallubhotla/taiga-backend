@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/db"
@@ -24,7 +23,9 @@ func New(cfg *config.Config) (Model, error) {
 
 	s, err := store.GetStore(cfg)
 	if err != nil {
-		s.Close()
+		if s != nil {
+			s.Close()
+		}
 		return nil, fmt.Errorf("failed to initialize database :%w", err)
 	}
 
@@ -33,8 +34,11 @@ func New(cfg *config.Config) (Model, error) {
 	}, nil
 }
 
-func initializeStore(s store.Store) {
-	var db *sql.DB
+// mostly for convenience for testing
+func NewFromStore(s store.Store) Model {
+	return &storeModel{
+		store: s,
+	}
 }
 
 type CreateUserRequest struct {

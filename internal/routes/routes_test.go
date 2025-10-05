@@ -26,7 +26,7 @@ func getTestModel(t *testing.T) models.Model {
 	}
 	s, err := store.GetStore(cfg)
 	require.NoError(t, err)
-	return models.New(s)
+	return models.NewFromStore(s)
 }
 
 func TestNew(t *testing.T) {
@@ -138,7 +138,7 @@ func TestHealthWithHealthyStore(t *testing.T) {
 
 func TestHealthWithUnhealthyStore(t *testing.T) {
 	s := store.NewErrorStore()
-	m := models.New(s)
+	m := models.NewFromStore(s)
 	defer m.Close()
 
 	router := routes.New(m)

@@ -14,19 +14,16 @@ import (
 	_ "modernc.org/sqlite" // SQLite driver
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/migration"
-	"gitea.deepak.science/deepak/trygo/internal/routes"
 	"gitea.deepak.science/deepak/trygo/internal/models"
+	"gitea.deepak.science/deepak/trygo/internal/routes"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	config   *config.Config
-	db       *sql.DB
-	model    models.Model
-	// store    store.Store
-	server   *http.Server
-	migrator *migration.Migrator
+	config *config.Config
+	db     *sql.DB
+	model  models.Model
+	server *http.Server
 }
 
 // New creates a new server instance
@@ -84,10 +81,10 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	return &Server{
-		config:   cfg,
+		config: cfg,
 		// db:       db,
-		model:    m,
-		server:   server,
+		model:  m,
+		server: server,
 	}, nil
 }
 
