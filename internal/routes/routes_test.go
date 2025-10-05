@@ -1,7 +1,6 @@
 package routes_test
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,31 +8,47 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	_ "modernc.org/sqlite"
 
+	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
+	"gitea.deepak.science/deepak/trygo/internal/store"
+	_ "modernc.org/sqlite" // SQLite driver
 )
 
+// getTestModel returns an in-memory model for testing
+func getTestModel(t *testing.T) models.Model {
+	cfg := &config.Config{
+		Db: config.DBConfig{
+			Driver:   "sqlite",
+			FilePath: ":memory:",
+		},
+	}
+	s, err := store.GetStore(cfg)
+	require.NoError(t, err)
+	return models.New(s)
+}
+
 func TestNew(t *testing.T) {
-	db := &sql.DB{}
-	h := routes.New(db)
+	m := getTestModel(t)
+	defer m.Close()
+
+	h := routes.New(m)
 	assert.NotNil(t, h)
 }
 
-func TestNewWithNilDB(t *testing.T) {
+func TestNewWithNilStore(t *testing.T) {
 	h := routes.New(nil)
 	assert.NotNil(t, h)
 }
 
 func TestSetupRoutes(t *testing.T) {
-	h := routes.New(nil)
-	router := h.SetupRoutes()
+	router := routes.New(nil)
 	assert.NotNil(t, router)
 }
 
 func TestHello(t *testing.T) {
-	h := routes.New(nil)
-	router := h.SetupRoutes()
+	router := routes.New(nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -53,8 +68,7 @@ func TestHello(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	h := routes.New(nil)
-	router := h.SetupRoutes()
+	router := routes.New(nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 	w := httptest.NewRecorder()
@@ -71,9 +85,8 @@ func TestPing(t *testing.T) {
 	assert.Equal(t, "pong", response["ping"])
 }
 
-func TestHealthWithNilDB(t *testing.T) {
-	h := routes.New(nil)
-	router := h.SetupRoutes()
+func TestHealthWithNilStore(t *testing.T) {
+	router := routes.New(nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -92,18 +105,15 @@ func TestHealthWithNilDB(t *testing.T) {
 
 	database, ok := response["database"].(map[string]interface{})
 	require.True(t, ok)
-	assert.Equal(t, "no database configured", database["status"])
+	assert.Equal(t, "no store configured", database["status"])
 	assert.False(t, database["healthy"].(bool))
 }
 
-func TestHealthWithHealthyDB(t *testing.T) {
-	// Create an in-memory SQLite database for testing
-	db, err := sql.Open("sqlite", ":memory:")
-	require.NoError(t, err)
-	defer db.Close()
+func TestHealthWithHealthyStore(t *testing.T) {
+	m := getTestModel(t)
+	defer m.Close()
 
-	h := routes.New(db)
-	router := h.SetupRoutes()
+	router := routes.New(m)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -114,7 +124,7 @@ func TestHealthWithHealthyDB(t *testing.T) {
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
 	var response map[string]interface{}
-	err = json.Unmarshal(w.Body.Bytes(), &response)
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
 	assert.Equal(t, "ok", response["status"])
@@ -126,14 +136,12 @@ func TestHealthWithHealthyDB(t *testing.T) {
 	assert.True(t, database["healthy"].(bool))
 }
 
-func TestHealthWithUnhealthyDB(t *testing.T) {
-	// Create a database that we'll close to make it unhealthy
-	db, err := sql.Open("sqlite", ":memory:")
-	require.NoError(t, err)
-	db.Close() // Close immediately to make ping fail
+func TestHealthWithUnhealthyStore(t *testing.T) {
+	s := store.NewErrorStore()
+	m := models.New(s)
+	defer m.Close()
 
-	h := routes.New(db)
-	router := h.SetupRoutes()
+	router := routes.New(m)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -144,7 +152,7 @@ func TestHealthWithUnhealthyDB(t *testing.T) {
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
 	var response map[string]interface{}
-	err = json.Unmarshal(w.Body.Bytes(), &response)
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
 	assert.Equal(t, "degraded", response["status"])
@@ -157,8 +165,7 @@ func TestHealthWithUnhealthyDB(t *testing.T) {
 }
 
 func TestRoutesExist(t *testing.T) {
-	h := routes.New(nil)
-	router := h.SetupRoutes()
+	router := routes.New(nil)
 
 	tests := []struct {
 		method string
@@ -183,8 +190,7 @@ func TestRoutesExist(t *testing.T) {
 }
 
 func TestInvalidRoutes(t *testing.T) {
-	h := routes.New(nil)
-	router := h.SetupRoutes()
+	router := routes.New(nil)
 
 	tests := []struct {
 		method string

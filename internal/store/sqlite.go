@@ -50,23 +50,23 @@ func (w *sqliteRowWrapper) Scan(dest ...interface{}) error {
 	return w.row.Scan(dest...)
 }
 
-func (s *sqliteStore) CreateUser(ctx context.Context, req *CreateUserRequest) (int32, error) {
-	if req.Email == "" {
-		return -1, fmt.Errorf("No email provided")
-	}
-	params := db.CreateUserParams{
-		Email: req.Email,
-		Name:  req.Name,
-	}
+// func (s *sqliteStore) CreateUser(ctx context.Context, params db.CreateUserParams) (int32, error) {
+// 	wrapper := &sqliteWrapper{
+// 		db: s.db,
+// 	}
+// 	querier := db.New(wrapper)
+// 	user, err := querier.CreateUser(ctx, params)
+// 	if err != nil {
+// 		return -1, err
+// 	}
+// 	return user.ID, nil
+// }
+
+func (s *sqliteStore) GetQuerier() (db.Querier, error) {
 	wrapper := &sqliteWrapper{
 		db: s.db,
 	}
-	querier := db.New(wrapper)
-	user, err := querier.CreateUser(ctx, params)
-	if err != nil {
-		return -1, err
-	}
-	return user.ID, nil
+	return db.New(wrapper), nil
 }
 
 func (s *sqliteStore) Healthy(ctx context.Context) error {

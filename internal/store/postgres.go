@@ -12,20 +12,17 @@ type pgStore struct {
 	pgPool *pgxpool.Pool
 }
 
-func (s *pgStore) CreateUser(ctx context.Context, req *CreateUserRequest) (int32, error) {
-	if req.Email == "" {
-		return -1, fmt.Errorf("No email provided")
-	}
-	params := db.CreateUserParams{
-		Email: req.Email,
-		Name:  req.Name,
-	}
-	querier := db.New(s.pgPool)
-	user, err := querier.CreateUser(ctx, params)
-	if err != nil {
-		return -1, err
-	}
-	return user.ID, nil
+// func (s *pgStore) CreateUser(ctx context.Context, params db.CreateUserParams) (int32, error) {
+// 	querier := db.New(s.pgPool)
+// 	user, err := querier.CreateUser(ctx, params)
+// 	if err != nil {
+// 		return -1, err
+// 	}
+// 	return user.ID, nil
+// }
+
+func (s *pgStore) GetQuerier() (db.Querier, error) {
+	return db.New(s.pgPool), nil
 }
 
 func (s *pgStore) Healthy(ctx context.Context) error {

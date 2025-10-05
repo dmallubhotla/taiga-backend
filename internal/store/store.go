@@ -10,24 +10,24 @@ import (
 	"time"
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/trygo/internal/db"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // interface representing a backing store
 type Store interface {
 	Healthy(ctx context.Context) error // ping the store's connection
-	CreateUser(ctx context.Context, req *CreateUserRequest) (int32, error)
-	Close() error // cleanup resources
+	Close() error                      // cleanup resources
+	GetQuerier() (db.Querier, error)
 }
 
 func GetStore(cfg *config.Config) (Store, error) {
-	dsn := cfg.Db.DSN()
-	if dsn == "" {
-		return nil, fmt.Errorf("invalid database configuration")
-	}
-
 	switch cfg.Db.Driver {
 	case "postgres":
+		dsn := cfg.Db.DSN()
+		if dsn == "" {
+			return nil, fmt.Errorf("invalid database configuration")
+		}
 		// Use pgxpool for PostgreSQL
 		poolConfig, err := pgxpool.ParseConfig(dsn)
 		if err != nil {
@@ -57,6 +57,10 @@ func GetStore(cfg *config.Config) (Store, error) {
 		return s, nil
 
 	case "sqlite":
+		dsn := cfg.Db.DSN()
+		if dsn == "" {
+			return nil, fmt.Errorf("invalid database configuration")
+		}
 		// Use database/sql for SQLite (pgx doesn't support SQLite)
 		dbconn, err := sql.Open(cfg.Db.Driver, dsn)
 		if err != nil {
@@ -80,15 +84,8 @@ func GetStore(cfg *config.Config) (Store, error) {
 			db: dbconn,
 		}
 		return s, nil
-
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Db.Driver)
 	}
 
-}
-
-// can move user stuff elsewhere later
-type CreateUserRequest struct {
-	Email string `json:"email"`
-	Name  string `json:"name"`
 }

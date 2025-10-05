@@ -15,7 +15,8 @@ test:
 
     echo "testing..."
     nix flake check
-    go test ./...
+    go test -coverprofile ./coverage/profile.cov ./...
+    go tool cover -html ./coverage/profile.cov -o ./coverage/cover.html
 
 # Vet sqlc
 vet_sqlc:
@@ -24,6 +25,8 @@ vet_sqlc:
 
     sqlc diff
     sqlc vet
+
+full_test: vet_sqlc test
 
 # format code
 fmt:
@@ -37,12 +40,3 @@ chores:
     set -euxo pipefail
     gomod2nix
     sqlc generate
-
-# Generate coverage to ./profile.cov
-cover:
-    #!/usr/bin/env bash
-    set -euxo pipefail
-
-    mkdir -p ./coverage
-    go test -coverprofile ./coverage/profile.cov ./...
-    go tool cover -html ./coverage/profile.cov -o ./coverage/cover.html

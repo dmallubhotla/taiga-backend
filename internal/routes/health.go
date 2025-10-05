@@ -5,32 +5,37 @@ import (
 	"fmt"
 	"net/http"
 
-	"gitea.deepak.science/deepak/trygo/internal/store"
+	"gitea.deepak.science/deepak/trygo/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 
-func newHealthRouter(s store.Store) http.Handler {
+func newHealthRouter(m models.Model) http.Handler {
 	router := chi.NewRouter()
-	router.Get("/health", healthFunc(s))
+	router.Get("/", healthFunc(m))
 	return router
 }
 
-// Health handles health check requests with database connectivity
-func healthFunc(s store.Store) http.HandlerFunc {
+// Health handles health check requests with store connectivity
+func healthFunc(m models.Model) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var dbErr error
+		var dbStatus string
 		var dbHealthy bool
 
-		// Test database connection
-		if err := s.Healthy(r.Context()); err != nil {
-			dbErr = fmt.Errorf("unhealthy database", err)
+		if m == nil {
+			dbStatus = "no store configured"
 			dbHealthy = false
+		} else if err := m.Healthy(r.Context()); err != nil {
+			dbStatus = fmt.Sprintf("unhealthy: %v", err)
+			dbHealthy = false
+		} else {
+			dbStatus = "healthy"
+			dbHealthy = true
 		}
 
 		response := map[string]any{
 			"status": "ok",
 			"database": map[string]any{
-				"status":  dbErr,
+				"status":  dbStatus,
 				"healthy": dbHealthy,
 			},
 			"service": "trygo-template",

@@ -5,11 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"gitea.deepak.science/deepak/trygo/internal/store"
+	"gitea.deepak.science/deepak/trygo/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 
-func NewAuthRouter(s store.Store) http.Handler {
+func NewAuthRouter(m models.Model) http.Handler {
 	router := chi.NewRouter()
 
 	return router
@@ -19,7 +19,7 @@ type createUserResponse struct {
 	Username string `json:"username"`
 }
 
-func postUser(s store.Store) http.HandlerFunc {
+func postUser(m models.Model) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// golang we always need this
 		ctx := r.Context()
@@ -29,14 +29,14 @@ func postUser(s store.Store) http.HandlerFunc {
 
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
-		var req store.CreateUserRequest
+		var req models.CreateUserRequest
 		err := dec.Decode(&req)
 		if err != nil {
 			badRequestError(w, err)
 			return
 		}
 
-		userId, err := s.CreateUser(ctx, &req)
+		userId, err := m.CreateUser(ctx, &req)
 		if err != nil {
 			serverError(w, err)
 			return

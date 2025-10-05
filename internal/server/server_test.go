@@ -81,7 +81,7 @@ func TestNewWithInvalidDBConfig(t *testing.T) {
 	srv, err := server.New(cfg)
 	assert.Error(t, err)
 	assert.Nil(t, srv)
-	assert.Contains(t, err.Error(), "failed to initialize database")
+	assert.Contains(t, err.Error(), "failed to initialize store")
 }
 
 func TestNewWithMigrations(t *testing.T) {

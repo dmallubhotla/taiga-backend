@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"gitea.deepak.science/deepak/trygo/internal/store"
+	"gitea.deepak.science/deepak/trygo/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -14,14 +14,14 @@ import (
 // }
 
 // New creates a new handlers instance
-func New(store store.Store) http.Handler {
+func New(m models.Model) http.Handler {
 	r := chi.NewRouter()
 
 	// Basic routes
 	r.Get("/", hello)
 	r.Get("/ping", ping)
 
-	r.Mount("/health", newHealthRouter(store))
+	r.Mount("/health", newHealthRouter(m))
 
 	return r
 }

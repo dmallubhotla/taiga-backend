@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/lib/pq"  // PostgreSQL driver
 	_ "modernc.org/sqlite" // SQLite driver
@@ -15,53 +16,76 @@ import (
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/migration"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
+	"gitea.deepak.science/deepak/trygo/internal/store"
 )
 
 // Server represents the HTTP server
 type Server struct {
 	config   *config.Config
 	db       *sql.DB
+	store    store.Store
 	server   *http.Server
 	migrator *migration.Migrator
 }
 
 // New creates a new server instance
 func New(cfg *config.Config) (*Server, error) {
-	// Initialize database connection
-	db, err := initDB(cfg)
+	// Initialize store
+	s, err := store.GetStore(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize database: %w", err)
+		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
-	// Initialize migrations
-	migrator, err := migration.New(db, cfg.Db.Driver, cfg.Db.MigrationPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize migrator: %w", err)
-	}
+	// Initialize database connection for migrations (only needed for SQL databases)
+	var db *sql.DB
+	var migrator *migration.Migrator
+	if cfg.Db.Driver != "inmemory" {
+		db, err = initDB(cfg)
+		if err != nil {
+			s.Close()
+			return nil, fmt.Errorf("failed to initialize database: %w", err)
+		}
 
-	// Run down migrations if auto_down is enabled and in development
-	if cfg.Db.DropOnStart && cfg.App.IsDevelopment() {
-		log.Println("Running down migrations...")
-		if err := migrator.Down(); err != nil {
-			log.Printf("Warning: failed to run down migrations: %v", err)
+		// Initialize migrations
+		migrator, err = migration.New(db, cfg.Db.Driver, cfg.Db.MigrationPath)
+		if err != nil {
+			s.Close()
+			if db != nil {
+				db.Close()
+			}
+			return nil, fmt.Errorf("failed to initialize migrator: %w", err)
+		}
+
+		// Run down migrations if auto_down is enabled and in development
+		if cfg.Db.DropOnStart && cfg.App.IsDevelopment() {
+			log.Println("Running down migrations...")
+			if err := migrator.Down(); err != nil {
+				log.Printf("Warning: failed to run down migrations: %v", err)
+			}
+		}
+
+		// Run migrations if auto_up is enabled
+		if cfg.Db.AutoMigrateUp {
+			log.Println("Running database migrations...")
+			if err := migrator.Up(); err != nil {
+				s.Close()
+				migrator.Close()
+				db.Close()
+				return nil, fmt.Errorf("failed to run migrations: %w", err)
+			}
+
+			// Log current migration version
+			if version, dirty, err := migrator.Version(); err == nil {
+				log.Printf("Database migration version: %d (dirty: %v)", version, dirty)
+			}
 		}
 	}
 
-	// Run migrations if auto_up is enabled
-	if cfg.Db.AutoMigrateUp {
-		log.Println("Running database migrations...")
-		if err := migrator.Up(); err != nil {
-			return nil, fmt.Errorf("failed to run migrations: %w", err)
-		}
+	// Create routes handler
+	routesHandler := routes.New(s)
 
-		// Log current migration version
-		if version, dirty, err := migrator.Version(); err == nil {
-			log.Printf("Database migration version: %d (dirty: %v)", version, dirty)
-		}
-	}
-
-	// Create handlers
-	r := routes.New(db)
+	// Create chi router for middleware
+	r := chi.NewRouter()
 
 	// Setup router with middleware
 
@@ -91,6 +115,9 @@ func New(cfg *config.Config) (*Server, error) {
 	// 	})
 	// }
 
+	// Mount the routes handler
+	r.Mount("/", routesHandler)
+
 	// Create HTTP server
 	server := &http.Server{
 		Addr:         ":" + cfg.App.Port,
@@ -103,6 +130,7 @@ func New(cfg *config.Config) (*Server, error) {
 	return &Server{
 		config:   cfg,
 		db:       db,
+		store:    s,
 		server:   server,
 		migrator: migrator,
 	}, nil
@@ -115,6 +143,12 @@ func (s *Server) Start() error {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
+	// Close store
+	if s.store != nil {
+		if err := s.store.Close(); err != nil {
+			log.Printf("Error closing store: %v", err)
+		}
+	}
 
 	// Close migrator
 	if s.migrator != nil {
