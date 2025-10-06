@@ -16,6 +16,7 @@ type CreateUserRequest struct {
 
 type CreateUserResponse struct {
 	Email string `json:"email"`
+	DisplayName string `json:"display_name"`
 	Id    int32  `json:"id"`
 }
 
@@ -48,6 +49,7 @@ func (m *storeModel) CreateUser(ctx context.Context, req *CreateUserRequest) (*C
 
 	resp := &CreateUserResponse{
 		Email: user.Email,
+		DisplayName: user.DisplayName,
 		Id:    user.ID,
 	}
 	return resp, nil
