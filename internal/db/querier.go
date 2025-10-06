@@ -9,12 +9,25 @@ import (
 )
 
 type Querier interface {
-	CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error)
-	DeleteUser(ctx context.Context, id int32) error
-	GetUser(ctx context.Context, id int32) (*User, error)
-	GetUserByEmail(ctx context.Context, email string) (*User, error)
-	ListUsers(ctx context.Context) ([]*User, error)
-	UpdateUser(ctx context.Context, arg *UpdateUserParams) error
+	//
+	// -- name: ListUsers :many
+	// SELECT
+	//   id,
+	//   email,
+	//   name,
+	//   created_at,
+	//   updated_at
+	// FROM
+	//   users
+	// ORDER BY
+	//   name;
+	//
+	CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error)
+	GetUser(ctx context.Context, id int32) (*GetUserRow, error)
+	// --
+	// really we don't want to select password except specifically for auth.
+	// This query is useful for auth only and for nothing else, which should discourage misuse
+	SelectEmailPasswordForAuth(ctx context.Context, email string) (*SelectEmailPasswordForAuthRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

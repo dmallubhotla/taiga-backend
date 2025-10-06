@@ -7,55 +7,71 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO
-  users (email, name)
+  users (email, display_name, password)
 VALUES
-  ($1, $2)
+  ($1, $2, $3)
 RETURNING
   id,
   email,
-  name,
+  display_name,
   created_at,
   updated_at
 `
 
 type CreateUserParams struct {
-	Email string `json:"email"`
-	Name  string `json:"name"`
+	Email       string `json:"email"`
+	DisplayName string `json:"display_name"`
+	Password    []byte `json:"password"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.Name)
-	var i User
+type CreateUserRow struct {
+	ID          int32              `json:"id"`
+	Email       string             `json:"email"`
+	DisplayName string             `json:"display_name"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+// -- name: ListUsers :many
+// SELECT
+//
+//	id,
+//	email,
+//	name,
+//	created_at,
+//	updated_at
+//
+// FROM
+//
+//	users
+//
+// ORDER BY
+//
+//	name;
+func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.DisplayName, arg.Password)
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
-		&i.Name,
+		&i.DisplayName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return &i, err
 }
 
-const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users
-WHERE
-  id = $1
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
-	_, err := q.db.Exec(ctx, deleteUser, id)
-	return err
-}
-
 const getUser = `-- name: GetUser :one
 SELECT
   id,
   email,
-  name,
+  display_name,
   created_at,
   updated_at
 FROM
@@ -66,26 +82,33 @@ LIMIT
   1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id int32) (*User, error) {
+type GetUserRow struct {
+	ID          int32              `json:"id"`
+	Email       string             `json:"email"`
+	DisplayName string             `json:"display_name"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetUser(ctx context.Context, id int32) (*GetUserRow, error) {
 	row := q.db.QueryRow(ctx, getUser, id)
-	var i User
+	var i GetUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
-		&i.Name,
+		&i.DisplayName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return &i, err
 }
 
-const getUserByEmail = `-- name: GetUserByEmail :one
+const selectEmailPasswordForAuth = `-- name: SelectEmailPasswordForAuth :one
 SELECT
   id,
   email,
-  name,
-  created_at,
-  updated_at
+  display_name,
+  password
 FROM
   users
 WHERE
@@ -94,73 +117,24 @@ LIMIT
   1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
-	var i User
+type SelectEmailPasswordForAuthRow struct {
+	ID          int32  `json:"id"`
+	Email       string `json:"email"`
+	DisplayName string `json:"display_name"`
+	Password    []byte `json:"password"`
+}
+
+// --
+// really we don't want to select password except specifically for auth.
+// This query is useful for auth only and for nothing else, which should discourage misuse
+func (q *Queries) SelectEmailPasswordForAuth(ctx context.Context, email string) (*SelectEmailPasswordForAuthRow, error) {
+	row := q.db.QueryRow(ctx, selectEmailPasswordForAuth, email)
+	var i SelectEmailPasswordForAuthRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
-		&i.Name,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.DisplayName,
+		&i.Password,
 	)
 	return &i, err
-}
-
-const listUsers = `-- name: ListUsers :many
-SELECT
-  id,
-  email,
-  name,
-  created_at,
-  updated_at
-FROM
-  users
-ORDER BY
-  name
-`
-
-func (q *Queries) ListUsers(ctx context.Context) ([]*User, error) {
-	rows, err := q.db.Query(ctx, listUsers)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []*User{}
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.Email,
-			&i.Name,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const updateUser = `-- name: UpdateUser :exec
-UPDATE users
-SET
-  name = $2,
-  updated_at = CURRENT_TIMESTAMP
-WHERE
-  id = $1
-`
-
-type UpdateUserParams struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
-}
-
-func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) error {
-	_, err := q.db.Exec(ctx, updateUser, arg.ID, arg.Name)
-	return err
 }

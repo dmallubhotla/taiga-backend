@@ -2,7 +2,7 @@
 SELECT
   id,
   email,
-  name,
+  display_name,
   created_at,
   updated_at
 FROM
@@ -12,13 +12,15 @@ WHERE
 LIMIT
   1;
 
--- name: GetUserByEmail :one
+-- -- 
+-- really we don't want to select password except specifically for auth.
+-- This query is useful for auth only and for nothing else, which should discourage misuse
+-- name: SelectEmailPasswordForAuth :one
 SELECT
   id,
   email,
-  name,
-  created_at,
-  updated_at
+  display_name,
+  password
 FROM
   users
 WHERE
@@ -26,39 +28,41 @@ WHERE
 LIMIT
   1;
 
--- name: ListUsers :many
-SELECT
-  id,
-  email,
-  name,
-  created_at,
-  updated_at
-FROM
-  users
-ORDER BY
-  name;
-
+--
+-- -- name: ListUsers :many
+-- SELECT
+--   id,
+--   email,
+--   name,
+--   created_at,
+--   updated_at
+-- FROM
+--   users
+-- ORDER BY
+--   name;
+--
 -- name: CreateUser :one
 INSERT INTO
-  users (email, name)
+  users (email, display_name, password)
 VALUES
-  ($1, $2)
+  ($1, $2, $3)
 RETURNING
   id,
   email,
-  name,
+  display_name,
   created_at,
   updated_at;
 
--- name: UpdateUser :exec
-UPDATE users
-SET
-  name = $2,
-  updated_at = CURRENT_TIMESTAMP
-WHERE
-  id = $1;
-
--- name: DeleteUser :exec
-DELETE FROM users
-WHERE
-  id = $1;
+--
+-- -- name: UpdateUser :exec
+-- UPDATE users
+-- SET
+--   name = $2,
+--   updated_at = CURRENT_TIMESTAMP
+-- WHERE
+--   id = $1;
+--
+-- -- name: DeleteUser :exec
+-- DELETE FROM users
+-- WHERE
+--   id = $1;
