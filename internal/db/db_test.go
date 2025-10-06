@@ -71,32 +71,26 @@ func TestQueriesStructure(t *testing.T) {
 
 func TestCreateUserParams(t *testing.T) {
 	params := CreateUserParams{
-		Email: "test@example.com",
-		Name:  "Test User",
+		Email:       "test@example.com",
+		DisplayName: "Test User",
+		Password:    []byte("password123"),
 	}
 
 	assert.Equal(t, "test@example.com", params.Email)
-	assert.Equal(t, "Test User", params.Name)
-}
-
-func TestUpdateUserParams(t *testing.T) {
-	params := UpdateUserParams{
-		ID:   123,
-		Name: "Updated Name",
-	}
-
-	assert.Equal(t, int32(123), params.ID)
-	assert.Equal(t, "Updated Name", params.Name)
+	assert.Equal(t, "Test User", params.DisplayName)
+	assert.Equal(t, []byte("password123"), params.Password)
 }
 
 func TestUserModel(t *testing.T) {
 	user := User{
-		ID:    1,
-		Email: "test@example.com",
-		Name:  "Test User",
+		ID:          1,
+		Email:       "test@example.com",
+		DisplayName: "Test User",
+		Password:    []byte("password123"),
 	}
 
 	assert.Equal(t, int32(1), user.ID)
 	assert.Equal(t, "test@example.com", user.Email)
-	assert.Equal(t, "Test User", user.Name)
+	assert.Equal(t, "Test User", user.DisplayName)
+	assert.Equal(t, []byte("password123"), user.Password)
 }
