@@ -22,6 +22,7 @@ func New(m models.Model) http.Handler {
 	r.Get("/ping", ping)
 
 	r.Mount("/health", newHealthRouter(m))
+	r.Mount("/", newAuthRouter(m))
 
 	return r
 }

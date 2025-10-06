@@ -23,7 +23,7 @@ type Store interface {
 func GetStore(cfg *config.Config) (Store, error) {
 	var store Store
 	var err error
-	log.Printf("Getting store with config %v", cfg)
+	log.Printf("Getting store with config %+v", cfg)
 	switch cfg.Db.Driver {
 	case "postgres":
 		store, err = GetPostgresStore(cfg)

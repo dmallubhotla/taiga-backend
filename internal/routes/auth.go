@@ -11,16 +11,16 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewAuthRouter(m models.Model) http.Handler {
+func newAuthRouter(m models.Model) http.Handler {
 	router := chi.NewRouter()
 
 	router.Post("/register", postUser(m))
 	return router
 }
 
-type createUserResponse struct {
-	Username string `json:"username"`
-}
+// type createUserResponse struct {
+// 	Email string `json:"email"`
+// }
 
 func postUser(m models.Model) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -39,20 +39,17 @@ func postUser(m models.Model) http.HandlerFunc {
 			return
 		}
 
-		userId, err := m.CreateUser(ctx, &req)
+		createUserResponse, err := m.CreateUser(ctx, &req)
 		if err != nil {
-			log.Printf("error with request body %v", r.Body)
+			log.Printf("error with request body %v: %w", r.Body, err)
 			serverError(w, err)
 			return
 		}
-		log.Printf("created user: {%v}", userId)
+		log.Printf("created user: {%+v}", createUserResponse)
 
-		response := &createUserResponse{
-			Username: "username",
-		}
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Add("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response); err != nil {
+		if err := json.NewEncoder(w).Encode(createUserResponse); err != nil {
 			serverError(w, err)
 		}
 	}
@@ -66,8 +63,10 @@ type createdToken struct {
 	Token string `json:"token"`
 }
 
-func createTokenFunc(m *models.Model, tok tokens.Toker) http.HandlerFunc {
+func createTokenFunc(m models.Model, tok tokens.Toker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		ctx := r.Context()
 
 		r.Body = http.MaxBytesReader(w, r.Body, 1024)
 		dec := json.NewDecoder(r.Body)
@@ -84,12 +83,12 @@ func createTokenFunc(m *models.Model, tok tokens.Toker) http.HandlerFunc {
 			return
 		}
 
-		user, err := m.VerifyUserByUsernamePassword(creds.Username, creds.Password)
+		user, err := m.VerifyUserByEmailPassword(ctx, creds.Username, creds.Password)
 		if err != nil {
-			if models.IsInvalidLoginError(err) {
-				unauthorizedHandler(w, r)
-				return
-			}
+			// if models.IsInvalidLoginError(err) {
+			// 	unauthorizedHandler(w, r)
+			// 	return
+			// }
 			serverError(w, err)
 			return
 
