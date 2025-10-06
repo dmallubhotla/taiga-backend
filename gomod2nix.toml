@@ -19,6 +19,9 @@ schema = 3
   [mod."github.com/goccy/go-json"]
     version = "v0.10.3"
     hash = "sha256-ZOzfwCXh+qp+hp+UnC0t422hUV0Cq5KANXkx8hcLp7s="
+  [mod."github.com/golang-jwt/jwt/v5"]
+    version = "v5.3.0"
+    hash = "sha256-VdN9Eo74ncMFJEVUSiJ1VRPMbC09FdVGno8wAReseXU="
   [mod."github.com/golang-migrate/migrate/v4"]
     version = "v4.19.0"
     hash = "sha256-KGRO6jBf3MMaY7Nxkb5qa/EzKMeNZdNuKURK43xKOAU="
