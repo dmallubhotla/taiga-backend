@@ -6,6 +6,7 @@ import (
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/db"
 	"gitea.deepak.science/deepak/trygo/internal/store"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 )
 
@@ -13,7 +14,7 @@ type Model interface {
 	Healthy(ctx context.Context) error
 	CreateUser(ctx context.Context, req *CreateUserRequest) (int32, error)
 	Close() error
-	VerifyUserByUsernamePassword(username string, password string) (*UserNoPassword, error)
+	VerifyUserByEmailPassword(email string, password string) (bool, error)
 }
 
 type storeModel struct {
@@ -72,6 +73,21 @@ func (m *storeModel) CreateUser(ctx context.Context, req *CreateUserRequest) (in
 	}
 
 	return user.ID, nil
+
+}
+
+func (m *storeModel) VerifyUserByEmailPassword(ctx context.Context, email string, password string) (bool, error) {
+	querier, err := m.store.GetQuerier()
+	if err != nil {
+		// may need to pad
+		return false, fmt.Errorf("Error obtaining querier: %w", err)
+	}
+
+	u, err := querier.SelectEmailPasswordForAuth(ctx, email)
+
+	err = bcrypt.CompareHashAndPassword(u.Password, []byte(password))
+
+	return true, nil
 
 }
 
