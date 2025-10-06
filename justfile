@@ -40,3 +40,10 @@ chores:
     set -euxo pipefail
     gomod2nix
     sqlc generate
+
+# Serve using go run
+serve:
+    #1/usr/bin/env bash
+    set -euxo pipefail
+
+    go run cmd/server/main.go
