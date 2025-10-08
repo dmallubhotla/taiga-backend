@@ -57,7 +57,7 @@ func postUser(m models.Model) http.HandlerFunc {
 }
 
 type loginCreds struct {
-	Username string `json:"username"`
+	Email string `json:"email"`
 	Password string `json:"password"`
 }
 type createdToken struct {
@@ -84,7 +84,7 @@ func createTokenFunc(m models.Model, tok tokens.Toker) http.HandlerFunc {
 			return
 		}
 
-		user, err := m.VerifyUserByEmailPassword(ctx, creds.Username, creds.Password)
+		user, err := m.VerifyUserByEmailPassword(ctx, creds.Email, creds.Password)
 		if err != nil {
 			// if models.IsInvalidLoginError(err) {
 			// 	unauthorizedHandler(w, r)
