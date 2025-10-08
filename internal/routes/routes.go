@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"gitea.deepak.science/deepak/trygo/internal/models"
+	"gitea.deepak.science/deepak/trygo/internal/tokens"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -14,7 +15,7 @@ import (
 // }
 
 // New creates a new handlers instance
-func New(m models.Model) http.Handler {
+func New(m models.Model, tok tokens.Toker) http.Handler {
 	r := chi.NewRouter()
 
 	// Basic routes
@@ -22,7 +23,7 @@ func New(m models.Model) http.Handler {
 	r.Get("/ping", ping)
 
 	r.Mount("/health", newHealthRouter(m))
-	r.Mount("/", newAuthRouter(m))
+	r.Mount("/auth", newAuthRouter(m, tok))
 
 	return r
 }

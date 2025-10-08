@@ -28,7 +28,7 @@ type basicToker struct {
 }
 
 // returns a new toker for the given secret key
-func New(cfg config.Config, key string) Toker {
+func New(cfg config.Config) Toker {
 	// TODO: Add issuer and audience to config
 	// For now using app name as default values
 	issuer := "trygo-app"
@@ -40,7 +40,7 @@ func New(cfg config.Config, key string) Toker {
 	}
 
 	return &basicToker{
-		key:      key,
+		key:      cfg.App.TokenKey,
 		issuer:   issuer,
 		audience: audience,
 	}

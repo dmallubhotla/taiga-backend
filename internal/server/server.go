@@ -16,6 +16,7 @@ import (
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
+	"gitea.deepak.science/deepak/trygo/internal/tokens"
 )
 
 // Server represents the HTTP server
@@ -34,8 +35,11 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
+	// create toker
+	toker := tokens.New(*cfg)
+
 	// Create routes handler
-	routesHandler := routes.New(m)
+	routesHandler := routes.New(m, toker)
 
 	// Create chi router for middleware
 	r := chi.NewRouter()

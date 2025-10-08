@@ -11,6 +11,7 @@ import (
 type AppConfig struct {
 	Port        string `mapstructure:"port"`
 	Environment string `mapstructure:"environment"`
+	TokenKey    string `mapstructure:"token_key"`
 }
 
 // DB holds database configuration

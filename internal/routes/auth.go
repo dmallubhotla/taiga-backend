@@ -11,10 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func newAuthRouter(m models.Model) http.Handler {
+func newAuthRouter(m models.Model, tok tokens.Toker) http.Handler {
 	router := chi.NewRouter()
 
 	router.Post("/register", postUser(m))
+	router.Post("/tokens", createTokenFunc(m, tok))
 	return router
 }
 
@@ -41,7 +42,7 @@ func postUser(m models.Model) http.HandlerFunc {
 
 		createUserResponse, err := m.CreateUser(ctx, &req)
 		if err != nil {
-			log.Printf("error with request body %v: %w", r.Body, err)
+			log.Printf("error with request body %v: %v", r.Body, err)
 			serverError(w, err)
 			return
 		}

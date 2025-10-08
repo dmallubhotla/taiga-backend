@@ -13,6 +13,7 @@ import (
 	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
 	"gitea.deepak.science/deepak/trygo/internal/store"
+	"gitea.deepak.science/deepak/trygo/internal/tokens"
 	_ "modernc.org/sqlite" // SQLite driver
 )
 
@@ -29,26 +30,37 @@ func getTestModel(t *testing.T) models.Model {
 	return models.NewFromStore(s)
 }
 
+// getTestTokens returns a test tokens instance
+func getTestTokens() tokens.Toker {
+	cfg := config.Config{
+		App: config.AppConfig{
+			TokenKey:    "test-key-for-testing",
+			Environment: "test",
+		},
+	}
+	return tokens.New(cfg)
+}
+
 func TestNew(t *testing.T) {
 	m := getTestModel(t)
 	defer m.Close()
 
-	h := routes.New(m)
+	h := routes.New(m, getTestTokens())
 	assert.NotNil(t, h)
 }
 
 func TestNewWithNilStore(t *testing.T) {
-	h := routes.New(nil)
+	h := routes.New(nil, getTestTokens())
 	assert.NotNil(t, h)
 }
 
 func TestSetupRoutes(t *testing.T) {
-	router := routes.New(nil)
+	router := routes.New(nil, getTestTokens())
 	assert.NotNil(t, router)
 }
 
 func TestHello(t *testing.T) {
-	router := routes.New(nil)
+	router := routes.New(nil, getTestTokens())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -68,7 +80,7 @@ func TestHello(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	router := routes.New(nil)
+	router := routes.New(nil, getTestTokens())
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 	w := httptest.NewRecorder()
@@ -86,7 +98,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestHealthWithNilStore(t *testing.T) {
-	router := routes.New(nil)
+	router := routes.New(nil, getTestTokens())
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -113,7 +125,7 @@ func TestHealthWithHealthyStore(t *testing.T) {
 	m := getTestModel(t)
 	defer m.Close()
 
-	router := routes.New(m)
+	router := routes.New(m, getTestTokens())
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -141,7 +153,7 @@ func TestHealthWithUnhealthyStore(t *testing.T) {
 	m := models.NewFromStore(s)
 	defer m.Close()
 
-	router := routes.New(m)
+	router := routes.New(m, getTestTokens())
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -165,7 +177,7 @@ func TestHealthWithUnhealthyStore(t *testing.T) {
 }
 
 func TestRoutesExist(t *testing.T) {
-	router := routes.New(nil)
+	router := routes.New(nil, getTestTokens())
 
 	tests := []struct {
 		method string
@@ -190,7 +202,7 @@ func TestRoutesExist(t *testing.T) {
 }
 
 func TestInvalidRoutes(t *testing.T) {
-	router := routes.New(nil)
+	router := routes.New(nil, getTestTokens())
 
 	tests := []struct {
 		method string
