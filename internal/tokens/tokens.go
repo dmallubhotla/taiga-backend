@@ -25,7 +25,6 @@ type Toker interface {
 // }
 
 type rsaToker struct {
-	key        string
 	publicKey  *rsa.PublicKey
 	privateKey *rsa.PrivateKey
 	issuer     string
@@ -94,7 +93,7 @@ func (tok *rsaToker) EncodeUser(user *models.UserNoPassword) (string, error) {
 	log.Printf("Exporting claims %+v", claims)
 	token := jwt.NewWithClaims(jwt.SigningMethodPS256, claims)
 
-	signed, err := token.SignedString(tok.key)
+	signed, err := token.SignedString(tok.privateKey)
 	if err != nil {
 		log.Print(fmt.Errorf("error sadly: %w", err))
 		return signed, err
@@ -112,7 +111,7 @@ type UserToken struct {
 func (tok *rsaToker) DecodeTokenString(tokenString string) (*UserToken, error) {
 
 	token, err := jwt.ParseWithClaims(tokenString, &standardClaims{}, func(token *jwt.Token) (any, error) {
-		return tok.key, nil
+		return tok.publicKey, nil
 	},
 		jwt.WithValidMethods([]string{jwt.SigningMethodPS256.Alg()}),
 		jwt.WithAudience(tok.audience),
