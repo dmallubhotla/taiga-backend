@@ -82,6 +82,7 @@
             pkgs.sqlc
             pkgs.sqlite
             pkgs.postgresql
+            pkgs.openssl
           ];
 
           # Will be executed before entering the shell

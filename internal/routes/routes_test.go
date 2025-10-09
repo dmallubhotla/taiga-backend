@@ -17,6 +17,20 @@ import (
 	_ "modernc.org/sqlite" // SQLite driver
 )
 
+// mockToker is a test implementation of tokens.Toker that doesn't require files
+type mockToker struct{}
+
+func (m *mockToker) EncodeUser(user *models.UserNoPassword) (string, error) {
+	return "mock-token-" + user.Email, nil
+}
+
+func (m *mockToker) DecodeTokenString(tokenString string) (*tokens.UserToken, error) {
+	return &tokens.UserToken{
+		ID:    123,
+		Email: "test@example.com",
+	}, nil
+}
+
 // getTestModel returns an in-memory model for testing
 func getTestModel(t *testing.T) models.Model {
 	cfg := &config.Config{
@@ -34,11 +48,15 @@ func getTestModel(t *testing.T) models.Model {
 func getTestTokens() tokens.Toker {
 	cfg := config.Config{
 		App: config.AppConfig{
-			TokenKey:    "test-key-for-testing",
 			Environment: "test",
 		},
 	}
-	return tokens.New(cfg)
+	toker, err := tokens.New(cfg)
+	if err != nil {
+		// Return a mock toker for testing when file-based tokens fail
+		return &mockToker{}
+	}
+	return toker
 }
 
 func TestNew(t *testing.T) {

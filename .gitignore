@@ -38,3 +38,8 @@ result-*
 
 # Don't need root config.yaml stored
 config.yaml
+
+# Don't include any rsa files
+*.key
+*.key.pub
+*.pem

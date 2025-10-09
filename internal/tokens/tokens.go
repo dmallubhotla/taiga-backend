@@ -1,7 +1,10 @@
 package tokens
 
 import (
+	"crypto/rsa"
 	"fmt"
+	"log"
+	"os"
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/models"
@@ -12,7 +15,7 @@ import (
 )
 
 type Toker interface {
-	EncodeUser(user *models.UserNoPassword) string
+	EncodeUser(user *models.UserNoPassword) (string, error)
 	DecodeTokenString(tokenString string) (*UserToken, error)
 	// Authenticator(http.Handler) http.Handler
 }
@@ -21,14 +24,16 @@ type Toker interface {
 // 	tokenAuth *jwtAuth.JWTAuth
 // }
 
-type basicToker struct {
-	key      string
-	issuer   string
-	audience string
+type rsaToker struct {
+	key        string
+	publicKey  *rsa.PublicKey
+	privateKey *rsa.PrivateKey
+	issuer     string
+	audience   string
 }
 
 // returns a new toker for the given secret key
-func New(cfg config.Config) Toker {
+func New(cfg config.Config) (Toker, error) {
 	// TODO: Add issuer and audience to config
 	// For now using app name as default values
 	issuer := "trygo-app"
@@ -39,11 +44,35 @@ func New(cfg config.Config) Toker {
 		audience = "trygo-" + cfg.App.Environment + "-users"
 	}
 
-	return &basicToker{
-		key:      cfg.App.TokenKey,
-		issuer:   issuer,
-		audience: audience,
+	rawPrivateKey, err := os.ReadFile(cfg.Tokens.PrivateKeyPath)
+	if err != nil {
+		log.Printf("error reading private key: %v", err)
+		return nil, err
 	}
+	rawPublicKey, err := os.ReadFile(cfg.Tokens.PublicKeyPath)
+	if err != nil {
+		log.Printf("error reading public key: %v", err)
+		return nil, err
+	}
+
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(rawPrivateKey)
+	if err != nil {
+		log.Printf("error parsing private key: %v", err)
+		return nil, err
+	}
+
+	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(rawPublicKey)
+	if err != nil {
+		log.Printf("error parsing public key: %v", err)
+		return nil, err
+	}
+
+	return &rsaToker{
+		publicKey:  publicKey,
+		privateKey: privateKey,
+		issuer:     issuer,
+		audience:   audience,
+	}, nil
 }
 
 type standardClaims struct {
@@ -51,7 +80,7 @@ type standardClaims struct {
 	jwt.RegisteredClaims
 }
 
-func (tok *basicToker) EncodeUser(user *models.UserNoPassword) string {
+func (tok *rsaToker) EncodeUser(user *models.UserNoPassword) (string, error) {
 	claims := standardClaims{
 		user.Email,
 		jwt.RegisteredClaims{
@@ -62,13 +91,16 @@ func (tok *basicToker) EncodeUser(user *models.UserNoPassword) string {
 			Audience:  []string{tok.audience},
 		},
 	}
+	log.Printf("Exporting claims %+v", claims)
 	token := jwt.NewWithClaims(jwt.SigningMethodPS256, claims)
+
 	signed, err := token.SignedString(tok.key)
 	if err != nil {
-		fmt.Errorf("error sadly: %w", err)
+		log.Print(fmt.Errorf("error sadly: %w", err))
+		return signed, err
 	}
 
-	return signed
+	return signed, nil
 
 }
 
@@ -77,7 +109,7 @@ type UserToken struct {
 	Email string
 }
 
-func (tok *basicToker) DecodeTokenString(tokenString string) (*UserToken, error) {
+func (tok *rsaToker) DecodeTokenString(tokenString string) (*UserToken, error) {
 
 	token, err := jwt.ParseWithClaims(tokenString, &standardClaims{}, func(token *jwt.Token) (any, error) {
 		return tok.key, nil

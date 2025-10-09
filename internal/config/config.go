@@ -2,16 +2,19 @@ package config
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/spf13/viper"
+	"strings"
 )
 
 // Config represents the application configuration
 type AppConfig struct {
 	Port        string `mapstructure:"port"`
 	Environment string `mapstructure:"environment"`
-	TokenKey    string `mapstructure:"token_key"`
+}
+
+type TokensConfig struct {
+	PrivateKeyPath string `mapstructure:"private_key_path"`
+	PublicKeyPath  string `mapstructure:"public_key_path"`
 }
 
 // DB holds database configuration
@@ -30,16 +33,10 @@ type DBConfig struct {
 }
 
 type Config struct {
-	App AppConfig `mapstructure:"app"`
-	Db  DBConfig  `mapstructure:"db"`
+	App    AppConfig    `mapstructure:"app"`
+	Db     DBConfig     `mapstructure:"db"`
+	Tokens TokensConfig `mapstructure:"tokens"`
 }
-
-// Migration holds migration configuration
-// type Migration struct {
-// 	Path     string //`mapstructure:"path"`      // path to migration files
-// 	AutoUp   bool   //`mapstructure:"auto_up"`   // automatically run up migrations on startup
-// 	AutoDown bool   //`mapstructure:"auto_down"` // automatically run down migrations on shutdown (dev only)
-// }
 
 // Load reads configuration from environment variables and config files
 // send in filename so we can support some args for it

@@ -36,7 +36,10 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	// create toker
-	toker := tokens.New(*cfg)
+	toker, err := tokens.New(*cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize toker: %w", err)
+	}
 
 	// Create routes handler
 	routesHandler := routes.New(m, toker)

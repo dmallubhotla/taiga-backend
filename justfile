@@ -43,7 +43,18 @@ chores:
 
 # Serve using go run
 serve:
-    #1/usr/bin/env bash
+    #!/usr/bin/env bash
     set -euxo pipefail
 
     go run cmd/server/main.go
+
+# Generates the rsa keypair for JWT signing.
+
+# ONLY FOR DEVELOPMENT USE
+generate_keypair:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    mkdir -p cert
+    ssh-keygen -t rsa -b 4096 -m PEM -f cert/test.key
+    openssl rsa -in cert/test.key -pubout -outform PEM -out cert/test.pem

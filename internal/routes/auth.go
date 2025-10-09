@@ -57,7 +57,7 @@ func postUser(m models.Model) http.HandlerFunc {
 }
 
 type loginCreds struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 type createdToken struct {
@@ -95,7 +95,16 @@ func createTokenFunc(m models.Model, tok tokens.Toker) http.HandlerFunc {
 
 		}
 		w.Header().Add("Content-Type", "application/json")
-		response := &createdToken{Token: tok.EncodeUser(user)}
+		token, err := tok.EncodeUser(user)
+		if err != nil {
+			log.Printf("Failed to encode user: %v", err)
+			serverError(w, err)
+			return
+		}
+
+		log.Printf("Created token [%+v]", token)
+
+		response := &createdToken{Token: token}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			serverError(w, err)
 			return
