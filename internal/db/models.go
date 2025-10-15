@@ -10,11 +10,11 @@ import (
 
 type Hat struct {
 	ID          int32              `json:"id"`
-	Name        pgtype.Text        `json:"name"`
-	Description pgtype.Text        `json:"description"`
+	Name        *string            `json:"name"`
+	Description *string            `json:"description"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	UserID      pgtype.Int4        `json:"user_id"`
+	UserID      *int32             `json:"user_id"`
 }
 
 type User struct {
@@ -27,6 +27,6 @@ type User struct {
 }
 
 type UserCurrentHat struct {
-	UserID int32       `json:"user_id"`
-	HatID  pgtype.Int4 `json:"hat_id"`
+	UserID int32  `json:"user_id"`
+	HatID  *int32 `json:"hat_id"`
 }
