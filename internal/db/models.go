@@ -8,6 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Hat struct {
+	ID          int32              `json:"id"`
+	Name        pgtype.Text        `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	UserID      pgtype.Int4        `json:"user_id"`
+}
+
 type User struct {
 	ID          int32              `json:"id"`
 	Email       string             `json:"email"`
@@ -15,4 +24,9 @@ type User struct {
 	Password    []byte             `json:"password"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type UserCurrentHat struct {
+	UserID int32       `json:"user_id"`
+	HatID  pgtype.Int4 `json:"hat_id"`
 }
