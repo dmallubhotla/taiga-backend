@@ -95,7 +95,11 @@ func createTokenFunc(m models.Model, tok tokens.Toker) http.HandlerFunc {
 
 		}
 		w.Header().Add("Content-Type", "application/json")
-		token, err := tok.EncodeUser(user)
+		userToken := &tokens.UserToken{
+			ID:    user.ID,
+			Email: user.Email,
+		}
+		token, err := tok.EncodeUser(userToken)
 		if err != nil {
 			log.Printf("Failed to encode user: %v", err)
 			serverError(w, err)

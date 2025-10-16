@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gitea.deepak.science/deepak/trygo/internal/config"
 	"gitea.deepak.science/deepak/trygo/internal/store"
+	"gitea.deepak.science/deepak/trygo/internal/tokens"
 )
 
 type Model interface {
@@ -12,6 +13,9 @@ type Model interface {
 	Close() error
 	CreateUser(ctx context.Context, req *CreateUserRequest) (*CreateUserResponse, error)
 	VerifyUserByEmailPassword(ctx context.Context, email string, password string) (*UserNoPassword, error)
+	Hat(ctx context.Context, hatID int32, userToken *tokens.UserToken) (*Hat, error)
+	Hats(ctx context.Context, userToken *tokens.UserToken) ([]*Hat, error)
+	AddHat(ctx context.Context, hat *Hat, userToken *tokens.UserToken) (*Hat, error)
 }
 
 type storeModel struct {

@@ -25,6 +25,12 @@ func New(m models.Model, tok tokens.Toker) http.Handler {
 	r.Mount("/health", newHealthRouter(m))
 	r.Mount("/auth", newAuthRouter(m, tok))
 
+	// authenticated routes
+	r.Group(func(r chi.Router) {
+		r.Use(tok.Authenticator)
+		r.Mount("/hats", newHatRouter(m))
+	})
+
 	return r
 }
 

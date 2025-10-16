@@ -23,5 +23,5 @@ CREATE TABLE hats (
 CREATE TABLE user_current_hat (
   user_id INTEGER PRIMARY KEY,
   hat_id INTEGER,
-  FOREIGN_KEY (user_id, hat_id) REFERENCES hats (user_id, id)
+  FOREIGN KEY (user_id, hat_id) REFERENCES hats (user_id, id)
 );

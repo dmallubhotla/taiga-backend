@@ -1,13 +1,15 @@
 package tokens
 
 import (
+	"context"
 	"crypto/rsa"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/models"
 	"github.com/golang-jwt/jwt/v5"
 
 	// "net/http"
@@ -15,14 +17,10 @@ import (
 )
 
 type Toker interface {
-	EncodeUser(user *models.UserNoPassword) (string, error)
+	EncodeUser(userToken *UserToken) (string, error)
 	DecodeTokenString(tokenString string) (*UserToken, error)
-	// Authenticator(http.Handler) http.Handler
+	Authenticator(http.Handler) http.Handler
 }
-
-// type jwtToker struct {
-// 	tokenAuth *jwtAuth.JWTAuth
-// }
 
 type rsaToker struct {
 	publicKey  *rsa.PublicKey
@@ -76,12 +74,14 @@ func New(cfg config.Config) (Toker, error) {
 
 type standardClaims struct {
 	Email string `json:"email"`
+	ID    int32  `json:"id"`
 	jwt.RegisteredClaims
 }
 
-func (tok *rsaToker) EncodeUser(user *models.UserNoPassword) (string, error) {
+func (tok *rsaToker) EncodeUser(userToken *UserToken) (string, error) {
 	claims := standardClaims{
-		user.Email,
+		userToken.Email,
+		userToken.ID,
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(2 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -138,10 +138,62 @@ func (tok *rsaToker) DecodeTokenString(tokenString string) (*UserToken, error) {
 		return nil, fmt.Errorf("email claim is required")
 	}
 
-	// TODO: Add database lookup to get user ID from email
-	// For now, using placeholder ID
 	return &UserToken{
-		ID:    0, // TODO: lookup user ID from database using claims.Email
+		ID:    claims.ID,
 		Email: claims.Email,
 	}, nil
+}
+
+func tokenFromHeader(r *http.Request) string {
+	bearer := r.Header.Get("Authorization")
+	if len(bearer) > 7 && strings.ToUpper(bearer[0:6]) == "BEARER" {
+		return bearer[7:]
+	}
+	return ""
+}
+
+func unauthorized(w http.ResponseWriter, r *http.Request) {
+	code := http.StatusUnauthorized
+	http.Error(w, http.StatusText(code), code)
+}
+
+type contextKey struct {
+	name string
+}
+
+var userTokenCtxKey = &contextKey{"UserToken"}
+
+func (tok *rsaToker) Authenticator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := tokenFromHeader(r)
+		if tokenString == "" {
+			log.Print("No valid token found")
+			unauthorized(w, r)
+			return
+		}
+
+		userToken, err := tok.DecodeTokenString(tokenString)
+		if err != nil {
+			log.Printf("Error while verifying token: %v", err)
+			unauthorized(w, r)
+			return
+		}
+
+		// map our verified fields to our context for later
+		log.Printf("Got user with id [%d], email [%s]", userToken.ID, userToken.Email)
+		// this is the only place we should drop this boy on the context, because it's the only place it's authenticated
+		// we can enforce this to some degree with a non-exported type
+		ctx := context.WithValue(r.Context(), userTokenCtxKey, userToken)
+
+		// authenticated
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func UserTokenFromContext(ctx context.Context) (*UserToken, error) {
+	token, ok := ctx.Value(userTokenCtxKey).(UserToken)
+	if !ok {
+		return nil, fmt.Errorf("Could not extract token from context")
+	}
+	return &token, nil
 }

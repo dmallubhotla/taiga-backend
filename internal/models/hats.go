@@ -3,12 +3,13 @@ package models
 import (
 	"context"
 	"gitea.deepak.science/deepak/trygo/internal/db"
+	"gitea.deepak.science/deepak/trygo/internal/tokens"
 	"log"
 )
 
 type Hat = db.Hat
 
-func (m *storeModel) Hat(ctx context.Context, id int32, userID int32) (*Hat, error) {
+func (m *storeModel) Hat(ctx context.Context, id int32, userToken *tokens.UserToken) (*Hat, error) {
 	querier, err := m.store.GetQuerier()
 	if err != nil {
 		log.Printf("could not get a querier: %v", err)
@@ -16,7 +17,7 @@ func (m *storeModel) Hat(ctx context.Context, id int32, userID int32) (*Hat, err
 	}
 	getHatParams := &db.GetHatParams{
 		ID:     id,
-		UserID: &userID,
+		UserID: &userToken.ID,
 	}
 	hat, err := querier.GetHat(ctx, getHatParams)
 	if err != nil {
@@ -27,28 +28,28 @@ func (m *storeModel) Hat(ctx context.Context, id int32, userID int32) (*Hat, err
 	return (*Hat)(hat), nil
 }
 
-func (m *storeModel) Hats(ctx context.Context, id int32, userID int32) (*Hat, error) {
+func (m *storeModel) Hats(ctx context.Context, userToken *tokens.UserToken) ([]*Hat, error) {
 	querier, err := m.store.GetQuerier()
 	if err != nil {
 		log.Printf("could not get a querier: %v", err)
 		return nil, err
 	}
-	getHatParams := &db.GetHatParams{
-		ID:     id,
-		UserID: &userID,
-	}
-	hat, err := querier.GetHat(ctx, getHatParams)
+	hats, err := querier.ListHatsByUser(ctx, &userToken.ID)
 	if err != nil {
-		log.Printf("Could not get hat: %v", err)
+		log.Printf("Could not get hats: %v", err)
 		return nil, err
 	}
+	var retHats []*Hat
+	for _, h := range hats {
+		retHats = append(retHats, (*Hat)(h))
+	}
 
-	return (*Hat)(hat), nil
+	return retHats, nil
 }
 
 // note that we will ignore fields like hat.UserID on the input field because
 // only the authenticated user id should be used
-func (m *storeModel) AddHat(ctx context.Context, hat *Hat, userID int32) (*Hat, error) {
+func (m *storeModel) AddHat(ctx context.Context, hat *Hat, userToken *tokens.UserToken) (*Hat, error) {
 	querier, err := m.store.GetQuerier()
 	if err != nil {
 		log.Printf("could not get a querier: %v", err)
@@ -58,7 +59,7 @@ func (m *storeModel) AddHat(ctx context.Context, hat *Hat, userID int32) (*Hat, 
 	createHatParams := &db.CreateHatParams{
 		Name:        hat.Name,
 		Description: hat.Description,
-		UserID:      &userID,
+		UserID:      &userToken.ID,
 	}
 	returnHat, err := querier.CreateHat(ctx, createHatParams)
 	if err != nil {
