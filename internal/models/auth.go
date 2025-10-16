@@ -18,6 +18,7 @@ type CreateUserResponse struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`
 	Id          int32  `json:"id"`
+	Message     string `json:"message"`
 }
 
 func (m *storeModel) CreateUser(ctx context.Context, req *CreateUserRequest) (*CreateUserResponse, error) {
@@ -51,6 +52,7 @@ func (m *storeModel) CreateUser(ctx context.Context, req *CreateUserRequest) (*C
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
 		Id:          user.ID,
+		Message:     fmt.Sprintf("Created user with ID [%d]", user.ID),
 	}
 	return resp, nil
 
