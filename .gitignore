@@ -43,6 +43,8 @@ config.yaml
 *.key
 *.key.pub
 *.pem
+!internal/server/testdata/cert/test.key
+!internal/server/testdata/cert/test.pem
 
 local/
 
