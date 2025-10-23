@@ -2,7 +2,7 @@ package workouts
 
 import (
 	"fmt"
-	"os"
+	"io"
 
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/filedef"
@@ -69,9 +69,9 @@ func ReadActivity(activity *filedef.Activity) (*Run, error) {
 
 	return &run, nil
 }
-func ReadFitFile(f *os.File) (*Run, error) {
+func ReadFitFile(r io.Reader) (*Run, error) {
 
-	dec := decoder.New(f)
+	dec := decoder.New(r)
 	fit, err := dec.Decode()
 	if err != nil {
 		return nil, fmt.Errorf("Received error decoding file: %w", err)

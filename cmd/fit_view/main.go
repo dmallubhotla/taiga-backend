@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-	flag "github.com/spf13/pflag"
 	"os"
 
+	flag "github.com/spf13/pflag"
+
 	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/trygo/internal/filerepo"
 	"gitea.deepak.science/deepak/trygo/internal/workouts"
 )
 
@@ -27,7 +30,6 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-
 	var filename string
 	flag.StringVar(&filename, "filename", "", "filename of fit file")
 
@@ -40,8 +42,20 @@ func main() {
 		log.Printf("error opening filename %v: %v", filename, err)
 		panic(err)
 	}
+	defer f.Close()
 
-	run, err := workouts.ReadFitFile(f)
+	repo := filerepo.NewFileRepo(*cfg)
+	hash, err := repo.Store(context.Background(), f)
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("Stored with hash %v", hash)
+
+	retrievedFile, err := repo.Fetch(context.Background(), hash)
+	if err != nil {
+		panic(err)
+	}
+	run, err := workouts.ReadFitFile(retrievedFile)
 	if err != nil {
 		log.Printf("Failed with error %v\n", err)
 		panic(err)

@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -38,6 +39,7 @@ func createTestConfig(t *testing.T) *config.Config {
 	err = os.Chdir(tempDir)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+	fmt.Printf("old: %v\n", oldWd)
 
 	return &config.Config{
 		App: config.AppConfig{
@@ -47,6 +49,10 @@ func createTestConfig(t *testing.T) *config.Config {
 		Db: config.DBConfig{
 			Driver:   "sqlite",
 			FilePath: ":memory:",
+		},
+		Tokens: config.TokensConfig{
+			PrivateKeyPath: filepath.Join(oldWd, "testdata/cert/test.key"),
+			PublicKeyPath:  filepath.Join(oldWd, "testdata/cert/test.pem"),
 		},
 	}
 }
@@ -102,6 +108,9 @@ func TestNewWithMigrations(t *testing.T) {
 
 func TestServerHTTPEndpoints(t *testing.T) {
 	cfg := createTestConfig(t)
+
+	wd, _ := os.Getwd()
+	fmt.Printf("Current dir %v\n", wd)
 
 	srv, err := server.New(cfg)
 	require.NoError(t, err)

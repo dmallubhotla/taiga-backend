@@ -32,10 +32,16 @@ type DBConfig struct {
 	MigrationPath string `mapstructure:"migration_path"`
 }
 
+type FileRepoConfig struct {
+	AssetPath    string `mapstructure:"asset_path"`
+	PrefixLength int    `mapstructure:"prefix_length"`
+}
+
 type Config struct {
-	App    AppConfig    `mapstructure:"app"`
-	Db     DBConfig     `mapstructure:"db"`
-	Tokens TokensConfig `mapstructure:"tokens"`
+	App      AppConfig      `mapstructure:"app"`
+	Db       DBConfig       `mapstructure:"db"`
+	Tokens   TokensConfig   `mapstructure:"tokens"`
+	FileRepo FileRepoConfig `mapstructure:"file_repo"`
 }
 
 // Load reads configuration from environment variables and config files
