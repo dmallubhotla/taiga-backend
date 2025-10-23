@@ -43,3 +43,5 @@ config.yaml
 *.key
 *.key.pub
 *.pem
+
+local/

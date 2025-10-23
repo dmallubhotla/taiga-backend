@@ -20,8 +20,8 @@ import (
 // mockToker is a test implementation of tokens.Toker that doesn't require files
 type mockToker struct{}
 
-func (m *mockToker) EncodeUser(user *models.UserNoPassword) (string, error) {
-	return "mock-token-" + user.Email, nil
+func (m *mockToker) EncodeUser(userToken *tokens.UserToken) (string, error) {
+	return "mock-token-" + userToken.Email, nil
 }
 
 func (m *mockToker) DecodeTokenString(tokenString string) (*tokens.UserToken, error) {
@@ -29,6 +29,12 @@ func (m *mockToker) DecodeTokenString(tokenString string) (*tokens.UserToken, er
 		ID:    123,
 		Email: "test@example.com",
 	}, nil
+}
+
+func (m *mockToker) Authenticator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+	})
 }
 
 // getTestModel returns an in-memory model for testing
