@@ -45,3 +45,5 @@ config.yaml
 *.pem
 
 local/
+
+*Zone.Identifier
