@@ -21,10 +21,20 @@ CREATE TABLE hats (
   UNIQUE (user_id, id)
 );
 
-CREATE TABLE user_current_hat (
-  user_id int PRIMARY KEY,
-  hat_id int,
-  FOREIGN KEY (user_id, hat_id) REFERENCES hats (user_id, id)
+-- CREATE TABLE user_current_hat (
+--   user_id int PRIMARY KEY,
+--   hat_id int,
+--   FOREIGN KEY (user_id, hat_id) REFERENCES hats (user_id, id)
+-- );
+CREATE TABLE activity_file (
+  id SERIAL PRIMARY KEY,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOT NULL,
+  -- TODO make unique
+  file_repo_hash VARCHAR(64),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  user_id int REFERENCES users (id),
+  UNIQUE (user_id, id)
 );
 
 CREATE OR REPLACE FUNCTION trigger_set_timestamp () RETURNS TRIGGER AS $set_updated$

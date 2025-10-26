@@ -39,6 +39,7 @@ func (m *storeModel) Hats(ctx context.Context, userToken *tokens.UserToken) ([]*
 		log.Printf("Could not get hats: %v", err)
 		return nil, err
 	}
+	log.Printf("Got %d hats", len(hats))
 	var retHats []*Hat
 	for _, h := range hats {
 		retHats = append(retHats, (*Hat)(h))
@@ -61,6 +62,7 @@ func (m *storeModel) AddHat(ctx context.Context, hat *Hat, userToken *tokens.Use
 		Description: hat.Description,
 		UserID:      &userToken.ID,
 	}
+	log.Printf("Adding hat %v", createHatParams)
 	returnHat, err := querier.CreateHat(ctx, createHatParams)
 	if err != nil {
 		log.Printf("Could not create hat: %v", err)

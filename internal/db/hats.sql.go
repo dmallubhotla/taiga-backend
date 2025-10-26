@@ -76,8 +76,6 @@ FROM
   hats
 WHERE
   user_id = $1
-LIMIT
-  1
 `
 
 func (q *Queries) ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error) {

@@ -191,9 +191,13 @@ func (tok *rsaToker) Authenticator(next http.Handler) http.Handler {
 }
 
 func UserTokenFromContext(ctx context.Context) (*UserToken, error) {
-	token, ok := ctx.Value(userTokenCtxKey).(UserToken)
+	raw_token := ctx.Value(userTokenCtxKey)
+	log.Println(raw_token)
+	token, ok := ctx.Value(userTokenCtxKey).(*UserToken)
 	if !ok {
+		log.Printf("token: %v", token)
+		log.Printf("ok: %v", ok)
 		return nil, fmt.Errorf("Could not extract token from context")
 	}
-	return &token, nil
+	return token, nil
 }

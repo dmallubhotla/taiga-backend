@@ -58,6 +58,7 @@ func getHatsFunc(m models.Model) http.HandlerFunc {
 
 		userToken, err := tokens.UserTokenFromContext(ctx)
 		if err != nil {
+			log.Printf("Got error %v", err)
 			unauthorizedHandler(w, r)
 			return
 		}
@@ -86,6 +87,7 @@ func postHatFunc(m models.Model) http.HandlerFunc {
 			unauthorizedHandler(w, r)
 			return
 		}
+		log.Printf("token %v", userToken)
 
 		r.Body = http.MaxBytesReader(w, r.Body, 1024)
 		dec := json.NewDecoder(r.Body)
@@ -97,6 +99,7 @@ func postHatFunc(m models.Model) http.HandlerFunc {
 			return
 		}
 
+		log.Printf("Adding hat %v", &h)
 		hat, err := m.AddHat(ctx, &h, userToken)
 		if err != nil {
 			log.Printf("Error adding hat! %v", err)

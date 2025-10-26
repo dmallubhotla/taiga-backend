@@ -33,11 +33,11 @@ func (w *sqliteWrapper) Exec(ctx context.Context, query string, args ...any) (pg
 }
 
 // Query implements db.DBTX interface for SQLite
-func (w *sqliteWrapper) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
-	// This is tricky - we need to return pgx.Rows but we have sql.Rows
-	// For now, we'll return an error since this gets complex
-	return nil, fmt.Errorf("Query method not implemented for SQLite wrapper - use QueryRow instead")
-}
+// func (w *sqliteWrapper) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
+// 	// This is tricky - we need to return pgx.Rows but we have sql.Rows
+// 	// For now, we'll return an error since this gets complex
+// 	return nil, fmt.Errorf("Query method not implemented for SQLite wrapper - use QueryRow instead")
+// }
 
 // QueryRow implements db.DBTX interface for SQLite
 func (w *sqliteWrapper) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
@@ -53,6 +53,67 @@ type sqliteRowWrapper struct {
 // Scan implements pgx.Row interface for SQLite
 func (w *sqliteRowWrapper) Scan(dest ...any) error {
 	return w.row.Scan(dest...)
+}
+
+type sqliteRowsWrapper struct {
+	rows *sql.Rows
+	err  error
+	conn *pgx.Conn // or keep nil if you don't have a real pgx connection
+}
+
+func (r *sqliteRowsWrapper) Close() {
+	r.rows.Close()
+}
+
+func (r *sqliteRowsWrapper) Err() error {
+	if r.err != nil {
+		return r.err
+	}
+	return r.rows.Err()
+}
+
+func (r *sqliteRowsWrapper) Next() bool {
+	return r.rows.Next()
+}
+
+func (r *sqliteRowsWrapper) Scan(dest ...any) error {
+	return r.rows.Scan(dest...)
+}
+func (r *sqliteRowsWrapper) Conn() *pgx.Conn {
+	return r.conn // return nil since SQLite doesn't use pgx.Conn
+}
+
+// func (w *sqliteWrapper) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
+// 	// This is tricky - we need to return pgx.Rows but we have sql.Rows
+// 	// For now, we'll return an error since this gets complex
+// 	return nil, fmt.Errorf("Query method not implemented for SQLite wrapper - use QueryRow instead")
+// }
+
+// QueryRow implements db.DBTX interface for SQLite
+
+// Implement other pgx.Rows methods as needed
+func (r *sqliteRowsWrapper) Values() ([]any, error) {
+	return nil, fmt.Errorf("Values not implemented")
+}
+
+func (r *sqliteRowsWrapper) RawValues() [][]byte {
+	return nil
+}
+
+func (r *sqliteRowsWrapper) FieldDescriptions() []pgconn.FieldDescription {
+	return nil
+}
+
+func (r *sqliteRowsWrapper) CommandTag() pgconn.CommandTag {
+	return pgconn.CommandTag{}
+}
+
+func (w *sqliteWrapper) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
+	rows, err := w.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &sqliteRowsWrapper{rows: rows}, nil
 }
 
 // func (s *sqliteStore) CreateUser(ctx context.Context, params db.CreateUserParams) (int32, error) {
