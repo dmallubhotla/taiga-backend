@@ -54,7 +54,7 @@
         pkgs:
         let
           app = goPackageFor pkgs;
-        in 
+        in
         pkgs.dockerTools.buildLayeredImage {
           name = "taiga";
           tag = "latest";
@@ -64,7 +64,6 @@
           ];
         };
 
-        
     in
     {
       checks = eachSystem (pkgs: {
