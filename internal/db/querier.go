@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	CreateActivityFile(ctx context.Context, arg *CreateActivityFileParams) (*ActivityFile, error)
 	CreateHat(ctx context.Context, arg *CreateHatParams) (*Hat, error)
 	//
 	// -- name: ListUsers :many
@@ -24,13 +25,17 @@ type Querier interface {
 	//   name;
 	//
 	CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error)
+	DeleteActivityFile(ctx context.Context, arg *DeleteActivityFileParams) error
+	GetActivityFile(ctx context.Context, arg *GetActivityFileParams) (*ActivityFile, error)
 	GetHat(ctx context.Context, arg *GetHatParams) (*Hat, error)
 	GetUser(ctx context.Context, id int32) (*GetUserRow, error)
+	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
 	// --
 	// really we don't want to select password except specifically for auth.
 	// This query is useful for auth only and for nothing else, which should discourage misuse
 	SelectEmailPasswordForAuth(ctx context.Context, email string) (*SelectEmailPasswordForAuthRow, error)
+	UpdateActivityFile(ctx context.Context, arg *UpdateActivityFileParams) (*ActivityFile, error)
 }
 
 var _ Querier = (*Queries)(nil)

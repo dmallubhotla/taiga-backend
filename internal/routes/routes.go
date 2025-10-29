@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"gitea.deepak.science/deepak/trygo/internal/filerepo"
 	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/tokens"
 	"github.com/go-chi/chi/v5"
@@ -15,7 +16,7 @@ import (
 // }
 
 // New creates a new handlers instance
-func New(m models.Model, tok tokens.Toker) http.Handler {
+func New(m models.Model, tok tokens.Toker, fileRepo filerepo.FileRepo) http.Handler {
 	r := chi.NewRouter()
 
 	// Basic routes
@@ -29,6 +30,7 @@ func New(m models.Model, tok tokens.Toker) http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(tok.Authenticator)
 		r.Mount("/hats", newHatRouter(m))
+		r.Mount("/activity_files", newActivityFileRouter(m, fileRepo))
 	})
 
 	return r

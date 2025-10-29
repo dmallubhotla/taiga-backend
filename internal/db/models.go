@@ -8,6 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ActivityFile struct {
+	ID           int32              `json:"id"`
+	Timestamp    pgtype.Timestamptz `json:"timestamp"`
+	FileRepoHash *string            `json:"file_repo_hash"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	UserID       *int32             `json:"user_id"`
+}
+
 type Hat struct {
 	ID          int32              `json:"id"`
 	Name        *string            `json:"name"`
@@ -24,9 +33,4 @@ type User struct {
 	Password    []byte             `json:"password"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-}
-
-type UserCurrentHat struct {
-	UserID int32  `json:"user_id"`
-	HatID  *int32 `json:"hat_id"`
 }

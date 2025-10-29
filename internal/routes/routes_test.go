@@ -1,15 +1,19 @@
 package routes_test
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/trygo/internal/filerepo"
 	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
 	"gitea.deepak.science/deepak/trygo/internal/store"
@@ -19,6 +23,21 @@ import (
 
 // mockToker is a test implementation of tokens.Toker that doesn't require files
 type mockToker struct{}
+
+// mockFileRepo is a test implementation of filerepo.FileRepo
+type mockFileRepo struct{}
+
+func (m *mockFileRepo) Store(ctx context.Context, r io.Reader) (hash string, err error) {
+	return "mock-hash", nil
+}
+
+func (m *mockFileRepo) Exists(ctx context.Context, hash string) (exists bool, err error) {
+	return true, nil
+}
+
+func (m *mockFileRepo) Fetch(ctx context.Context, hash string) (rc io.ReadCloser, err error) {
+	return io.NopCloser(strings.NewReader("mock file content")), nil
+}
 
 func (m *mockToker) EncodeUser(userToken *tokens.UserToken) (string, error) {
 	return "mock-token-" + userToken.Email, nil
@@ -65,26 +84,31 @@ func getTestTokens() tokens.Toker {
 	return toker
 }
 
+// getTestFileRepo returns a test filerepo instance
+func getTestFileRepo() filerepo.FileRepo {
+	return &mockFileRepo{}
+}
+
 func TestNew(t *testing.T) {
 	m := getTestModel(t)
 	defer m.Close()
 
-	h := routes.New(m, getTestTokens())
+	h := routes.New(m, getTestTokens(), getTestFileRepo())
 	assert.NotNil(t, h)
 }
 
 func TestNewWithNilStore(t *testing.T) {
-	h := routes.New(nil, getTestTokens())
+	h := routes.New(nil, getTestTokens(), getTestFileRepo())
 	assert.NotNil(t, h)
 }
 
 func TestSetupRoutes(t *testing.T) {
-	router := routes.New(nil, getTestTokens())
+	router := routes.New(nil, getTestTokens(), getTestFileRepo())
 	assert.NotNil(t, router)
 }
 
 func TestHello(t *testing.T) {
-	router := routes.New(nil, getTestTokens())
+	router := routes.New(nil, getTestTokens(), getTestFileRepo())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -104,7 +128,7 @@ func TestHello(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	router := routes.New(nil, getTestTokens())
+	router := routes.New(nil, getTestTokens(), getTestFileRepo())
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 	w := httptest.NewRecorder()
@@ -122,7 +146,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestHealthWithNilStore(t *testing.T) {
-	router := routes.New(nil, getTestTokens())
+	router := routes.New(nil, getTestTokens(), getTestFileRepo())
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -149,7 +173,7 @@ func TestHealthWithHealthyStore(t *testing.T) {
 	m := getTestModel(t)
 	defer m.Close()
 
-	router := routes.New(m, getTestTokens())
+	router := routes.New(m, getTestTokens(), getTestFileRepo())
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -177,7 +201,7 @@ func TestHealthWithUnhealthyStore(t *testing.T) {
 	m := models.NewFromStore(s)
 	defer m.Close()
 
-	router := routes.New(m, getTestTokens())
+	router := routes.New(m, getTestTokens(), getTestFileRepo())
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -201,7 +225,7 @@ func TestHealthWithUnhealthyStore(t *testing.T) {
 }
 
 func TestRoutesExist(t *testing.T) {
-	router := routes.New(nil, getTestTokens())
+	router := routes.New(nil, getTestTokens(), getTestFileRepo())
 
 	tests := []struct {
 		method string
@@ -226,7 +250,7 @@ func TestRoutesExist(t *testing.T) {
 }
 
 func TestInvalidRoutes(t *testing.T) {
-	router := routes.New(nil, getTestTokens())
+	router := routes.New(nil, getTestTokens(), getTestFileRepo())
 
 	tests := []struct {
 		method string

@@ -50,6 +50,21 @@
           vendorHash = "sha256-R3zS72aVorekTiJ9iIGI8jMoeVRcXdo/CglvuiRoWnc=";
 
         };
+      dockerImageFor =
+        pkgs:
+        let
+          app = goPackageFor pkgs;
+        in 
+        pkgs.dockerTools.buildLayeredImage {
+          name = "taiga";
+          tag = "latest";
+          contents = [
+            pkgs.bash
+            app
+          ];
+        };
+
+        
     in
     {
       checks = eachSystem (pkgs: {
@@ -65,6 +80,7 @@
       packages = eachSystem (pkgs: {
         default = goPackageFor pkgs;
         goother = otherGoPackageFor pkgs;
+        docker = dockerImageFor pkgs;
       });
 
       # default devshell

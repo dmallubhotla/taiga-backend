@@ -14,6 +14,7 @@ import (
 	_ "modernc.org/sqlite" // SQLite driver
 
 	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/trygo/internal/filerepo"
 	"gitea.deepak.science/deepak/trygo/internal/models"
 	"gitea.deepak.science/deepak/trygo/internal/routes"
 	"gitea.deepak.science/deepak/trygo/internal/tokens"
@@ -41,8 +42,11 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize toker: %w", err)
 	}
 
+	// create filerepo
+	fileRepo := filerepo.NewFileRepo(*cfg)
+
 	// Create routes handler
-	routesHandler := routes.New(m, toker)
+	routesHandler := routes.New(m, toker, fileRepo)
 
 	// Create chi router for middleware
 	r := chi.NewRouter()
@@ -58,7 +62,7 @@ func New(cfg *config.Config) (*Server, error) {
 
 	// CORS for development
 	if cfg.App.IsDevelopment() {
-		r.Use(middleware.AllowContentType("application/json"))
+		r.Use(middleware.AllowContentType("application/json", "multipart/form-data"))
 		r.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Access-Control-Allow-Origin", "*")

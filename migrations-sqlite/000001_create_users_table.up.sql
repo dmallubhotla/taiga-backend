@@ -20,8 +20,17 @@ CREATE TABLE hats (
   user_id INTEGER REFERENCES users (id)
 );
 
-CREATE TABLE user_current_hat (
-  user_id INTEGER PRIMARY KEY,
-  hat_id INTEGER,
-  FOREIGN KEY (user_id, hat_id) REFERENCES hats (user_id, id)
+-- CREATE TABLE user_current_hat (
+--   user_id INTEGER PRIMARY KEY,
+--   hat_id INTEGER,
+--   FOREIGN KEY (user_id, hat_id) REFERENCES hats (user_id, id)
+-- );
+CREATE TABLE activity_file (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp DATETIME NOT NULL,
+  -- TODO make unique
+  file_repo_hash TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  user_id INTEGER REFERENCES users (id)
 );
