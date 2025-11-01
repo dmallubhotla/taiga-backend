@@ -49,3 +49,4 @@ config.yaml
 local/
 
 *Zone.Identifier
+terraform
