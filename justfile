@@ -8,6 +8,17 @@ build:
     #!/usr/bin/env bash
     nix build
 
+build-docker:
+    #!/usr/bin/env bash
+    nix build .#docker-image
+
+load-docker:
+    #!/usr/bin/env bash
+    docker load < result
+
+build-load: build-docker load-docker
+    echo "Loaded image"
+
 # run all tests
 test:
     #!/usr/bin/env bash
@@ -58,3 +69,12 @@ generate_keypair:
     mkdir -p cert
     ssh-keygen -t rsa -b 4096 -m PEM -f cert/test.key
     openssl rsa -in cert/test.key -pubout -outform PEM -out cert/test.pem
+
+# run a loaded docker image
+exec-docker:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    mkdir -p ./local/docker/filerepo
+    docker run -it  -v ./local/docker/config.yaml:/workspace/config.yaml -v ./local/docker/cert:/cert -v ./local/docker/data.db:/workspace/data.db ./local/docker/filerepo:/filerepo taiga /bin/bash
+

@@ -34,7 +34,7 @@
       goPackageFor =
         pkgs:
         pkgs.buildGoApplication {
-          pname = "gomod2nix-example";
+          pname = "taiga";
           version = "0.1";
           src = ./.;
           modules = ./gomod2nix.toml;
@@ -44,7 +44,7 @@
 
         pkgs.buildGoModule {
           src = ./.;
-          pname = "build-go-module-example";
+          pname = "taiga";
           version = "0.1";
 
           vendorHash = "sha256-R3zS72aVorekTiJ9iIGI8jMoeVRcXdo/CglvuiRoWnc=";
@@ -54,14 +54,38 @@
         pkgs:
         let
           app = goPackageFor pkgs;
+          migrations-postgres = pkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = ./migrations;
+          };
+          migrations-sqlite = pkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = ./migrations-sqlite;
+          };
         in
         pkgs.dockerTools.buildLayeredImage {
           name = "taiga";
           tag = "latest";
           contents = [
+
+            pkgs.dockerTools.usrBinEnv
+
+
+            migrations-postgres
+            migrations-sqlite
+
             pkgs.bash
+            pkgs.coreutils
+
             app
           ];
+          config = {
+            Cmd = [ "/bin/bash" ];
+            Env = [
+              "PATH=/bin"
+            ];
+            WorkingDir = "/workspace";
+          };
         };
 
     in
@@ -76,11 +100,21 @@
       # nix fmt formatter
       formatter = eachSystem (pkgs: treefmtEval.${pkgs.system}.config.build.wrapper);
 
-      packages = eachSystem (pkgs: {
-        default = goPackageFor pkgs;
-        goother = otherGoPackageFor pkgs;
-        docker = dockerImageFor pkgs;
-      });
+      packages = eachSystem (
+        pkgs:
+
+        let
+          go-package = goPackageFor pkgs;
+          docker-image = dockerImageFor pkgs;
+          go-module = otherGoPackageFor pkgs;
+        in
+        {
+          default = go-package;
+          inherit go-package;
+          inherit go-module;
+          inherit docker-image;
+        }
+      );
 
       # default devshell
 
