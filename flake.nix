@@ -70,7 +70,6 @@
 
             pkgs.dockerTools.usrBinEnv
 
-
             migrations-postgres
             migrations-sqlite
 

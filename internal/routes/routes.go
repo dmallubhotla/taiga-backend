@@ -31,6 +31,7 @@ func New(m models.Model, tok tokens.Toker, fileRepo filerepo.FileRepo) http.Hand
 		r.Use(tok.Authenticator)
 		r.Mount("/hats", newHatRouter(m))
 		r.Mount("/activity_files", newActivityFileRouter(m, fileRepo))
+		r.Mount("/workouts", newWorkoutRouter(m, fileRepo))
 	})
 
 	return r

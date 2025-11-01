@@ -11,6 +11,7 @@ CREATE TABLE users (
 -- Create an index on email for faster lookups
 CREATE INDEX idx_users_email ON users (email);
 
+
 CREATE TABLE hats (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT,
@@ -34,3 +35,24 @@ CREATE TABLE activity_file (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
   user_id INTEGER REFERENCES users (id)
 );
+
+CREATE TABLE workouts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  distance_miles REAL,
+  time_seconds REAL,
+  speed_mph REAL,
+  pace_min_per_mile REAL,
+  start_time DATETIME,
+  end_time DATETIME,
+  activity_file_id INTEGER REFERENCES activity_file (id),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  user_id INTEGER REFERENCES users (id) NOT NULL
+);
+
+-- Create indexes for workouts table for performance
+CREATE INDEX idx_workouts_user_id ON workouts (user_id);
+
+CREATE INDEX idx_workouts_activity_file_id ON workouts (activity_file_id);
+
+CREATE INDEX idx_workouts_start_time ON workouts (start_time);

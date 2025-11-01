@@ -25,17 +25,23 @@ type Querier interface {
 	//   name;
 	//
 	CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error)
+	CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (*Workout, error)
 	DeleteActivityFile(ctx context.Context, arg *DeleteActivityFileParams) error
+	DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) error
 	GetActivityFile(ctx context.Context, arg *GetActivityFileParams) (*ActivityFile, error)
 	GetHat(ctx context.Context, arg *GetHatParams) (*Hat, error)
 	GetUser(ctx context.Context, id int32) (*GetUserRow, error)
+	GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Workout, error)
+	GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkoutsByActivityFileParams) ([]*Workout, error)
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
+	ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Workout, error)
 	// --
 	// really we don't want to select password except specifically for auth.
 	// This query is useful for auth only and for nothing else, which should discourage misuse
 	SelectEmailPasswordForAuth(ctx context.Context, email string) (*SelectEmailPasswordForAuthRow, error)
 	UpdateActivityFile(ctx context.Context, arg *UpdateActivityFileParams) (*ActivityFile, error)
+	UpdateWorkout(ctx context.Context, arg *UpdateWorkoutParams) (*Workout, error)
 }
 
 var _ Querier = (*Queries)(nil)

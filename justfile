@@ -77,4 +77,3 @@ exec-docker:
 
     mkdir -p ./local/docker/filerepo
     docker run -it  -v ./local/docker/config.yaml:/workspace/config.yaml -v ./local/docker/cert:/cert -v ./local/docker/data.db:/workspace/data.db ./local/docker/filerepo:/filerepo taiga /bin/bash
-

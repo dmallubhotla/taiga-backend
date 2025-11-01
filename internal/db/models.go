@@ -34,3 +34,17 @@ type User struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
+
+type Workout struct {
+	ID             int32              `json:"id"`
+	DistanceMiles  *float64           `json:"distance_miles"`
+	TimeSeconds    *float64           `json:"time_seconds"`
+	SpeedMph       *float64           `json:"speed_mph"`
+	PaceMinPerMile *float64           `json:"pace_min_per_mile"`
+	StartTime      pgtype.Timestamptz `json:"start_time"`
+	EndTime        pgtype.Timestamptz `json:"end_time"`
+	ActivityFileID *int32             `json:"activity_file_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	UserID         int32              `json:"user_id"`
+}

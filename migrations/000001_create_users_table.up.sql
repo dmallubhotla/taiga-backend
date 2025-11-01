@@ -37,6 +37,28 @@ CREATE TABLE activity_file (
   UNIQUE (user_id, id)
 );
 
+CREATE TABLE workouts (
+  id SERIAL PRIMARY KEY,
+  distance_miles DOUBLE PRECISION,
+  time_seconds DOUBLE PRECISION,
+  speed_mph DOUBLE PRECISION,
+  pace_min_per_mile DOUBLE PRECISION,
+  start_time TIMESTAMP WITH TIME ZONE,
+  end_time TIMESTAMP WITH TIME ZONE,
+  activity_file_id INTEGER REFERENCES activity_file (id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  user_id INTEGER REFERENCES users (id) NOT NULL,
+  UNIQUE (user_id, id)
+);
+
+-- Create indexes for workouts table for performance
+CREATE INDEX idx_workouts_user_id ON workouts (user_id);
+
+CREATE INDEX idx_workouts_activity_file_id ON workouts (activity_file_id);
+
+CREATE INDEX idx_workouts_start_time ON workouts (start_time);
+
 CREATE OR REPLACE FUNCTION trigger_set_timestamp () RETURNS TRIGGER AS $set_updated$
 BEGIN
 	NEW.updated_at = NOW();
@@ -50,4 +72,8 @@ EXECUTE PROCEDURE trigger_set_timestamp ();
 
 CREATE TRIGGER set_updated BEFORE
 UPDATE ON hats FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp ();
+
+CREATE TRIGGER set_updated BEFORE
+UPDATE ON workouts FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp ();

@@ -29,6 +29,13 @@ type Model interface {
 	UpdateActivityFile(ctx context.Context, id int32, timestamp time.Time, fileRepoHash *string, userToken *tokens.UserToken) (*ActivityFile, error)
 	DeleteActivityFile(ctx context.Context, id int32, userToken *tokens.UserToken) error
 	GetActivityFileContent(ctx context.Context, id int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (io.ReadCloser, error)
+	Workout(ctx context.Context, id int32, userToken *tokens.UserToken) (*Workout, error)
+	Workouts(ctx context.Context, userToken *tokens.UserToken) ([]*Workout, error)
+	AddWorkout(ctx context.Context, workout *Workout, userToken *tokens.UserToken) (*Workout, error)
+	UpdateWorkout(ctx context.Context, id int32, workout *Workout, userToken *tokens.UserToken) (*Workout, error)
+	DeleteWorkout(ctx context.Context, id int32, userToken *tokens.UserToken) error
+	GetWorkoutsByActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken) ([]*Workout, error)
+	CreateWorkoutFromActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
 }
 
 type storeModel struct {

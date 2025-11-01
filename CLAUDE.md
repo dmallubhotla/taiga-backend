@@ -23,6 +23,7 @@ This is a modern Go web API template with PostgreSQL/SQLite support, JWT authent
   - Auth endpoints with JWT token generation/validation
   - Health checks with database connectivity
   - Hat management (example CRUD operations)
+  - Activity files API for secure file upload/download
   - Protected routes using JWT middleware
 
 - **internal/server**: HTTP server setup and middleware
@@ -82,6 +83,14 @@ just fmt                 # Format code using nix
 just generate_keypair    # Generate RSA keypair for JWT signing
 ```
 
+### Docker Commands
+```bash
+just build-docker        # Build Docker image with nix
+just load-docker         # Load Docker image into Docker daemon
+just build-load          # Build and load Docker image
+just exec-docker         # Run interactive shell in Docker container
+```
+
 ### Utility Commands
 ```bash
 go run cmd/fit_view/main.go [file.fit]  # View FIT workout files
@@ -101,6 +110,7 @@ go run cmd/migrate/main.go [options]    # Manual database migrations
 - **Just** task runner for common operations
 - **Content-addressable file storage** for binary assets
 - **FIT file processing** for Garmin workout data
+- **Docker deployment** with layered image building
 
 ## Database Operations
 
@@ -226,6 +236,14 @@ file_repo:
 - `PUT /hats/{id}` - Update hat
 - `DELETE /hats/{id}` - Delete hat
 
+### Activity Files API (requires JWT token)
+- `GET /activity_files` - List all activity files for authenticated user (newest first)
+- `GET /activity_files/{id}` - Get specific activity file metadata
+- `POST /activity_files` - Upload new activity file (multipart form with `file` and optional `timestamp`)
+- `PUT /activity_files/{id}` - Update activity file metadata (timestamp, file_repo_hash)
+- `DELETE /activity_files/{id}` - Delete activity file and its content
+- `GET /activity_files/{id}/download` - Download the actual file content
+
 ## Development Workflow
 
 1. **Set up development environment**: `nix develop` (or use existing Nix shell)
@@ -279,3 +297,28 @@ Switch by updating `config.yaml` or setting `TRYGO_DB_DRIVER` environment variab
 - Full Nix flake for reproducible development environment
 - All dependencies declared in `flake.nix`
 - Consistent formatting and building across machines
+
+### Docker Deployment
+- Layered Docker image built with Nix for minimal size and reproducibility
+- Image includes compiled Go binary, migration files, and minimal runtime dependencies
+- Tagged as `taiga:latest` by default
+- Supports volume mounting for configuration, certificates, database, and file repository
+- Example run command with volume mounts: `docker run -v ./config.yaml:/workspace/config.yaml -v ./cert:/cert -v ./data.db:/workspace/data.db -v ./filerepo:/filerepo taiga`
+
+## Activity Files API
+
+The application provides a comprehensive API for managing activity files (primarily Garmin FIT files) with secure upload, download, and metadata management.
+
+### Key Features
+- **Secure file upload** with 32MB size limit and multipart form support
+- **Content-addressable storage** using SHA-256 hashes for deduplication
+- **Metadata management** with RFC3339 timestamps and user ownership
+- **Download with processing** - FIT files are processed for workout analysis during download
+- **User isolation** - users can only access their own files
+- **Automatic file analysis** - uploaded FIT files are automatically analyzed for workout segments and performance metrics
+
+### File Processing
+- FIT files are processed using the `muktihari/fit` library for workout data extraction
+- Segment analysis includes fastest segments for common distances (mile, 5K, 5-mile, 10K)
+- Processing happens during download to provide real-time workout insights
+- File content is immutable once stored, ensuring data integrity
