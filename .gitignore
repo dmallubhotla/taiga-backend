@@ -49,3 +49,6 @@ config.yaml
 local/
 
 *Zone.Identifier
+
+# never want these!
+*.tfvars
