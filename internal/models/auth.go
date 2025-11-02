@@ -3,7 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
-	"gitea.deepak.science/deepak/trygo/internal/db"
+	"gitea.deepak.science/deepak/taiga/internal/db"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 )

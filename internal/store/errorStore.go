@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"gitea.deepak.science/deepak/trygo/internal/db"
+	"gitea.deepak.science/deepak/taiga/internal/db"
 )
 
 // errorStore is a mock store that always returns an error for health checks

@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"gitea.deepak.science/deepak/trygo/internal/filerepo"
-	"gitea.deepak.science/deepak/trygo/internal/models"
-	"gitea.deepak.science/deepak/trygo/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/filerepo"
+	"gitea.deepak.science/deepak/taiga/internal/models"
+	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )

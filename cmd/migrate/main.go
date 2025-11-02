@@ -10,8 +10,8 @@ import (
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/migration"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/migration"
 )
 
 func main() {

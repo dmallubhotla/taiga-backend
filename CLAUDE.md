@@ -216,8 +216,8 @@ file_repo:
 ```
 
 ### Environment Variables
-- Prefix: `TRYGO_`
-- Examples: `TRYGO_APP_PORT`, `TRYGO_DB_DRIVER`, `TRYGO_DB_HOST`, `TRYGO_TOKENS_PRIVATE_KEY_PATH`
+- Prefix: `TAIGA_`
+- Examples: `TAIGA_APP_PORT`, `TAIGA_DB_DRIVER`, `TAIGA_DB_HOST`, `TAIGA_TOKENS_PRIVATE_KEY_PATH`
 - Override any config file setting using dot notation converted to underscores
 
 ## API Endpoints
@@ -269,7 +269,7 @@ file_repo:
 - Better concurrency and features
 - Use Docker Compose for local development
 
-Switch by updating `config.yaml` or setting `TRYGO_DB_DRIVER` environment variable.
+Switch by updating `config.yaml` or setting `TAIGA_DB_DRIVER` environment variable.
 
 ## Special Features
 

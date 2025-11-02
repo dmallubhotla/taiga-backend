@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/filerepo"
-	"gitea.deepak.science/deepak/trygo/internal/models"
-	"gitea.deepak.science/deepak/trygo/internal/routes"
-	"gitea.deepak.science/deepak/trygo/internal/store"
-	"gitea.deepak.science/deepak/trygo/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/filerepo"
+	"gitea.deepak.science/deepak/taiga/internal/models"
+	"gitea.deepak.science/deepak/taiga/internal/routes"
+	"gitea.deepak.science/deepak/taiga/internal/store"
+	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	_ "modernc.org/sqlite" // SQLite driver
 )
 

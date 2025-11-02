@@ -11,7 +11,6 @@ CREATE TABLE users (
 -- Create an index on email for faster lookups
 CREATE INDEX idx_users_email ON users (email);
 
-
 CREATE TABLE hats (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT,

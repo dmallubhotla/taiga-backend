@@ -13,11 +13,11 @@ import (
 	_ "github.com/lib/pq"  // PostgreSQL driver
 	_ "modernc.org/sqlite" // SQLite driver
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/filerepo"
-	"gitea.deepak.science/deepak/trygo/internal/models"
-	"gitea.deepak.science/deepak/trygo/internal/routes"
-	"gitea.deepak.science/deepak/trygo/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/filerepo"
+	"gitea.deepak.science/deepak/taiga/internal/models"
+	"gitea.deepak.science/deepak/taiga/internal/routes"
+	"gitea.deepak.science/deepak/taiga/internal/tokens"
 )
 
 // Server represents the HTTP server
@@ -43,7 +43,10 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	// create filerepo
-	fileRepo := filerepo.NewFileRepo(*cfg)
+	fileRepo, err := filerepo.NewFileRepo(*cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize filerepo: %w", err)
+	}
 
 	// Create routes handler
 	routesHandler := routes.New(m, toker, fileRepo)

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 
-	"gitea.deepak.science/deepak/trygo/internal/migration"
+	"gitea.deepak.science/deepak/taiga/internal/migration"
 )
 
 func TestNewWithSQLite(t *testing.T) {

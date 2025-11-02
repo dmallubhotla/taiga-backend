@@ -22,11 +22,19 @@
     }@inputs:
     let
       supportedSystems = [ "x86_64-linux" ];
+
       pkgsFor =
         system:
-        nixpkgs.legacyPackages.${system}.extend (
+        let pkgs = import nixpkgs {
+          inherit system;
+          # for terraform, maybe this will be opentofu someday
+          config.allowUnfree = true;
+        };
+        in 
+        pkgs.extend (
           nixpkgs.lib.composeManyExtensions [ gomod2nix.overlays.default ]
         );
+
       eachSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f (pkgsFor system));
 
       treefmtEval = eachSystem (pkgs: inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix);
@@ -131,6 +139,9 @@
             pkgs.sqlite
             pkgs.postgresql
             pkgs.openssl
+            #terraform
+            pkgs.terraform-ls
+            pkgs.terraform
           ];
 
           # Will be executed before entering the shell

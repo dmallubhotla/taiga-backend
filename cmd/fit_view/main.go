@@ -9,9 +9,9 @@ import (
 
 	flag "github.com/spf13/pflag"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/filerepo"
-	"gitea.deepak.science/deepak/trygo/internal/workouts"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/filerepo"
+	"gitea.deepak.science/deepak/taiga/internal/workouts"
 )
 
 func printJson(truc any) error {
@@ -44,7 +44,11 @@ func main() {
 	}
 	defer f.Close()
 
-	repo := filerepo.NewFileRepo(*cfg)
+	repo, err := filerepo.NewFileRepo(*cfg)
+	if err != nil {
+		log.Printf("error creating filerepo: %v", err)
+		panic(err)
+	}
 	hash, err := repo.Store(context.Background(), f)
 	if err != nil {
 		panic(err)

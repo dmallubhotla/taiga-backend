@@ -2,8 +2,8 @@ package models
 
 import (
 	"context"
-	"gitea.deepak.science/deepak/trygo/internal/db"
-	"gitea.deepak.science/deepak/trygo/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/db"
+	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	"log"
 )
 

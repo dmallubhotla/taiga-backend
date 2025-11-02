@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 
 	// "net/http"

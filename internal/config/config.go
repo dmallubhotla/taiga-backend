@@ -33,8 +33,12 @@ type DBConfig struct {
 }
 
 type FileRepoConfig struct {
-	AssetPath    string `mapstructure:"asset_path"`
-	PrefixLength int    `mapstructure:"prefix_length"`
+	Type         string `mapstructure:"type"`          // "local" or "s3"
+	AssetPath    string `mapstructure:"asset_path"`    // for local storage
+	PrefixLength int    `mapstructure:"prefix_length"` // directory structure depth
+	S3Bucket     string `mapstructure:"s3_bucket"`     // S3 bucket name
+	S3Region     string `mapstructure:"s3_region"`     // S3 region
+	S3Prefix     string `mapstructure:"s3_prefix"`     // S3 key prefix
 }
 
 type Config struct {
@@ -58,14 +62,18 @@ func Load(filename string) (*Config, error) {
 	v.SetDefault("db.port", "5432")
 	v.SetDefault("db.user", "")
 	v.SetDefault("db.password", "")
-	v.SetDefault("db.name", "trygo")
+	v.SetDefault("db.name", "taiga")
 	v.SetDefault("db.ssl_mode", "disable")
 	v.SetDefault("db.filepath", "./data.db")
 	v.SetDefault("db.drop_on_start", false)
 	v.SetDefault("db.auto_migrate_up", true)
 
+	v.SetDefault("file_repo.type", "local")
+	v.SetDefault("file_repo.asset_path", "local/filerepo/")
+	v.SetDefault("file_repo.prefix_length", 2)
+
 	// Environment variable support
-	v.SetEnvPrefix("TRYGO")
+	v.SetEnvPrefix("TAIGA")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 

@@ -6,9 +6,9 @@ import (
 	"log"
 	"time"
 
-	"gitea.deepak.science/deepak/trygo/internal/db"
-	"gitea.deepak.science/deepak/trygo/internal/filerepo"
-	"gitea.deepak.science/deepak/trygo/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/db"
+	"gitea.deepak.science/deepak/taiga/internal/filerepo"
+	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 

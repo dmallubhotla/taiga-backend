@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/server"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/server"
 )
 
 func createTestConfig(t *testing.T) *config.Config {

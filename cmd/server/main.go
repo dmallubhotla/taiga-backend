@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/server"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/server"
 )
 
 func main() {

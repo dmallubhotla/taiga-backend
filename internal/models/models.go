@@ -7,10 +7,10 @@ import (
 	"io"
 	"time"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/filerepo"
-	"gitea.deepak.science/deepak/trygo/internal/store"
-	"gitea.deepak.science/deepak/trygo/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/filerepo"
+	"gitea.deepak.science/deepak/taiga/internal/store"
+	"gitea.deepak.science/deepak/taiga/internal/tokens"
 )
 
 var ErrNoFileContent = errors.New("activity file has no file content")

@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/config"
 	"io"
 	"io/fs"
 	"os"
@@ -29,8 +29,15 @@ type localStore struct {
 	prefixLength int
 }
 
-func NewFileRepo(cfg config.Config) FileRepo {
-	return &localStore{assetPath: cfg.FileRepo.AssetPath, prefixLength: cfg.FileRepo.PrefixLength}
+func NewFileRepo(cfg config.Config) (FileRepo, error) {
+	switch cfg.FileRepo.Type {
+	case "local", "":
+		return &localStore{assetPath: cfg.FileRepo.AssetPath, prefixLength: cfg.FileRepo.PrefixLength}, nil
+	case "s3":
+		return newS3Store(cfg)
+	default:
+		return nil, fmt.Errorf("unsupported filerepo type: %s", cfg.FileRepo.Type)
+	}
 }
 
 func (f *localStore) Store(ctx context.Context, r io.Reader) (hash string, err error) {

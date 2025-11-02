@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/config"
 )
 
 func TestLoadDefaults(t *testing.T) {
@@ -34,7 +34,7 @@ func TestLoadDefaults(t *testing.T) {
 	assert.Equal(t, "sqlite", cfg.Db.Driver)
 	assert.Equal(t, "localhost", cfg.Db.Host)
 	assert.Equal(t, "5432", cfg.Db.Port)
-	assert.Equal(t, "trygo", cfg.Db.Name)
+	assert.Equal(t, "taiga", cfg.Db.Name)
 	assert.Equal(t, "disable", cfg.Db.SSLMode)
 	assert.Equal(t, "./data.db", cfg.Db.FilePath)
 }
@@ -103,11 +103,11 @@ func TestEnvironmentVariables(t *testing.T) {
 	clearEnvVars(t)
 
 	// Set environment variables
-	t.Setenv("TRYGO_APP_PORT", "7777")
-	t.Setenv("TRYGO_APP_ENVIRONMENT", "testing")
-	t.Setenv("TRYGO_DB_DRIVER", "postgres")
-	t.Setenv("TRYGO_DB_HOST", "env-db-host")
-	t.Setenv("TRYGO_DB_USER", "env-user")
+	t.Setenv("TAIGA_APP_PORT", "7777")
+	t.Setenv("TAIGA_APP_ENVIRONMENT", "testing")
+	t.Setenv("TAIGA_DB_DRIVER", "postgres")
+	t.Setenv("TAIGA_DB_HOST", "env-db-host")
+	t.Setenv("TAIGA_DB_USER", "env-user")
 
 	// Change to a directory without config files
 	tempDir := t.TempDir()
@@ -130,15 +130,15 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, "env-user", cfg.Db.User)
 	// Defaults should still apply for unset env vars
 	assert.Equal(t, "5432", cfg.Db.Port)
-	assert.Equal(t, "trygo", cfg.Db.Name)
+	assert.Equal(t, "taiga", cfg.Db.Name)
 }
 
 func TestEnvironmentVariablesOverrideConfig(t *testing.T) {
 	clearEnvVars(t)
 
 	// Set environment variables that should override config file
-	t.Setenv("TRYGO_APP_PORT", "8888")
-	t.Setenv("TRYGO_DB_DRIVER", "sqlite")
+	t.Setenv("TAIGA_APP_PORT", "8888")
+	t.Setenv("TAIGA_DB_DRIVER", "sqlite")
 
 	// Change to testdata directory
 	oldWd, err := os.Getwd()
@@ -284,16 +284,16 @@ func TestInvalidConfigStructure(t *testing.T) {
 
 func clearEnvVars(t *testing.T) {
 	envVars := []string{
-		"TRYGO_APP_PORT",
-		"TRYGO_APP_ENVIRONMENT",
-		"TRYGO_DB_DRIVER",
-		"TRYGO_DB_HOST",
-		"TRYGO_DB_PORT",
-		"TRYGO_DB_USER",
-		"TRYGO_DB_PASSWORD",
-		"TRYGO_DB_NAME",
-		"TRYGO_DB_SSLMODE",
-		"TRYGO_DB_FILEPATH",
+		"TAIGA_APP_PORT",
+		"TAIGA_APP_ENVIRONMENT",
+		"TAIGA_DB_DRIVER",
+		"TAIGA_DB_HOST",
+		"TAIGA_DB_PORT",
+		"TAIGA_DB_USER",
+		"TAIGA_DB_PASSWORD",
+		"TAIGA_DB_NAME",
+		"TAIGA_DB_SSLMODE",
+		"TAIGA_DB_FILEPATH",
 	}
 
 	for _, env := range envVars {

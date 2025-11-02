@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"log"
 
-	"gitea.deepak.science/deepak/trygo/internal/config"
-	"gitea.deepak.science/deepak/trygo/internal/db"
-	"gitea.deepak.science/deepak/trygo/internal/migration"
+	"gitea.deepak.science/deepak/taiga/internal/config"
+	"gitea.deepak.science/deepak/taiga/internal/db"
+	"gitea.deepak.science/deepak/taiga/internal/migration"
 )
 
 // interface representing a backing store

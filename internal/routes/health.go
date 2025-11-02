@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"gitea.deepak.science/deepak/trygo/internal/models"
+	"gitea.deepak.science/deepak/taiga/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 
