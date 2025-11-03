@@ -62,7 +62,7 @@ jobs:
         working-directory: ./terraform
       - name: Destroy
         id: destroy
-        run: terraform destroy
+        run: terraform destroy -auto-approve -input=false
         working-directory: ./terraform
       # - name: Apply
       #   id: apply
