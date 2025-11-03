@@ -17,9 +17,9 @@ terraform {
 
 locals {
   common_tags = {
-    Project = var.app_name
+    Project     = var.app_name
     Environment = "test"
-    ManagedBy = "terraform"
+    ManagedBy   = "terraform"
   }
 }
 

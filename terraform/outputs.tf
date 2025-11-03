@@ -58,8 +58,8 @@ output "s3_bucket_arn" {
 output "app_config" {
   description = "Environment variables for the Go application"
   value = {
-    TAIGA_APP_PORT                = var.app_port
-    TAIGA_APP_ENVIRONMENT         = "production"
+    TAIGA_APP_PORT        = var.app_port
+    TAIGA_APP_ENVIRONMENT = "production"
     # TAIGA_DB_DRIVER               = "postgres"
     # TAIGA_DB_HOST                 = aws_db_instance.main.address
     # TAIGA_DB_PORT                 = "5432"
