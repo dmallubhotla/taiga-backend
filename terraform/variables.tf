@@ -52,16 +52,16 @@ variable "db_max_allocated_storage" {
   type        = number
   default     = 50
 }
-#
-# # ECS variables
-# variable "ecs_cpu" {
-#   description = "CPU units for ECS task (1024 = 1 vCPU)"
-#   type        = number
-#   default     = 256
-# }
-#
-# variable "ecs_memory" {
-#   description = "Memory for ECS task in MB"
-#   type        = number
-#   default     = 512
-# }
+
+# ECS variables
+variable "ecs_cpu" {
+  description = "CPU units for ECS task (1024 = 1 vCPU)"
+  type        = number
+  default     = 256
+}
+
+variable "ecs_memory" {
+  description = "Memory for ECS task in MB"
+  type        = number
+  default     = 512
+}
