@@ -53,7 +53,7 @@ data "aws_secretsmanager_secret" "password" {
 }
 
 data "aws_secretsmanager_secret_version" "password" {
-  secret_id = data.aws_secretsmanager_secret.password
+  secret_id = data.aws_secretsmanager_secret.password.id
 }
 
 # Security Groups
