@@ -29,10 +29,13 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
       - run: ls -alh
+        working-directory: ./terraform
         name: List files
       - name: Set up terraform
+        working-directory: ./terraform
         uses: hashicorp/setup-terraform@v3
       - name: Set up and configure Terraform plugin cache
+        working-directory: ./terraform
         run: |
           mkdir --parents $TF_PLUGIN_CACHE_DIR
       - name: Cache terraform
