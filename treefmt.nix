@@ -18,5 +18,8 @@
   programs.yamlfmt.enable = true;
   programs.just.enable = true;
   programs.gofmt.enable = true;
+  programs.sql-formatter.enable = true;
+  programs.sql-formatter.dialect = "postgresql";
+  programs.terraform.enable = true;
 
 }

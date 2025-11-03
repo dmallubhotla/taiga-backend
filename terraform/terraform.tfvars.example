@@ -1,0 +1,20 @@
+# Copy this file to terraform.tfvars and modify the values
+
+# AWS Configuration
+aws_region = "us-east-1"
+app_name   = "taiga"
+app_port   = 8080
+
+# Database Configuration
+db_name     = "taiga"
+db_username = "taiga"
+db_password = "change-this-secure-password"
+
+# Optional: Customize instance sizes
+# db_instance_class      = "db.t3.micro"    # or db.t3.small for better performance
+# db_allocated_storage   = 20               # GB
+# db_max_allocated_storage = 100            # GB
+
+# Optional: Customize ECS resources
+# ecs_cpu    = 256    # CPU units (1024 = 1 vCPU)
+# ecs_memory = 512    # Memory in MB

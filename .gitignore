@@ -12,7 +12,7 @@
 
 # Code coverage profiles and other test artifacts
 *.out
-coverage.*
+**/coverage*
 *.coverprofile
 profile.cov
 
@@ -30,3 +30,30 @@ go.work.sum
 # .idea/
 # .vscode/
 
+# For lcoal dev maiy use sqlite here
+data.db
+
+result
+result-*
+
+# Don't need root config.yaml stored
+config.yaml
+
+# Don't include any rsa files
+*.key
+*.key.pub
+*.pem
+!internal/server/testdata/cert/test.key
+!internal/server/testdata/cert/test.pem
+
+local/
+
+*Zone.Identifier
+
+# never want these!
+*.tfvars
+*.tfstate.*
+*.tfstate
+
+.terraform/
+.terraform.d/
