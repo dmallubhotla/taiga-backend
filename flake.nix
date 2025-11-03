@@ -25,15 +25,14 @@
 
       pkgsFor =
         system:
-        let pkgs = import nixpkgs {
-          inherit system;
-          # for terraform, maybe this will be opentofu someday
-          config.allowUnfree = true;
-        };
-        in 
-        pkgs.extend (
-          nixpkgs.lib.composeManyExtensions [ gomod2nix.overlays.default ]
-        );
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            # for terraform, maybe this will be opentofu someday
+            config.allowUnfree = true;
+          };
+        in
+        pkgs.extend (nixpkgs.lib.composeManyExtensions [ gomod2nix.overlays.default ]);
 
       eachSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f (pkgsFor system));
 
