@@ -49,7 +49,7 @@ data "aws_subnets" "default" {
 
 data "aws_secretsmanager_secret" "password" {
   name       = "test-db-password"
-  depends_on = [aws_secretsmanager_secret_version]
+  depends_on = [aws_secretsmanager_secret_version.password]
 }
 
 data "aws_secretsmanager_secret_version" "password" {
