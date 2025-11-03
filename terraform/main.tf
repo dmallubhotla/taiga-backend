@@ -30,126 +30,136 @@ provider "aws" {
   }
 }
 #
-# # Data sources
-# data "aws_availability_zones" "available" {
-#   state = "available"
-# }
+# Data sources
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
 #
-# data "aws_vpc" "default" {
-#   default = true
-# }
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+
+data "aws_secretsmanager_secret" "password" {
+  name = "test-db-password"
+
+}
+
+data "aws_secretsmanager_secret_version" "password" {
+  secret_id = data.aws_secretsmanager_secret.password
+}
+
+# Security Groups
+resource "aws_security_group" "rds" {
+  name_prefix = "${var.app_name}-rds-"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_tasks.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.app_name}-rds"
+  }
+}
+
+resource "aws_security_group" "ecs_tasks" {
+  name_prefix = "${var.app_name}-ecs-"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    from_port   = var.app_port
+    to_port     = var.app_port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.app_name}-ecs-tasks"
+  }
+}
 #
-# data "aws_subnets" "default" {
-#   filter {
-#     name   = "vpc-id"
-#     values = [data.aws_vpc.default.id]
-#   }
-# }
+# RDS Subnet Group
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.app_name}-db-subnet-group"
+  subnet_ids = data.aws_subnets.default.ids
+
+  tags = {
+    Name = "${var.app_name} DB subnet group"
+  }
+}
+
+# RDS Parameter Group
+resource "aws_db_parameter_group" "main" {
+  family = "postgres15"
+  name   = "${var.app_name}-db-params"
+
+  parameter {
+    name  = "log_statement"
+    value = "all"
+  }
+
+  tags = {
+    Name = "${var.app_name}-db-params"
+  }
+}
 #
-# # Security Groups
-# resource "aws_security_group" "rds" {
-#   name_prefix = "${var.app_name}-rds-"
-#   vpc_id      = data.aws_vpc.default.id
-#
-#   ingress {
-#     from_port       = 5432
-#     to_port         = 5432
-#     protocol        = "tcp"
-#     security_groups = [aws_security_group.ecs_tasks.id]
-#   }
-#
-#   egress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#
-#   tags = {
-#     Name = "${var.app_name}-rds"
-#   }
-# }
-#
-# resource "aws_security_group" "ecs_tasks" {
-#   name_prefix = "${var.app_name}-ecs-"
-#   vpc_id      = data.aws_vpc.default.id
-#
-#   ingress {
-#     from_port   = var.app_port
-#     to_port     = var.app_port
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#
-#   egress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-#
-#   tags = {
-#     Name = "${var.app_name}-ecs-tasks"
-#   }
-# }
-#
-# # RDS Subnet Group
-# resource "aws_db_subnet_group" "main" {
-#   name       = "${var.app_name}-db-subnet-group"
-#   subnet_ids = data.aws_subnets.default.ids
-#
-#   tags = {
-#     Name = "${var.app_name} DB subnet group"
-#   }
-# }
-#
-# # RDS Parameter Group
-# resource "aws_db_parameter_group" "main" {
-#   family = "postgres15"
-#   name   = "${var.app_name}-db-params"
-#
-#   parameter {
-#     name  = "log_statement"
-#     value = "all"
-#   }
-#
-#   tags = {
-#     Name = "${var.app_name}-db-params"
-#   }
-# }
-#
-# # RDS Instance
-# resource "aws_db_instance" "main" {
-#   identifier = "${var.app_name}-db"
-#
-#   engine         = "postgres"
-#   engine_version = "15.7"
-#   instance_class = var.db_instance_class
-#
-#   allocated_storage     = var.db_allocated_storage
-#   max_allocated_storage = var.db_max_allocated_storage
-#   storage_type          = "gp3"
-#   storage_encrypted     = true
-#
-#   db_name  = var.db_name
-#   username = var.db_username
-#   password = var.db_password
-#
-#   vpc_security_group_ids = [aws_security_group.rds.id]
-#   db_subnet_group_name   = aws_db_subnet_group.main.name
-#   parameter_group_name   = aws_db_parameter_group.main.name
-#
-#   backup_retention_period = 7
-#   backup_window          = "03:00-04:00"
-#   maintenance_window     = "Sun:04:00-Sun:05:00"
-#
-#   skip_final_snapshot = true
-#   deletion_protection = false
-#
-#   tags = {
-#     Name = "${var.app_name}-database"
-#   }
-# }
+# RDS Instance
+resource "aws_db_instance" "main" {
+  identifier = "${var.app_name}-db"
+
+  engine         = "postgres"
+  engine_version = "15.7"
+  instance_class = var.db_instance_class
+
+  allocated_storage     = var.db_allocated_storage
+  max_allocated_storage = var.db_max_allocated_storage
+  storage_type          = "gp3"
+  storage_encrypted     = true
+
+  db_name  = var.db_name
+  username = var.db_username
+  password = data.aws_secretsmanager_secret_version.password
+
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  parameter_group_name   = aws_db_parameter_group.main.name
+
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+  maintenance_window     = "Sun:04:00-Sun:05:00"
+
+  skip_final_snapshot = true
+  deletion_protection = false
+
+  tags = {
+    Name = "${var.app_name}-database"
+  }
+}
 #
 # # S3 Bucket
 resource "aws_s3_bucket" "app_files" {
@@ -352,7 +362,7 @@ resource "aws_s3_bucket_public_access_block" "app_files" {
 #         },
 #         {
 #           name  = "TAIGA_DB_PASSWORD"
-#           value = var.db_password
+#           value = data.aws_secretsmanager_secret_version.password
 #         },
 #         {
 #           name  = "TAIGA_DB_SSL_MODE"

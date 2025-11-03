@@ -1,18 +1,18 @@
-# output "database_url" {
-#   description = "PostgreSQL connection URL"
-#   value       = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.main.address}:5432/${var.db_name}?sslmode=require"
-#   sensitive   = true
-# }
-#
-# output "database_host" {
-#   description = "RDS instance hostname"
-#   value       = aws_db_instance.main.address
-# }
-#
-# output "database_port" {
-#   description = "RDS instance port"
-#   value       = aws_db_instance.main.port
-# }
+output "database_url" {
+  description = "PostgreSQL connection URL"
+  value       = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.main.address}:5432/${var.db_name}?sslmode=require"
+  sensitive   = true
+}
+
+output "database_host" {
+  description = "RDS instance hostname"
+  value       = aws_db_instance.main.address
+}
+
+output "database_port" {
+  description = "RDS instance port"
+  value       = aws_db_instance.main.port
+}
 
 output "s3_bucket_name" {
   description = "S3 bucket name for file storage"

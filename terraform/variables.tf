@@ -22,42 +22,36 @@ variable "tuffas_applier_role_arn" {
 }
 
 
-# # Database variables
-# variable "db_name" {
-#   description = "Database name"
-#   type        = string
-#   default     = "trygo"
-# }
-#
-# variable "db_username" {
-#   description = "Database username"
-#   type        = string
-#   default     = "trygo"
-# }
-#
-# variable "db_password" {
-#   description = "Database password"
-#   type        = string
-#   sensitive   = true
-# }
-#
-# variable "db_instance_class" {
-#   description = "RDS instance class"
-#   type        = string
-#   default     = "db.t3.micro"
-# }
-#
-# variable "db_allocated_storage" {
-#   description = "Initial database storage size in GB"
-#   type        = number
-#   default     = 20
-# }
-#
-# variable "db_max_allocated_storage" {
-#   description = "Maximum database storage size in GB for autoscaling"
-#   type        = number
-#   default     = 100
-# }
+# Database variables
+variable "db_name" {
+  description = "Database name"
+  type        = string
+  default     = "trygo"
+}
+
+variable "db_username" {
+  description = "Database username"
+  type        = string
+  default     = "trygo"
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "Initial database storage size in GB"
+  type        = number
+  default     = 20
+}
+
+variable "db_max_allocated_storage" {
+  description = "Maximum database storage size in GB for autoscaling"
+  type        = number
+  default     = 50
+}
 #
 # # ECS variables
 # variable "ecs_cpu" {
