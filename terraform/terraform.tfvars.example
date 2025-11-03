@@ -1,7 +1,7 @@
 # Copy this file to terraform.tfvars and modify the values
 
 # AWS Configuration
-aws_region = "us-east-1"
+aws_region = "us-east-2"
 app_name   = "taiga"
 app_port   = 8080
 

@@ -65,7 +65,7 @@ aws ecs update-service --cluster taiga-cluster --service taiga --force-new-deplo
 - `db_password`: Secure database password
 
 ### Optional Variables
-- `aws_region`: AWS region (default: us-east-1)
+- `aws_region`: AWS region (default: us-east-2)
 - `app_name`: Application name (default: taiga)
 - `db_instance_class`: RDS instance size (default: db.t3.micro)
 - `ecs_cpu`/`ecs_memory`: Container resources
