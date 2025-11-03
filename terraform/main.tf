@@ -1,16 +1,34 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.2"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
   }
+  backend "s3" {
+    region       = "us-east-2"
+    bucket       = "hrudayme-test-tfstate"
+    key          = "taiga-tf"
+    use_lockfile = true
+    assume_role  = { role_arn = "arn:aws:iam::677425296084:role/tfstate_backend_role" }
+  }
 }
 
-# provider "aws" {
-#   region = var.aws_region
-# }
+locals {
+  common_tags = {
+    Project = var.app_name
+    Environment = "test"
+    ManagedBy = "terraform"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+  assume_role {
+    role_arn = var.tuffas_applier_role_arn
+  }
+}
 #
 # # Data sources
 # data "aws_availability_zones" "available" {
@@ -138,7 +156,7 @@ resource "aws_s3_bucket" "app_files" {
   bucket_prefix = "${var.app_name}-filerepo"
 
   tags = {
-    App = "${var.app_name}"
+    App       = "${var.app_name}"
     Component = "filerepo"
   }
 }

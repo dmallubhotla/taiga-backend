@@ -16,52 +16,58 @@ variable "app_port" {
   default     = 8080
 }
 
-# Database variables
-variable "db_name" {
-  description = "Database name"
+variable "tuffas_applier_role_arn" {
   type        = string
-  default     = "trygo"
+  description = "IAM role ARN for Terraform to assume when applying changes"
 }
 
-variable "db_username" {
-  description = "Database username"
-  type        = string
-  default     = "trygo"
-}
 
-variable "db_password" {
-  description = "Database password"
-  type        = string
-  sensitive   = true
-}
-
-variable "db_instance_class" {
-  description = "RDS instance class"
-  type        = string
-  default     = "db.t3.micro"
-}
-
-variable "db_allocated_storage" {
-  description = "Initial database storage size in GB"
-  type        = number
-  default     = 20
-}
-
-variable "db_max_allocated_storage" {
-  description = "Maximum database storage size in GB for autoscaling"
-  type        = number
-  default     = 100
-}
-
-# ECS variables
-variable "ecs_cpu" {
-  description = "CPU units for ECS task (1024 = 1 vCPU)"
-  type        = number
-  default     = 256
-}
-
-variable "ecs_memory" {
-  description = "Memory for ECS task in MB"
-  type        = number
-  default     = 512
-}
+# # Database variables
+# variable "db_name" {
+#   description = "Database name"
+#   type        = string
+#   default     = "trygo"
+# }
+#
+# variable "db_username" {
+#   description = "Database username"
+#   type        = string
+#   default     = "trygo"
+# }
+#
+# variable "db_password" {
+#   description = "Database password"
+#   type        = string
+#   sensitive   = true
+# }
+#
+# variable "db_instance_class" {
+#   description = "RDS instance class"
+#   type        = string
+#   default     = "db.t3.micro"
+# }
+#
+# variable "db_allocated_storage" {
+#   description = "Initial database storage size in GB"
+#   type        = number
+#   default     = 20
+# }
+#
+# variable "db_max_allocated_storage" {
+#   description = "Maximum database storage size in GB for autoscaling"
+#   type        = number
+#   default     = 100
+# }
+#
+# # ECS variables
+# variable "ecs_cpu" {
+#   description = "CPU units for ECS task (1024 = 1 vCPU)"
+#   type        = number
+#   default     = 256
+# }
+#
+# variable "ecs_memory" {
+#   description = "Memory for ECS task in MB"
+#   type        = number
+#   default     = 512
+# }

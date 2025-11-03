@@ -1,0 +1,61 @@
+name: Terraform validate and apply
+run-name: ${{ gitea.actor }} applying terraform
+on:
+  push:
+    branches:
+      - master
+      - claudetemp
+  pull_request:
+    branches:
+      - master
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  TF_VAR_aws_region: ${{ vars.TF_VAR_aws_region }}
+  TF_VAR_site_domain: ${{ vars.TF_VAR_site_domain }}
+  TF_VAR_site_domains: ${{ vars.TF_VAR_site_domains }}
+  TF_VAR_project_name: ${{ vars.TF_VAR_project_name }}
+  TF_VAR_environment: ${{ vars.TF_VAR_environment }}
+  TF_VAR_tuffas_applier_role_arn: ${{ vars.TF_VAR_tuffas_applier_role_arn }}
+  TF_VAR_tfstate_backend_role_arn: ${{ vars.TF_VAR_tfstate_backend_role_arn }}
+  TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
+jobs:
+  terraform:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - run: ls -alh
+        name: List files
+      - name: Set up terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Set up and configure Terraform plugin cache
+        run: |
+          mkdir --parents $TF_PLUGIN_CACHE_DIR
+      - name: Cache terraform
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: ${{ runner.os }}-terraform-${{hashFiles('**.terraform.lock.hcl') }}
+          restore-keys: ${{ runner.os }}-terraform-
+      - name: Init
+        id: init
+        run: terraform init
+      - name: Check formatting
+        id: fmt
+        run: terraform fmt -check
+      - name: Validate
+        id: validate
+        run: terraform validate
+      - name: Plan
+        id: plan
+        run: terraform plan -no-color -input=false
+      - name: Apply
+        id: apply
+        run: terraform apply -auto-approve -no-color -input=false
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'

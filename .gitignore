@@ -52,3 +52,8 @@ local/
 
 # never want these!
 *.tfvars
+*.tfstate.*
+*.tfstate
+
+.terraform/
+.terraform.d/

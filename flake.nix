@@ -142,6 +142,8 @@
             #terraform
             pkgs.terraform-ls
             pkgs.terraform
+
+            pkgs.awscli2
           ];
 
           # Will be executed before entering the shell
