@@ -197,232 +197,232 @@ resource "aws_s3_bucket_public_access_block" "app_files" {
   restrict_public_buckets = true
 }
 #
-# # ECR Repository
-# resource "aws_ecr_repository" "app" {
-#   name                 = var.app_name
-#   image_tag_mutability = "MUTABLE"
-#
-#   image_scanning_configuration {
-#     scan_on_push = true
-#   }
-#
-#   tags = {
-#     Name = "${var.app_name} container repository"
-#   }
-# }
-#
-# # ECS Cluster
-# resource "aws_ecs_cluster" "main" {
-#   name = "${var.app_name}-cluster"
-#
-#   setting {
-#     name  = "containerInsights"
-#     value = "enabled"
-#   }
-#
-#   tags = {
-#     Name = "${var.app_name} ECS Cluster"
-#   }
-# }
-#
-# # CloudWatch Log Group
-# resource "aws_cloudwatch_log_group" "app" {
-#   name              = "/ecs/${var.app_name}"
-#   retention_in_days = 7
-#
-#   tags = {
-#     Name = "${var.app_name} logs"
-#   }
-# }
-#
-# # IAM Role for ECS Task Execution
-# resource "aws_iam_role" "ecs_task_execution" {
-#   name = "${var.app_name}-ecs-task-execution"
-#
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRole"
-#         Effect = "Allow"
-#         Principal = {
-#           Service = "ecs-tasks.amazonaws.com"
-#         }
-#       }
-#     ]
-#   })
-#
-#   tags = {
-#     Name = "${var.app_name} ECS Task Execution Role"
-#   }
-# }
-#
-# resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
-#   role       = aws_iam_role.ecs_task_execution.name
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-# }
-#
-# # IAM Role for ECS Task
-# resource "aws_iam_role" "ecs_task" {
-#   name = "${var.app_name}-ecs-task"
-#
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRole"
-#         Effect = "Allow"
-#         Principal = {
-#           Service = "ecs-tasks.amazonaws.com"
-#         }
-#       }
-#     ]
-#   })
-#
-#   tags = {
-#     Name = "${var.app_name} ECS Task Role"
-#   }
-# }
-#
-# # IAM Policy for S3 Access
-# resource "aws_iam_role_policy" "ecs_task_s3" {
-#   name = "${var.app_name}-ecs-s3-access"
-#   role = aws_iam_role.ecs_task.id
-#
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Effect = "Allow"
-#         Action = [
-#           "s3:GetObject",
-#           "s3:PutObject",
-#           "s3:DeleteObject",
-#           "s3:ListBucket"
-#         ]
-#         Resource = [
-#           aws_s3_bucket.app_files.arn,
-#           "${aws_s3_bucket.app_files.arn}/*"
-#         ]
-#       }
-#     ]
-#   })
-# }
-#
-# # ECS Task Definition
-# resource "aws_ecs_task_definition" "app" {
-#   family                   = var.app_name
-#   requires_compatibilities = ["FARGATE"]
-#   network_mode             = "awsvpc"
-#   cpu                      = var.ecs_cpu
-#   memory                   = var.ecs_memory
-#   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-#   task_role_arn           = aws_iam_role.ecs_task.arn
-#
-#   container_definitions = jsonencode([
-#     {
-#       name  = var.app_name
-#       image = "${aws_ecr_repository.app.repository_url}:latest"
-#
-#       portMappings = [
-#         {
-#           containerPort = var.app_port
-#           protocol      = "tcp"
-#         }
-#       ]
-#
-#       environment = [
-#         {
-#           name  = "TAIGA_APP_PORT"
-#           value = tostring(var.app_port)
-#         },
-#         {
-#           name  = "TAIGA_APP_ENVIRONMENT"
-#           value = "production"
-#         },
-#         {
-#           name  = "TAIGA_DB_DRIVER"
-#           value = "postgres"
-#         },
-#         {
-#           name  = "TAIGA_DB_HOST"
-#           value = aws_db_instance.main.address
-#         },
-#         {
-#           name  = "TAIGA_DB_PORT"
-#           value = "5432"
-#         },
-#         {
-#           name  = "TAIGA_DB_NAME"
-#           value = var.db_name
-#         },
-#         {
-#           name  = "TAIGA_DB_USER"
-#           value = var.db_username
-#         },
-#         {
-#           name  = "TAIGA_DB_PASSWORD"
-#           value = data.aws_secretsmanager_secret_version.password
-#         },
-#         {
-#           name  = "TAIGA_DB_SSL_MODE"
-#           value = "require"
-#         },
-#         {
-#           name  = "TAIGA_FILE_REPO_TYPE"
-#           value = "s3"
-#         },
-#         {
-#           name  = "TAIGA_FILE_REPO_S3_BUCKET"
-#           value = aws_s3_bucket.app_files.bucket
-#         },
-#         {
-#           name  = "TAIGA_FILE_REPO_S3_REGION"
-#           value = var.aws_region
-#         },
-#         {
-#           name  = "TAIGA_FILE_REPO_S3_PREFIX"
-#           value = "files"
-#         },
-#         {
-#           name  = "TAIGA_FILE_REPO_PREFIX_LENGTH"
-#           value = "2"
-#         }
-#       ]
-#
-#       logConfiguration = {
-#         logDriver = "awslogs"
-#         options = {
-#           "awslogs-group"         = aws_cloudwatch_log_group.app.name
-#           "awslogs-region"        = var.aws_region
-#           "awslogs-stream-prefix" = "ecs"
-#         }
-#       }
-#
-#       essential = true
-#     }
-#   ])
-#
-#   tags = {
-#     Name = "${var.app_name} Task Definition"
-#   }
-# }
-#
-# # ECS Service
-# resource "aws_ecs_service" "app" {
-#   name            = var.app_name
-#   cluster         = aws_ecs_cluster.main.id
-#   task_definition = aws_ecs_task_definition.app.arn
-#   desired_count   = 1
-#   launch_type     = "FARGATE"
-#
-#   network_configuration {
-#     subnets          = data.aws_subnets.default.ids
-#     security_groups  = [aws_security_group.ecs_tasks.id]
-#     assign_public_ip = true
-#   }
-#
-#   tags = {
-#     Name = "${var.app_name} ECS Service"
-#   }
-# }
+# ECR Repository
+resource "aws_ecr_repository" "app" {
+  name                 = var.app_name
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "${var.app_name} container repository"
+  }
+}
+
+# ECS Cluster
+resource "aws_ecs_cluster" "main" {
+  name = "${var.app_name}-cluster"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
+  tags = {
+    Name = "${var.app_name} ECS Cluster"
+  }
+}
+
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${var.app_name}"
+  retention_in_days = 7
+
+  tags = {
+    Name = "${var.app_name} logs"
+  }
+}
+
+# IAM Role for ECS Task Execution
+resource "aws_iam_role" "ecs_task_execution" {
+  name = "${var.app_name}-ecs-task-execution"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.app_name} ECS Task Execution Role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# IAM Role for ECS Task
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.app_name}-ecs-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.app_name} ECS Task Role"
+  }
+}
+
+# IAM Policy for S3 Access
+resource "aws_iam_role_policy" "ecs_task_s3" {
+  name = "${var.app_name}-ecs-s3-access"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.app_files.arn,
+          "${aws_s3_bucket.app_files.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# ECS Task Definition
+resource "aws_ecs_task_definition" "app" {
+  family                   = var.app_name
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = var.ecs_cpu
+  memory                   = var.ecs_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = var.app_name
+      image = "${aws_ecr_repository.app.repository_url}:latest"
+
+      portMappings = [
+        {
+          containerPort = var.app_port
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "TAIGA_APP_PORT"
+          value = tostring(var.app_port)
+        },
+        {
+          name  = "TAIGA_APP_ENVIRONMENT"
+          value = "production"
+        },
+        {
+          name  = "TAIGA_DB_DRIVER"
+          value = "postgres"
+        },
+        {
+          name  = "TAIGA_DB_HOST"
+          value = aws_db_instance.main.address
+        },
+        {
+          name  = "TAIGA_DB_PORT"
+          value = "5432"
+        },
+        {
+          name  = "TAIGA_DB_NAME"
+          value = var.db_name
+        },
+        {
+          name  = "TAIGA_DB_USER"
+          value = var.db_username
+        },
+        {
+          name  = "TAIGA_DB_PASSWORD"
+          value = data.aws_secretsmanager_secret_version.password
+        },
+        {
+          name  = "TAIGA_DB_SSL_MODE"
+          value = "require"
+        },
+        {
+          name  = "TAIGA_FILE_REPO_TYPE"
+          value = "s3"
+        },
+        {
+          name  = "TAIGA_FILE_REPO_S3_BUCKET"
+          value = aws_s3_bucket.app_files.bucket
+        },
+        {
+          name  = "TAIGA_FILE_REPO_S3_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "TAIGA_FILE_REPO_S3_PREFIX"
+          value = "files"
+        },
+        {
+          name  = "TAIGA_FILE_REPO_PREFIX_LENGTH"
+          value = "2"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.app.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+
+      essential = true
+    }
+  ])
+
+  tags = {
+    Name = "${var.app_name} Task Definition"
+  }
+}
+
+# ECS Service
+resource "aws_ecs_service" "app" {
+  name            = var.app_name
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = data.aws_subnets.default.ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = true
+  }
+
+  tags = {
+    Name = "${var.app_name} ECS Service"
+  }
+}
