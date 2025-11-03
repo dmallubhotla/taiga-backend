@@ -43,7 +43,7 @@ jobs:
         with:
           path: ${{ env.TF_PLUGIN_CACHE_DIR }}
           key: ${{ runner.os }}-terraform-${{hashFiles('**/terraform.lock.hcl') }}
-          restore-keys: ${{ runner.os }}-terraform-
+          restore-keys: ${{ runner.os }}-terraform-${{hashFiles('**/terraform.lock.hcl') }}
       - name: Init
         id: init
         run: terraform init
