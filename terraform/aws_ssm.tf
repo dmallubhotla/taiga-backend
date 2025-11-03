@@ -5,7 +5,7 @@ resource "random_password" "master" {
 }
 
 resource "aws_secretsmanager_secret" "password" {
-  name = "taiga-db-password"
+  name                    = "taiga-db-password"
   recovery_window_in_days = 0
 }
 
