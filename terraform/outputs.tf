@@ -1,6 +1,6 @@
 output "database_url" {
   description = "PostgreSQL connection URL"
-  value       = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.main.address}:5432/${var.db_name}?sslmode=require"
+  value       = "postgres://${var.db_username}:${data.aws_secretsmanager_secret_version.password}@${aws_db_instance.main.address}:5432/${var.db_name}?sslmode=require"
   sensitive   = true
 }
 
