@@ -52,6 +52,21 @@ chores:
     gomod2nix
     sqlc generate
 
+# update flake inputs
+update:
+    #!/usr/bin/env bash
+    nix flake update
+
+# release: stamp flake.nix, commit, tag, push — all via `hanko seal`.
+# Reads .hanko.yaml for stamp-targets + seal config.
+# Preview with `just release-plan` before running for real.
+release:
+    nix develop --command hanko seal
+
+# release-plan: print what `just release` would do without mutating anything.
+release-plan:
+    nix develop --command hanko seal --dry-run
+
 # Serve using go run
 serve:
     #!/usr/bin/env bash

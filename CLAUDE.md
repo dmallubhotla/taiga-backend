@@ -76,7 +76,22 @@ just test                # Run full test suite with coverage
 just full_test           # Run tests + sqlc vet + sqlc diff
 just vet_sqlc            # Validate sqlc configuration
 just fmt                 # Format code using nix
+just update              # nix flake update
 ```
+
+### Releasing (hanko)
+The project uses [hanko](https://github.com/dmallubhotla/hanko) `seal` to bump
+the version stamped in `flake.nix`, create the release commit, tag, and push.
+Configuration lives in `.hanko.yaml`.
+
+```bash
+just release-plan        # Preview what `just release` would do (dry run)
+just release             # Stamp version, commit, tag, push
+```
+
+A `seal` GitHub workflow (`.github/workflows/seal.yml`) does the same thing on
+`workflow_dispatch`, signed by a GitHub App token (secrets:
+`RELEASE_APP_CLIENT_ID`, `RELEASE_APP_PRIVATE_KEY`).
 
 ### JWT Key Generation (Development Only)
 ```bash
@@ -296,7 +311,22 @@ Switch by updating `config.yaml` or setting `TAIGA_DB_DRIVER` environment variab
 ### Nix Integration
 - Full Nix flake for reproducible development environment
 - All dependencies declared in `flake.nix`
+- Supported systems: `x86_64-linux`, `aarch64-linux`, `aarch64-darwin`, `x86_64-darwin`
+- Flake `checks`: `formatting` (treefmt), `golangci-lint`, `go-test` — all run by `nix flake check`
 - Consistent formatting and building across machines
+
+### CI / GitHub Actions
+- `ci.yml` runs `nix flake check`, builds the binary and Docker image, and
+  publishes the image to `ghcr.io/<owner>/taiga` on every push. Tag fan-out is
+  delegated to `hanko stamp docker tags`:
+  - Tagged release (`vX.Y.Z`) → `:X.Y.Z`, `:X.Y`, `:X`, `:latest`, `:master-<sha>`
+  - `master` between releases → `:0.Y.0-master.N.<sha>` + `:master-<sha>` (prerelease, no moving tags)
+  - Feature branches → `:<semver-prerelease>` + `:<branch>-<sha>` (prerelease, no moving tags)
+
+  Auth uses the workflow's `GITHUB_TOKEN` with `packages: write`. Images are
+  pushed directly from the Nix-built `docker-archive` via `skopeo copy` — no
+  Docker daemon needed in CI.
+- `seal.yml` is a manually-triggered hanko release workflow.
 
 ### Docker Deployment
 - Layered Docker image built with Nix for minimal size and reproducibility

@@ -1,0 +1,48 @@
+name: ci
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # hanko computes its version from git history (branch, tags, sha),
+          # so we need the full history available locally.
+          fetch-depth: 0
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - name: Flake check (formatting, lint, tests)
+        run: nix flake check --print-build-logs
+      - name: Build taiga binary
+        run: nix build --print-build-logs .#default
+      - name: Build docker image
+        run: nix build --print-build-logs .#docker-image -o result-docker
+      - name: Publish image to ghcr.io
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${OWNER,,}/taiga"
+          echo "$GHCR_TOKEN" | nix run nixpkgs#skopeo -- login ghcr.io \
+            --username "$GHCR_USER" --password-stdin
+          nix develop --command hanko stamp docker tags "$IMAGE" \
+          | while IFS= read -r tag; do
+              [[ -z "$tag" ]] && continue
+              echo "::group::skopeo copy → $tag"
+              nix run nixpkgs#skopeo -- copy --insecure-policy \
+                "docker-archive:./result-docker" \
+                "docker://$tag"
+              echo "::endgroup::"
+            done

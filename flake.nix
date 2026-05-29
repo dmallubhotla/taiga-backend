@@ -1,5 +1,5 @@
 {
-  description = "Basic flake and files - change me";
+  description = "taiga-backend: Go web API with PostgreSQL/SQLite, JWT auth, and FIT file processing";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
@@ -11,6 +11,10 @@
       url = "github:nix-community/gomod2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    hanko = {
+      url = "github:dmallubhotla/hanko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -18,10 +22,16 @@
       self,
       nixpkgs,
       gomod2nix,
+      hanko,
       ...
     }@inputs:
     let
-      supportedSystems = [ "x86_64-linux" ];
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+        "x86_64-darwin"
+      ];
 
       pkgsFor =
         system:
@@ -32,35 +42,44 @@
             config.allowUnfree = true;
           };
         in
-        pkgs.extend (nixpkgs.lib.composeManyExtensions [ gomod2nix.overlays.default ]);
+        pkgs.extend (
+          nixpkgs.lib.composeManyExtensions [
+            gomod2nix.overlays.default
+            taigaOverlay
+          ]
+        );
 
       eachSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f (pkgsFor system));
 
       treefmtEval = eachSystem (pkgs: inputs.treefmt-nix.lib.evalModule pkgs ./treefmt.nix);
 
-      goPackageFor =
-        pkgs:
-        pkgs.buildGoApplication {
+      # Stamped by hanko; do not hand-edit (use `just release`).
+      version = "0.1.0";
+      commonLdflags = [
+        "-s"
+        "-w"
+        "-X"
+        "main.version=${version}"
+        "-X"
+        "main.commit=${self.rev or self.dirtyRev or "unknown"}"
+        "-X"
+        "main.date=${self.lastModifiedDate or "unknown"}"
+      ];
+
+      taigaOverlay = final: _prev: {
+        taiga = final.buildGoApplication {
           pname = "taiga";
-          version = "0.1";
+          inherit version;
           src = ./.;
           modules = ./gomod2nix.toml;
+          ldflags = commonLdflags;
         };
-      otherGoPackageFor =
-        pkgs:
+      };
 
-        pkgs.buildGoModule {
-          src = ./.;
-          pname = "taiga";
-          version = "0.1";
-
-          vendorHash = "sha256-R3zS72aVorekTiJ9iIGI8jMoeVRcXdo/CglvuiRoWnc=";
-
-        };
       dockerImageFor =
         pkgs:
         let
-          app = goPackageFor pkgs;
+          app = pkgs.taiga;
           migrations-postgres = pkgs.lib.fileset.toSource {
             root = ./.;
             fileset = ./migrations;
@@ -72,9 +91,11 @@
         in
         pkgs.dockerTools.buildLayeredImage {
           name = "taiga";
-          tag = "latest";
+          # Stamped from the flake's `version` (hanko-managed). The push tags
+          # in CI (`:latest`, `:master`, `:sha-…`) are layered on top by skopeo;
+          # this is the immutable on-image identity.
+          tag = version;
           contents = [
-
             pkgs.dockerTools.usrBinEnv
 
             migrations-postgres
@@ -96,34 +117,45 @@
 
     in
     {
+
+      overlays.default = nixpkgs.lib.composeManyExtensions [
+        gomod2nix.overlays.default
+        taigaOverlay
+      ];
+
       checks = eachSystem (pkgs: {
-
-        formatting = treefmtEval.${pkgs.system}.config.build.check self;
-        # go-lint = goLintFor pkgs;
-        # go-test = goTestFor pkgs;
-
+        formatting = treefmtEval.${pkgs.stdenv.hostPlatform.system}.config.build.check self;
+        # Lint as a check: override the taiga derivation to swap go test for
+        # golangci-lint in checkPhase. Reuses the vendored module setup from
+        # goConfigHook so no network is needed inside the sandbox.
+        golangci-lint = pkgs.taiga.overrideAttrs (old: {
+          pname = "taiga-golangci-lint";
+          nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [ pkgs.golangci-lint ];
+          doCheck = true;
+          checkPhase = ''
+            runHook preCheck
+            export GOLANGCI_LINT_CACHE=$TMPDIR/golangci-lint-cache
+            golangci-lint run --timeout 5m ./...
+            runHook postCheck
+          '';
+        });
+        # Run `go test` against the vendored module via the standard checkPhase.
+        go-test = pkgs.taiga.overrideAttrs (_old: {
+          pname = "taiga-go-test";
+          doCheck = true;
+        });
       });
+
       # nix fmt formatter
-      formatter = eachSystem (pkgs: treefmtEval.${pkgs.system}.config.build.wrapper);
+      formatter = eachSystem (pkgs: treefmtEval.${pkgs.stdenv.hostPlatform.system}.config.build.wrapper);
 
-      packages = eachSystem (
-        pkgs:
-
-        let
-          go-package = goPackageFor pkgs;
-          docker-image = dockerImageFor pkgs;
-          go-module = otherGoPackageFor pkgs;
-        in
-        {
-          default = go-package;
-          inherit go-package;
-          inherit go-module;
-          inherit docker-image;
-        }
-      );
+      packages = eachSystem (pkgs: {
+        default = pkgs.taiga;
+        taiga = pkgs.taiga;
+        docker-image = dockerImageFor pkgs;
+      });
 
       # default devshell
-
       devShells = eachSystem (pkgs: {
         default = pkgs.mkShell {
           packages = [
@@ -138,16 +170,15 @@
             pkgs.sqlite
             pkgs.postgresql
             pkgs.openssl
-            #terraform
+            # terraform, maybe opentofu someday
             pkgs.terraform-ls
-            pkgs.terraform
+            # pkgs.terraform
 
             pkgs.awscli2
-          ];
 
-          # Will be executed before entering the shell
-          # or running a command
-          shellHook = '''';
+            # Release tooling — `just release` invokes `hanko seal`.
+            hanko.packages.${pkgs.stdenv.hostPlatform.system}.default
+          ];
         };
       });
     };
