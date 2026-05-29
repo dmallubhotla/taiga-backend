@@ -62,7 +62,7 @@ type sqliteRowsWrapper struct {
 }
 
 func (r *sqliteRowsWrapper) Close() {
-	r.rows.Close()
+	_ = r.rows.Close()
 }
 
 func (r *sqliteRowsWrapper) Err() error {

@@ -197,7 +197,7 @@ func UserTokenFromContext(ctx context.Context) (*UserToken, error) {
 	if !ok {
 		log.Printf("token: %v", token)
 		log.Printf("ok: %v", ok)
-		return nil, fmt.Errorf("Could not extract token from context")
+		return nil, fmt.Errorf("could not extract token from context")
 	}
 	return token, nil
 }

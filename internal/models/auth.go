@@ -23,12 +23,12 @@ type CreateUserResponse struct {
 
 func (m *storeModel) CreateUser(ctx context.Context, req *CreateUserRequest) (*CreateUserResponse, error) {
 	if req.Email == "" {
-		return nil, fmt.Errorf("No email provided")
+		return nil, fmt.Errorf("no email provided")
 	}
 
 	hashedPw, err := hashPassword(req.Password)
 	if err != nil {
-		return nil, fmt.Errorf("Hashing password failed!: %w", err)
+		return nil, fmt.Errorf("hashing password failed!: %w", err)
 	}
 
 	params := &db.CreateUserParams{
@@ -77,19 +77,19 @@ func (m *storeModel) VerifyUserByEmailPassword(ctx context.Context, email string
 	querier, err := m.store.GetQuerier()
 	if err != nil {
 		// may need to pad
-		hashPassword(password)
-		return nil, fmt.Errorf("Shouldn't have issue getting querier!: %w", err)
+		_, _ = hashPassword(password)
+		return nil, fmt.Errorf("shouldn't have issue getting querier!: %w", err)
 	}
 
 	userWithPassword, err := querier.SelectEmailPasswordForAuth(ctx, email)
 	if err != nil {
-		hashPassword(password)
-		return nil, fmt.Errorf("Couldn't select a user")
+		_, _ = hashPassword(password)
+		return nil, fmt.Errorf("couldn't select a user")
 	}
 
 	err = bcrypt.CompareHashAndPassword(userWithPassword.Password, []byte(password))
 	if err != nil {
-		return nil, fmt.Errorf("Error with compare: %w", err)
+		return nil, fmt.Errorf("error with compare: %w", err)
 	}
 
 	userNoPass := noPassword(userWithPassword)

@@ -91,7 +91,7 @@ func getTestFileRepo() filerepo.FileRepo {
 
 func TestNew(t *testing.T) {
 	m := getTestModel(t)
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 
 	h := routes.New(m, getTestTokens(), getTestFileRepo())
 	assert.NotNil(t, h)
@@ -171,7 +171,7 @@ func TestHealthWithNilStore(t *testing.T) {
 
 func TestHealthWithHealthyStore(t *testing.T) {
 	m := getTestModel(t)
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 
 	router := routes.New(m, getTestTokens(), getTestFileRepo())
 
@@ -199,7 +199,7 @@ func TestHealthWithHealthyStore(t *testing.T) {
 func TestHealthWithUnhealthyStore(t *testing.T) {
 	s := store.NewErrorStore()
 	m := models.NewFromStore(s)
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 
 	router := routes.New(m, getTestTokens(), getTestFileRepo())
 

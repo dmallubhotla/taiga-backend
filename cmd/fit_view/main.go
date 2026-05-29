@@ -42,7 +42,7 @@ func main() {
 		log.Printf("error opening filename %v: %v", filename, err)
 		panic(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	repo, err := filerepo.NewFileRepo(*cfg)
 	if err != nil {
@@ -66,7 +66,9 @@ func main() {
 	}
 
 	// log.Printf("%+v", activitySummary.Summary)
-	printJson(run.Summary)
+	if err := printJson(run.Summary); err != nil {
+		log.Printf("error printing summary: %v", err)
+	}
 
 	// for idx, rec := range run.Records {
 	// 	log.Printf("Record: [%d]. %v mi in %v minutes \n", idx, rec.Distance.AsMiles(), rec.DurationFromStart.Minutes())

@@ -49,7 +49,7 @@ func ReadActivity(activity *filedef.Activity) (*Run, error) {
 	sessions := activity.Sessions
 	if len(sessions) != 1 {
 		// log.Printf("Issue, got %d sessions, more than one.", len(activity.Sessions))
-		return nil, fmt.Errorf("Got more than one session in activity")
+		return nil, fmt.Errorf("got more than one session in activity")
 	}
 	onlySession := activity.Sessions[0]
 	summary := summarise(onlySession)
@@ -74,13 +74,13 @@ func ReadFitFile(r io.Reader) (*Run, error) {
 	dec := decoder.New(r)
 	fit, err := dec.Decode()
 	if err != nil {
-		return nil, fmt.Errorf("Received error decoding file: %w", err)
+		return nil, fmt.Errorf("received error decoding file: %w", err)
 	}
 
 	activity := filedef.NewActivity(fit.Messages...)
 	run, err := ReadActivity(activity)
 	if err != nil {
-		return nil, fmt.Errorf("Received error while reading activity: %w", err)
+		return nil, fmt.Errorf("received error while reading activity: %w", err)
 	}
 	return run, nil
 }

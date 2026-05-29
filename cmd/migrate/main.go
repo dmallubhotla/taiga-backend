@@ -38,7 +38,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Test the connection
 	if err := db.Ping(); err != nil {
@@ -50,7 +50,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize migrator: %v", err)
 	}
-	defer migrator.Close()
+	defer func() { _ = migrator.Close() }()
 
 	// Execute command
 	switch *command {

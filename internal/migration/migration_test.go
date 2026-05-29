@@ -32,7 +32,7 @@ func TestNewWithSQLite(t *testing.T) {
 	// Create in-memory SQLite database
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Test creating migrator
 	migrator, err := migration.New(db, "sqlite", migrationsPath)
@@ -59,7 +59,7 @@ func TestNewWithPostgres(t *testing.T) {
 func TestNewWithUnsupportedDriver(t *testing.T) {
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	migrator, err := migration.New(db, "unsupported-driver", "./migrations")
 	assert.Nil(t, migrator)
@@ -70,7 +70,7 @@ func TestNewWithUnsupportedDriver(t *testing.T) {
 func TestNewWithInvalidPath(t *testing.T) {
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	migrator, err := migration.New(db, "sqlite", "/nonexistent/path")
 	assert.Nil(t, migrator)
@@ -114,15 +114,15 @@ func TestMigrationOperations(t *testing.T) {
 	// Create in-memory SQLite database
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Create migrator
 	migrator, err := migration.New(db, "sqlite", migrationsPath)
 	require.NoError(t, err)
-	defer migrator.Close()
+	defer func() { _ = migrator.Close() }()
 
 	// Test initial version (should be no migrations applied)
-	version, dirty, err := migrator.Version()
+	_, _, err = migrator.Version()
 	if err != nil {
 		// No migrations applied yet, this is expected
 		assert.Contains(t, err.Error(), "no migration")
@@ -133,7 +133,7 @@ func TestMigrationOperations(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check version after up migration
-	version, dirty, err = migrator.Version()
+	version, dirty, err := migrator.Version()
 	assert.NoError(t, err)
 	assert.Equal(t, uint(2), version) // Should be at version 2 (latest)
 	assert.False(t, dirty)
@@ -181,11 +181,11 @@ func TestStepsWithInvalidStep(t *testing.T) {
 
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	migrator, err := migration.New(db, "sqlite", migrationsPath)
 	require.NoError(t, err)
-	defer migrator.Close()
+	defer func() { _ = migrator.Close() }()
 
 	// Try to step when no migrations exist
 	err = migrator.Steps(1)
@@ -200,11 +200,11 @@ func TestMigrateToInvalidVersion(t *testing.T) {
 
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	migrator, err := migration.New(db, "sqlite", migrationsPath)
 	require.NoError(t, err)
-	defer migrator.Close()
+	defer func() { _ = migrator.Close() }()
 
 	// Try to migrate to a version that doesn't exist
 	err = migrator.Migrate(999)
@@ -219,7 +219,7 @@ func TestClose(t *testing.T) {
 
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	migrator, err := migration.New(db, "sqlite", migrationsPath)
 	require.NoError(t, err)
@@ -229,7 +229,7 @@ func TestClose(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Calling close again should still work
-	err = migrator.Close()
+	_ = migrator.Close()
 	// May or may not error depending on implementation, but shouldn't panic
 }
 
@@ -241,7 +241,7 @@ func TestSQLite3DriverAlias(t *testing.T) {
 
 	db, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Test that "sqlite3" also works as driver name
 	migrator, err := migration.New(db, "sqlite3", migrationsPath)

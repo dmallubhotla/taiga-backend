@@ -105,7 +105,7 @@ func postActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo) http.Handl
 			badRequestError(w, fmt.Errorf("failed to get file from form: %w", err))
 			return
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		log.Printf("Uploading file: %s", fileHeader.Filename)
 
@@ -260,7 +260,7 @@ func downloadActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo) http.H
 			serverError(w, err)
 			return
 		}
-		defer content.Close()
+		defer func() { _ = content.Close() }()
 
 		log.Println("retrieved content from repo")
 		run, err := workouts.ReadFitFile(content)

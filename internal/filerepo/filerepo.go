@@ -48,7 +48,7 @@ func (f *localStore) Store(ctx context.Context, r io.Reader) (hash string, err e
 
 	content, err := io.ReadAll(reader)
 	if err != nil {
-		return "", fmt.Errorf("Issue reading content: %w", err)
+		return "", fmt.Errorf("issue reading content: %w", err)
 	}
 
 	hashBytes := hasher.Sum(nil)
@@ -59,7 +59,7 @@ func (f *localStore) Store(ctx context.Context, r io.Reader) (hash string, err e
 	}
 
 	if err := os.WriteFile(outputPath, content, 0644); err != nil {
-		return "", fmt.Errorf("Error writing to outputfile: %w", err)
+		return "", fmt.Errorf("error writing to outputfile: %w", err)
 	}
 	return hash, nil
 }
@@ -84,7 +84,7 @@ func (f *localStore) Exists(ctx context.Context, hash string) (exists bool, err 
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	} else if err != nil {
-		return false, fmt.Errorf("Generic stat file error: %w", err)
+		return false, fmt.Errorf("generic stat file error: %w", err)
 	} else {
 		return true, nil
 	}
@@ -98,7 +98,7 @@ func (f *localStore) Fetch(ctx context.Context, hash string) (rc io.ReadCloser, 
 
 	file, err := os.Open(outputPath)
 	if err != nil {
-		return nil, fmt.Errorf("Issue opening file: %w", err)
+		return nil, fmt.Errorf("issue opening file: %w", err)
 	}
 	return file, nil
 }

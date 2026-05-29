@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,7 +22,6 @@ import (
 // Server represents the HTTP server
 type Server struct {
 	config *config.Config
-	db     *sql.DB
 	model  models.Model
 	server *http.Server
 }
@@ -96,7 +94,6 @@ func New(cfg *config.Config) (*Server, error) {
 
 	return &Server{
 		config: cfg,
-		// db:       db,
 		model:  m,
 		server: server,
 	}, nil

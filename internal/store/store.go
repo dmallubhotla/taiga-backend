@@ -43,7 +43,7 @@ func GetStore(cfg *config.Config) (Store, error) {
 	// init if all good
 	err = initDB(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to initialize DB: %w", err)
+		return nil, fmt.Errorf("failed to initialize DB: %w", err)
 	}
 	return store, nil
 
@@ -64,7 +64,9 @@ func initDB(cfg *config.Config) error {
 	// Initialize migrations
 	migrator, err := migration.New(db, cfg.Db.Driver, cfg.Db.MigrationPath)
 	if err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db after migrator init failure: %v", closeErr)
+		}
 		return fmt.Errorf("failed to initialize migrator: %w", err)
 	}
 
@@ -80,8 +82,12 @@ func initDB(cfg *config.Config) error {
 	if cfg.Db.AutoMigrateUp {
 		log.Println("Running database migrations...")
 		if err := migrator.Up(); err != nil {
-			migrator.Close()
-			db.Close()
+			if closeErr := migrator.Close(); closeErr != nil {
+				log.Printf("error closing migrator after migration failure: %v", closeErr)
+			}
+			if closeErr := db.Close(); closeErr != nil {
+				log.Printf("error closing db after migration failure: %v", closeErr)
+			}
 			return fmt.Errorf("failed to run migrations: %w", err)
 		}
 

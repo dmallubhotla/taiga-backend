@@ -135,7 +135,7 @@ func TestServerHTTPEndpoints(t *testing.T) {
 	// Test that we can make a request
 	resp, err := http.Get(testSrv.URL)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }

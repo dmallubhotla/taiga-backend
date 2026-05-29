@@ -157,7 +157,7 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 		log.Printf("Could not get activity file content: %v", err)
 		return nil, err
 	}
-	defer content.Close()
+	defer func() { _ = content.Close() }()
 
 	// Parse the FIT file
 	run, err := workouts.ReadFitFile(content)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"gitea.deepak.science/deepak/taiga/internal/config"
@@ -47,7 +48,9 @@ func New(cfg *config.Config) (Model, error) {
 	s, err := store.GetStore(cfg)
 	if err != nil {
 		if s != nil {
-			s.Close()
+			if closeErr := s.Close(); closeErr != nil {
+				log.Printf("error closing store after init failure: %v", closeErr)
+			}
 		}
 		return nil, fmt.Errorf("failed to initialize database :%w", err)
 	}
