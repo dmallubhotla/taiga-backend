@@ -55,16 +55,7 @@
 
       # Stamped by hanko; do not hand-edit (use `just release`).
       version = "0.1.0";
-      commonLdflags = [
-        "-s"
-        "-w"
-        "-X"
-        "main.version=${version}"
-        "-X"
-        "main.commit=${self.rev or self.dirtyRev or "unknown"}"
-        "-X"
-        "main.date=${self.lastModifiedDate or "unknown"}"
-      ];
+      commonLdflags = hanko.lib.mkGoLdflags { inherit self version; };
 
       taigaOverlay = final: _prev: {
         taiga = final.buildGoApplication {
