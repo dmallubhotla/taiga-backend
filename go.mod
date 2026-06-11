@@ -16,7 +16,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.52.0
-	modernc.org/sqlite v1.51.0
+	modernc.org/sqlite v1.52.0
 )
 
 require (
