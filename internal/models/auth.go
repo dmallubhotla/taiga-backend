@@ -2,11 +2,18 @@ package models
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
-	"gitea.deepak.science/deepak/taiga/internal/db"
-	"golang.org/x/crypto/bcrypt"
 	"log"
+
+	"gitea.deepak.science/deepak/taiga/internal/db"
+	"github.com/jackc/pgx/v5"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// ErrInvalidLogin covers both an unknown email and a wrong password, so callers can't tell which.
+var ErrInvalidLogin = errors.New("invalid email or password")
 
 type CreateUserRequest struct {
 	Email       string `json:"email"`
@@ -84,10 +91,17 @@ func (m *storeModel) VerifyUserByEmailPassword(ctx context.Context, email string
 	userWithPassword, err := querier.SelectEmailPasswordForAuth(ctx, email)
 	if err != nil {
 		_, _ = hashPassword(password)
-		return nil, fmt.Errorf("couldn't select a user")
+		// The sqlite wrapper surfaces database/sql's ErrNoRows, the postgres store pgx's.
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrInvalidLogin
+		}
+		return nil, fmt.Errorf("couldn't select a user: %w", err)
 	}
 
 	err = bcrypt.CompareHashAndPassword(userWithPassword.Password, []byte(password))
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		return nil, ErrInvalidLogin
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error with compare: %w", err)
 	}
