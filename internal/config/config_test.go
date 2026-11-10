@@ -133,6 +133,24 @@ func TestEnvironmentVariables(t *testing.T) {
 	assert.Equal(t, "taiga", cfg.Db.Name)
 }
 
+// A deployment configured only by env must reach keys that have no default.
+func TestEnvironmentVariablesReachKeysWithoutDefaults(t *testing.T) {
+	clearEnvVars(t)
+	t.Setenv("TAIGA_DB_MIGRATION_PATH", "/migrations")
+	t.Setenv("TAIGA_TOKENS_PRIVATE_KEY_PATH", "/jwt/private.pem")
+	t.Setenv("TAIGA_TOKENS_PUBLIC_KEY_PATH", "/jwt/public.pem")
+	t.Setenv("TAIGA_FILE_REPO_S3_BUCKET", "bucket")
+	t.Chdir(t.TempDir())
+
+	cfg, err := config.Load("config")
+	require.NoError(t, err)
+
+	assert.Equal(t, "/migrations", cfg.Db.MigrationPath)
+	assert.Equal(t, "/jwt/private.pem", cfg.Tokens.PrivateKeyPath)
+	assert.Equal(t, "/jwt/public.pem", cfg.Tokens.PublicKeyPath)
+	assert.Equal(t, "bucket", cfg.FileRepo.S3Bucket)
+}
+
 func TestEnvironmentVariablesOverrideConfig(t *testing.T) {
 	clearEnvVars(t)
 

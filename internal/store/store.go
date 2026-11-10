@@ -23,7 +23,8 @@ type Store interface {
 func GetStore(cfg *config.Config) (Store, error) {
 	var store Store
 	var err error
-	log.Printf("Getting store with config %+v", cfg)
+	// Not the whole config: it carries the DB password.
+	log.Printf("Getting %s store", cfg.Db.Driver)
 	switch cfg.Db.Driver {
 	case "postgres":
 		store, err = GetPostgresStore(cfg)
