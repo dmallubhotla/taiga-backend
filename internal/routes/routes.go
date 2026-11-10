@@ -48,7 +48,8 @@ func New(m models.Model, tok tokens.Toker, fileRepo filerepo.FileRepo, opts ...O
 		r.Mount("/hats", newHatRouter(m))
 		r.Mount("/activity_files", newActivityFileRouter(m, fileRepo))
 		r.Mount("/workouts", newWorkoutRouter(m, fileRepo))
-		r.Mount("/segments", newSegmentRouter(m, fileRepo))
+		r.Mount("/segments", newSegmentRouter(m))
+		r.Mount("/jobs", newJobRouter(m))
 	})
 
 	return r

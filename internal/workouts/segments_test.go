@@ -59,7 +59,7 @@ func TestFastestSegmentsCoversFullTarget(t *testing.T) {
 }
 
 func TestFastestSegmentsOmitsUnreachedTargets(t *testing.T) {
-	run := runFromPaces([]float64{0.3}, 3000)
+	run := runFromPaces([]float64{0.3}, 2500)
 
 	got := FastestSegments(run, StandardDistances)
 
@@ -91,7 +91,7 @@ func TestStandardDistance(t *testing.T) {
 	if d, ok := StandardDistance("5k"); !ok || d.Meters != 5000 {
 		t.Errorf("StandardDistance(5k) = %v, %v", d, ok)
 	}
-	if _, ok := StandardDistance("3k"); ok {
-		t.Error("StandardDistance(3k) should not exist")
+	if _, ok := StandardDistance("4k"); ok {
+		t.Error("StandardDistance(4k) should not exist")
 	}
 }

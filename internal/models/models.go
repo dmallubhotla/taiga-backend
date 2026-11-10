@@ -21,8 +21,14 @@ var ErrNoFileContent = errors.New("activity file has no file content")
 // ErrActivityFileInUse means workouts still reference the activity file.
 var ErrActivityFileInUse = errors.New("activity file still has workouts; delete them first")
 
-// ErrNoActivityFile means a workout was entered by hand, so there's nothing to recompute segments from.
+// ErrNoActivityFile means a workout was entered by hand, so there's nothing to reprocess it from.
 var ErrNoActivityFile = errors.New("workout has no activity file")
+
+// ErrDerivedWorkout means an edit would change fields that reprocessing owns.
+var ErrDerivedWorkout = errors.New("workout comes from an activity file, so its summary is rebuilt from the file; reprocess it instead of editing")
+
+// ErrJobNotDead means only a dead job can be retried.
+var ErrJobNotDead = errors.New("only dead jobs can be retried")
 
 // IsNotFound reports a missing row from either store: the sqlite wrapper surfaces database/sql's ErrNoRows, the postgres store pgx's.
 func IsNotFound(err error) bool {
@@ -53,11 +59,22 @@ type Model interface {
 	GetWorkoutsByActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken) ([]*Workout, error)
 	// CreateWorkoutFromActivityFile returns the file's existing workout, with created false, if it already has one.
 	CreateWorkoutFromActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (w *Workout, created bool, err error)
-	RecomputeSegments(ctx context.Context, workoutID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) ([]*WorkoutSegment, error)
-	RecomputeAllSegments(ctx context.Context, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*RecomputeSummary, error)
 	WorkoutSegments(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]*WorkoutSegment, error)
 	BestSegments(ctx context.Context, name string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error)
 	CompareWorkouts(ctx context.Context, workoutIDs []int32, userToken *tokens.UserToken) ([]*WorkoutComparison, error)
+	// ReprocessWorkout rebuilds the workout's summary and segments from its activity file.
+	ReprocessWorkout(ctx context.Context, workoutID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
+	EnqueueReprocessAll(ctx context.Context, now time.Time, userToken *tokens.UserToken) (int64, error)
+	Jobs(ctx context.Context, state string, limit int32, userToken *tokens.UserToken) ([]*Job, error)
+	Job(ctx context.Context, id int32, userToken *tokens.UserToken) (*Job, error)
+	RetryDeadJob(ctx context.Context, id int32, now time.Time, userToken *tokens.UserToken) (*Job, error)
+	// The worker's side of the queue, across all users.
+	EnqueueStaleWorkouts(ctx context.Context, now time.Time) (int64, error)
+	ClaimJob(ctx context.Context, now, leaseUntil time.Time) (*Job, error)
+	FinishJob(ctx context.Context, id int32, now time.Time) error
+	RetryJobLater(ctx context.Context, id int32, runAt time.Time, jobErr error, now time.Time) error
+	KillJob(ctx context.Context, id int32, jobErr error, now time.Time) error
+	PruneJobs(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 type storeModel struct {

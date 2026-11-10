@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/testsupport"
+	"gitea.deepak.science/deepak/taiga/internal/workouts"
 )
 
 func (c *apiClient) post(path string) (int, []byte) {
@@ -127,28 +129,65 @@ func TestDeleteActivityFileWithWorkoutIs409(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, status)
 }
 
-func TestRecomputeSegmentRoutes(t *testing.T) {
+func (c *apiClient) put(path, body string) (int, []byte) {
+	req, err := http.NewRequest(http.MethodPut, c.srv.URL+path, strings.NewReader(body))
+	require.NoError(c.t, err)
+	req.Header.Set("Content-Type", "application/json")
+	return c.do(req)
+}
+
+func TestReprocessRoutes(t *testing.T) {
 	srv, m, toker := newAPI(t)
 	alice := newUserClient(t, srv, m, toker, "alice@example.com")
 	bob := newUserClient(t, srv, m, toker, "bob@example.com")
 	_, workoutID := alice.uploadWorkout(fourKFIT(t))
 
-	status, body := alice.post(fmt.Sprintf("/workouts/%d/segments/recompute", workoutID))
+	status, body := alice.post(fmt.Sprintf("/workouts/%d/reprocess", workoutID))
 	require.Equal(t, http.StatusOK, status, string(body))
-	var segments []models.WorkoutSegment
-	require.NoError(t, json.Unmarshal(body, &segments))
-	assert.Len(t, segments, 2, "1k and 1mi, same as at creation")
+	var workout models.Workout
+	require.NoError(t, json.Unmarshal(body, &workout))
+	assert.Equal(t, workouts.ProcessorVersion, workout.ProcessorVersion)
 
-	status, _ = bob.post(fmt.Sprintf("/workouts/%d/segments/recompute", workoutID))
+	status, _ = bob.post(fmt.Sprintf("/workouts/%d/reprocess", workoutID))
 	assert.Equal(t, http.StatusNotFound, status)
 
-	status, body = alice.post("/segments/recompute")
+	status, body = alice.post("/workouts/reprocess")
+	require.Equal(t, http.StatusAccepted, status, string(body))
+	assert.JSONEq(t, `{"enqueued":1}`, string(body))
+
+	status, body = alice.get("/jobs?state=queued")
+	require.Equal(t, http.StatusOK, status, string(body))
+	var queued []models.Job
+	require.NoError(t, json.Unmarshal(body, &queued))
+	require.Len(t, queued, 1)
+	assert.Equal(t, workoutID, *queued[0].WorkoutID)
+
+	status, _ = alice.get(fmt.Sprintf("/jobs/%d", queued[0].ID))
+	assert.Equal(t, http.StatusOK, status)
+	status, _ = bob.get(fmt.Sprintf("/jobs/%d", queued[0].ID))
+	assert.Equal(t, http.StatusNotFound, status)
+	status, body = alice.post(fmt.Sprintf("/jobs/%d/retry", queued[0].ID))
+	assert.Equal(t, http.StatusConflict, status, "only dead jobs retry")
+	assert.Contains(t, string(body), "dead")
+
+	status, body = bob.get("/jobs")
 	require.Equal(t, http.StatusOK, status)
-	var summary models.RecomputeSummary
-	require.NoError(t, json.Unmarshal(body, &summary))
-	assert.Equal(t, 1, summary.Recomputed)
-	assert.Empty(t, summary.Failed)
-	assert.Contains(t, string(body), `"failed":[]`)
+	assert.JSONEq(t, `[]`, string(body))
+	status, _ = alice.get("/jobs?state=bogus")
+	assert.Equal(t, http.StatusBadRequest, status)
+}
+
+func TestFileBackedWorkoutsAreNotEditable(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	_, workoutID := alice.uploadWorkout(fourKFIT(t))
+
+	status, body := alice.put(fmt.Sprintf("/workouts/%d", workoutID), `{"distance_miles": 3}`)
+	assert.Equal(t, http.StatusUnprocessableEntity, status)
+	assert.Contains(t, string(body), "reprocess")
+
+	status, body = alice.post(fmt.Sprintf("/workouts/%d/reprocess", workoutID))
+	require.Equal(t, http.StatusOK, status, string(body))
 }
 
 func idsOf(files []models.ActivityFile) []int32 {

@@ -58,7 +58,7 @@ func TestCreateWorkoutStoresSegments(t *testing.T) {
 	segments, err := m.WorkoutSegments(ctx, w.ID, user)
 	require.NoError(t, err)
 	byName := segmentsByName(segments)
-	assert.Len(t, segments, 2, "4km covers 1k and 1mi only")
+	assert.Len(t, segments, 4, "4km covers 1k, 1mi, 3k and 2mi only")
 
 	oneK := byName["1k"]
 	require.NotNil(t, oneK)

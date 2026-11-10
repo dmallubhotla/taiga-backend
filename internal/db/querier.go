@@ -6,9 +6,13 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
+	// The outer state check makes a lost race claim nothing (postgres re-checks it after waiting on the row lock), so no SKIP LOCKED and the same SQL runs on sqlite.
+	ClaimJob(ctx context.Context, arg *ClaimJobParams) (*Job, error)
 	CreateActivityFile(ctx context.Context, arg *CreateActivityFileParams) (*ActivityFile, error)
 	CreateHat(ctx context.Context, arg *CreateHatParams) (*Hat, error)
 	//
@@ -28,26 +32,40 @@ type Querier interface {
 	CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (*Workout, error)
 	CreateWorkoutSegment(ctx context.Context, arg *CreateWorkoutSegmentParams) (*WorkoutSegment, error)
 	DeleteActivityFile(ctx context.Context, arg *DeleteActivityFileParams) error
+	DeleteDoneJobsBefore(ctx context.Context, updatedAt pgtype.Timestamptz) (int64, error)
+	DeleteJobsByWorkout(ctx context.Context, arg *DeleteJobsByWorkoutParams) error
 	DeleteSegmentsByWorkout(ctx context.Context, arg *DeleteSegmentsByWorkoutParams) error
 	DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) error
+	// Every user's file-backed workouts not built by the current processor; one already queued is skipped by idx_jobs_pending.
+	EnqueueStaleWorkouts(ctx context.Context, arg *EnqueueStaleWorkoutsParams) (int64, error)
+	EnqueueUserWorkouts(ctx context.Context, arg *EnqueueUserWorkoutsParams) (int64, error)
+	FinishJob(ctx context.Context, arg *FinishJobParams) error
 	GetActivityFile(ctx context.Context, arg *GetActivityFileParams) (*ActivityFile, error)
 	GetActivityFileByHash(ctx context.Context, arg *GetActivityFileByHashParams) (*ActivityFile, error)
 	GetHat(ctx context.Context, arg *GetHatParams) (*Hat, error)
+	GetJob(ctx context.Context, arg *GetJobParams) (*Job, error)
 	GetUser(ctx context.Context, id int32) (*GetUserRow, error)
 	GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Workout, error)
 	GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkoutsByActivityFileParams) ([]*Workout, error)
+	KillJob(ctx context.Context, arg *KillJobParams) error
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	ListActivityFilesWithoutWorkout(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
+	ListJobsByUser(ctx context.Context, arg *ListJobsByUserParams) ([]*Job, error)
+	ListJobsByUserAndState(ctx context.Context, arg *ListJobsByUserAndStateParams) ([]*Job, error)
 	ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error)
 	ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Workout, error)
+	RequeueDeadJob(ctx context.Context, arg *RequeueDeadJobParams) (*Job, error)
+	RetryJobLater(ctx context.Context, arg *RetryJobLaterParams) error
 	// --
 	// really we don't want to select password except specifically for auth.
 	// This query is useful for auth only and for nothing else, which should discourage misuse
 	SelectEmailPasswordForAuth(ctx context.Context, email string) (*SelectEmailPasswordForAuthRow, error)
 	UpdateActivityFile(ctx context.Context, arg *UpdateActivityFileParams) (*ActivityFile, error)
 	UpdateWorkout(ctx context.Context, arg *UpdateWorkoutParams) (*Workout, error)
+	// Everything reprocessing rebuilds from the activity file.
+	UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDerivedParams) (*Workout, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,7 +22,8 @@ func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router.Get("/compare", compareWorkoutsFunc(m))
 	router.Get("/{workoutid}", getWorkoutFunc(m))
 	router.Get("/{workoutid}/segments", getWorkoutSegmentsFunc(m))
-	router.Post("/{workoutid}/segments/recompute", recomputeSegmentsFunc(m, fileRepo))
+	router.Post("/reprocess", reprocessAllFunc(m))
+	router.Post("/{workoutid}/reprocess", reprocessWorkoutFunc(m, fileRepo))
 	router.Post("/", postWorkoutFunc(m))
 	router.Put("/{workoutid}", putWorkoutFunc(m))
 	router.Delete("/{workoutid}", deleteWorkoutFunc(m))
@@ -200,6 +202,15 @@ func putWorkoutFunc(m models.Model) http.HandlerFunc {
 			notFoundHandler(w, r)
 			return
 		}
+		// Edits would be lost on the next reprocess; override columns can come later if hand corrections are wanted.
+		if existingWorkout.ActivityFileID != nil {
+			unprocessableError(w, models.ErrDerivedWorkout)
+			return
+		}
+		if workoutRequest.ActivityFileID != nil {
+			unprocessableError(w, errors.New("attach a file by creating the workout from it: POST /workouts/from-activity-file/{id}"))
+			return
+		}
 
 		// Update fields that were provided
 		if workoutRequest.DistanceMiles != nil {
@@ -213,9 +224,6 @@ func putWorkoutFunc(m models.Model) http.HandlerFunc {
 		}
 		if workoutRequest.PaceMinPerMile != nil {
 			existingWorkout.PaceMinPerMile = workoutRequest.PaceMinPerMile
-		}
-		if workoutRequest.ActivityFileID != nil {
-			existingWorkout.ActivityFileID = workoutRequest.ActivityFileID
 		}
 
 		// Parse timestamps if provided

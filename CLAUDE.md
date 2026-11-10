@@ -186,7 +186,7 @@ go run cmd/migrate/main.go -command=goto -version=2
 
 1. **Create up migration:**
    ```sql
-   -- migrations/000004_add_posts_comments.up.sql
+   -- migrations/000005_add_posts_comments.up.sql
    CREATE TABLE comments (
        id SERIAL PRIMARY KEY,
        post_id INTEGER REFERENCES posts(id),
@@ -197,7 +197,7 @@ go run cmd/migrate/main.go -command=goto -version=2
 
 2. **Create down migration:**
    ```sql
-   -- migrations/000004_add_posts_comments.down.sql
+   -- migrations/000005_add_posts_comments.down.sql
    DROP TABLE IF EXISTS comments;
    ```
 
@@ -262,14 +262,19 @@ file_repo:
 - `GET /activity_files/{id}/download` - Download the actual file content
 
 ### Workouts and Segments API (requires JWT token)
-- `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD
+- `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD. `PUT` only edits hand-entered workouts; one from a file is `422`, since reprocessing owns its summary
 - `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
 - `GET /workouts/{id}/segments` - Fastest effort at each standard distance the workout covers, shortest distance first
-- `POST /workouts/{id}/segments/recompute` - Re-read the workout's file and replace its segments; `422` for a hand-entered workout with no file
-- `POST /segments/recompute` - Recompute segments for all the user's workouts (backfill); returns `{recomputed, skipped, failed: [{workout_id, error}]}`
+- `POST /workouts/{id}/reprocess` - Rebuild the workout's summary and segments from its file now and return it; `422` for a hand-entered workout with no file
+- `POST /workouts/reprocess` - Queue reprocessing of all the user's file-backed workouts; `202` with `{enqueued}`, progress under `/jobs`
 - `GET /workouts/compare?ids=1,2` - Up to 10 workouts with segments keyed by distance name, plus `distances` (the names any of them cover)
-- `GET /segments` - The standard distances (`1k`, `1mi`, `5k`, `5mi`, `10k`, `half`, `marathon`)
+- `GET /segments` - The standard distances (`1k`, `1mi`, `3k`, `2mi`, `5k`, `5mi`, `10k`, `half`, `marathon`)
 - `GET /segments/{name}/best?limit=N` - The user's fastest efforts at that distance across workouts (default 10, max 100)
+
+### Jobs API (requires JWT token)
+- `GET /jobs?state=queued|running|done|dead` - The user's 100 newest jobs, optionally in one state; done jobs are pruned after a week
+- `GET /jobs/{id}` - One job, with `attempts` and `last_error`
+- `POST /jobs/{id}/retry` - Requeue a dead job with fresh attempts; `409` unless it's dead
 
 ## Development Workflow
 
@@ -360,10 +365,18 @@ The application provides a comprehensive API for managing activity files (primar
 
 ### File Processing
 - FIT files are processed using the `muktihari/fit` library for workout data extraction
-- `POST /workouts/from-activity-file/{id}` parses the file once, storing the workout summary and its fastest segments (`workout_segments` table) for each standard distance in `workouts.StandardDistances`
+- `POST /workouts/from-activity-file/{id}` parses the file once, storing the workout summary and its fastest segments (`workout_segments` table) for each standard distance in `workouts.StandardDistances`, in one transaction
 - Segments are measured between recorded points, so a segment can overshoot its distance by up to one record interval
 - Download returns the stored bytes untouched
 - File content is immutable once stored, ensuring data integrity
+
+### Reprocessing and the job queue
+- The FIT file is the source of truth; a workout's summary and segments are derived from it and stamped with `workouts.ProcessorVersion`
+- `ProcessorVersion` combines `extractorVersion` (bump it in `internal/workouts/processor.go` whenever extraction changes) with a hash of `StandardDistances`, so adding or removing a distance reprocesses old workouts on its own
+- `internal/jobs` runs a worker goroutine in the server: on boot it queues a `process_workout` job for every workout whose version isn't current, then polls the `jobs` table
+- The claim query runs unchanged on both databases (no `SKIP LOCKED`); a claimed job holds a 5-minute lease, so a crashed worker's job is picked up again
+- Failures retry with exponential backoff from 30s, up to 5 attempts; errors that can't succeed on retry (unreadable file, missing workout) go straight to `dead`
+- Store writes that must land together go through `store.InTx`; SQLite opens transactions `IMMEDIATE` so concurrent writers wait on `busy_timeout` instead of failing
 
 ### Testing
 - `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, , and `EncodeFIT` / `EncodeMultiSessionFIT` for synthetic activity files

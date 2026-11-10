@@ -149,55 +149,54 @@ func TestDeleteActivityFileInUse(t *testing.T) {
 	require.NoError(t, m.DeleteActivityFile(ctx, *w.ActivityFileID, alice))
 }
 
-func TestRecomputeSegments(t *testing.T) {
+func TestReprocessWorkout(t *testing.T) {
 	ctx := context.Background()
 	m, repo := testsupport.NewModel(t), testsupport.NewFileRepo(t)
 	alice := createUser(t, m, "alice@example.com")
 
-	// A workout from before segments existed: linked to its file but with no segments stored.
+	// A workout from before processing was versioned: linked to its file, but with no summary or segments.
 	af, _, err := m.AddActivityFile(ctx, bytes.NewReader(testsupport.EncodeFIT(t, day1, fourK)), day1, alice, repo)
 	require.NoError(t, err)
 	legacy := addWorkout(t, m, alice, &af.ID)
-	before, err := m.WorkoutSegments(ctx, legacy.ID, alice)
-	require.NoError(t, err)
-	require.Empty(t, before)
+	assert.Empty(t, legacy.ProcessorVersion)
 
-	segments, err := m.RecomputeSegments(ctx, legacy.ID, alice, repo)
+	reprocessed, err := m.ReprocessWorkout(ctx, legacy.ID, alice, repo)
+	require.NoError(t, err)
+	assert.Equal(t, workouts.ProcessorVersion, reprocessed.ProcessorVersion)
+	require.NotNil(t, reprocessed.DistanceMiles)
+	assert.InDelta(t, 4000/1609.344, *reprocessed.DistanceMiles, 0.01)
+	segments, err := m.WorkoutSegments(ctx, legacy.ID, alice)
 	require.NoError(t, err)
 	byName := segmentsByName(segments)
+	assert.Len(t, byName, 4, "1k, 1mi, 3k and 2mi fit in 4km")
 	require.Contains(t, byName, "1k")
 	assert.InDelta(t, 200, byName["1k"].DurationSeconds, 1)
 
-	// Recomputing again replaces rather than duplicates.
-	again, err := m.RecomputeSegments(ctx, legacy.ID, alice, repo)
+	// Reprocessing again replaces the segments rather than adding to them.
+	_, err = m.ReprocessWorkout(ctx, legacy.ID, alice, repo)
+	require.NoError(t, err)
+	again, err := m.WorkoutSegments(ctx, legacy.ID, alice)
 	require.NoError(t, err)
 	assert.Len(t, again, len(segments))
 
 	manual := addWorkout(t, m, alice, nil)
-	_, err = m.RecomputeSegments(ctx, manual.ID, alice, repo)
+	_, err = m.ReprocessWorkout(ctx, manual.ID, alice, repo)
 	assert.ErrorIs(t, err, models.ErrNoActivityFile)
+
+	bob := createUser(t, m, "bob@example.com")
+	_, err = m.ReprocessWorkout(ctx, legacy.ID, bob, repo)
+	assert.True(t, models.IsNotFound(err), "bob can't reprocess alice's workout: %v", err)
 }
 
-func TestRecomputeAllSegments(t *testing.T) {
-	ctx := context.Background()
+func TestCreatedWorkoutsAreCurrent(t *testing.T) {
 	m, repo := testsupport.NewModel(t), testsupport.NewFileRepo(t)
 	alice := createUser(t, m, "alice@example.com")
+	w := uploadWorkout(t, m, repo, alice, day1, fourK)
+	assert.Equal(t, workouts.ProcessorVersion, w.ProcessorVersion)
 
-	good, _, err := m.AddActivityFile(ctx, bytes.NewReader(testsupport.EncodeFIT(t, day1, fourK)), day1, alice, repo)
+	n, err := m.EnqueueStaleWorkouts(context.Background(), day1)
 	require.NoError(t, err)
-	addWorkout(t, m, alice, &good.ID)
-	junk, _, err := m.AddActivityFile(ctx, bytes.NewReader([]byte("junk")), day2, alice, repo)
-	require.NoError(t, err)
-	broken := addWorkout(t, m, alice, &junk.ID)
-	addWorkout(t, m, alice, nil)
-
-	summary, err := m.RecomputeAllSegments(ctx, alice, repo)
-	require.NoError(t, err)
-	assert.Equal(t, 1, summary.Recomputed)
-	assert.Equal(t, 1, summary.Skipped)
-	require.Len(t, summary.Failed, 1)
-	assert.Equal(t, broken.ID, summary.Failed[0].WorkoutID)
-	assert.Contains(t, summary.Failed[0].Error, workouts.ErrUnreadableFile.Error())
+	assert.Zero(t, n)
 }
 
 func addWorkout(t *testing.T, m models.Model, user *tokens.UserToken, activityFileID *int32) *models.Workout {

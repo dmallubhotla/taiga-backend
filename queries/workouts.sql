@@ -29,10 +29,11 @@ INSERT INTO
     start_time,
     end_time,
     activity_file_id,
-    user_id
+    user_id,
+    processor_version
   )
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8)
+  ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
   *;
 
@@ -69,3 +70,21 @@ WHERE
   AND user_id = $2
 ORDER BY
   start_time DESC;
+
+-- name: UpdateWorkoutDerived :one
+-- Everything reprocessing rebuilds from the activity file.
+UPDATE workouts
+SET
+  distance_miles = $3,
+  time_seconds = $4,
+  speed_mph = $5,
+  pace_min_per_mile = $6,
+  start_time = $7,
+  end_time = $8,
+  processor_version = $9,
+  updated_at = CURRENT_TIMESTAMP
+WHERE
+  id = $1
+  AND user_id = $2
+RETURNING
+  *;

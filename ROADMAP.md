@@ -58,7 +58,7 @@ Multiple accounts exist only so more than one person can use the same deployment
 ### Tasks
 
 - [ ] Config: `auth.*` section, provider list, secrets read from files; refuse to start if a provider's discovery fails at boot (log which).
-- [ ] Migration `000004_user_identities` (postgres + sqlite) and sqlc queries.
+- [ ] Migration `000005_user_identities` (postgres + sqlite) and sqlc queries.
 - [ ] `internal/oidc`: provider registry from config, login redirect, callback handling, state/nonce/PKCE cookie.
 - [ ] Routes: `/auth/providers`, `/auth/oidc/{provider}/{login,callback}`, `/auth/identities` (list, link, unlink).
 - [ ] Tests against an in-process fake provider (e.g. `github.com/oauth2-proxy/mockoidc`): happy path, bad `state`, bad `nonce`, wrong audience, expired token, signup disabled, email auto-link on and off, `email_verified: false`.
@@ -74,7 +74,7 @@ Multiple accounts exist only so more than one person can use the same deployment
 - [x] Unparsable FIT files and multi-session files (e.g. triathlons) return **422** with a reason, not 500.
 - [x] Don't leave orphan `activity_file` rows when parsing fails (or expose them so they can be retried or deleted). Exposed via `GET /activity_files?without_workout=true`; kept rather than deleted so multi-sport files can be processed once supported.
 - [x] Deduplicate uploads: the same file (same content hash, already computed) for the same user returns the existing workout instead of creating a second one.
-- [x] Backfill segments for workouts created before `workout_segments` existed: `POST /segments/recompute` (all) and `POST /workouts/{id}/segments/recompute`.
+- [x] Backfill segments for workouts created before `workout_segments` existed. (First as `POST /segments/recompute`; M5 replaced it with reprocessing, which backfills on its own.)
 - [ ] Frontend and `taco`: say "already uploaded" on a `200` re-upload, offer a backfill action, and list files that failed to parse.
 
 ## M3 — Deploy
@@ -104,17 +104,20 @@ The test stack is internal-only (LAN and tailnet). These must land before taiga 
 ## M5 — Reprocessing and a work queue
 
 The FIT file is the source of truth; everything taiga computes from it (summary, segments, and later series and heart rate) is derived data that should be rebuildable whenever the app learns something new.
-`POST /segments/recompute` is a one-off version of this; M5 generalises it.
 
-- [ ] **Versioned processing.** A `processor_version` on each workout, bumped in code whenever extraction changes (new fields, a segment algorithm fix). Workouts below the current version are stale.
-- [ ] **Reprocess from the file.** Re-read the FIT file and rebuild every derived table for a workout in one place, replacing `RecomputeSegments`.
-  Decide what happens to fields a user edited through `PUT /workouts/{id}`: either reprocessing never overwrites them, or edits move to separate override columns.
-- [ ] **A job queue in Postgres**, not new infrastructure: a `jobs` table claimed with `SELECT … FOR UPDATE SKIP LOCKED`, and a worker loop in the server process (SQLite in dev runs a single worker).
-  - Job kinds to start: `process_workout`, `reprocess_stale` (enqueues one `process_workout` per stale workout on boot or on demand), and `update_stats`.
-  - Retries with backoff, and a dead state with the last error, visible through the API.
-- [ ] **Async uploads.** Creating a workout enqueues `process_workout` and returns `202` with a job to poll, so a large file doesn't hold a request open; the frontend and `taco` show progress.
-  Keep the 422 for files that can't be decoded at all, checked up front, so obviously bad uploads still fail fast.
-- [ ] **Stats as derived data.** Anything aggregated across workouts (weekly/monthly totals, best-effort history) is recomputed by `update_stats` jobs after processing, not on every read.
+- [x] **Versioned processing.** Each workout carries the `processor_version` that built it: `extractorVersion` (bumped by hand when extraction changes) plus a hash of `StandardDistances`, so editing the distance list makes every workout stale without anyone remembering to bump.
+- [x] **Reprocess from the file.** `ReprocessWorkout` rebuilds the summary and replaces the whole segment set in one transaction (via the new `store.InTx`), so added distances get filled in and removed ones disappear. It replaced `POST /segments/recompute`.
+- [x] **Hand edits.** A workout from a file is derived data only: `PUT` returns 422 for it. If hand corrections turn out to be wanted, they go in separate override columns that reprocessing never touches.
+- [x] **A job queue in the database**, not new infrastructure: a `jobs` table and a worker goroutine in the server (`internal/jobs`).
+  - The claim is one `UPDATE … WHERE id = (SELECT … LIMIT 1) AND state = 'queued' RETURNING *` that runs on both Postgres and SQLite; a lost race claims nothing. `SKIP LOCKED` buys nothing with one replica.
+  - Leases (5 min) so a crashed worker's job is claimed again; exponential backoff from 30s; dead after 5 attempts, or at once for errors a retry can't fix.
+  - On boot the worker queues `process_workout` for every stale workout. `POST /workouts/reprocess` queues all of a user's; `GET /jobs`, `POST /jobs/{id}/retry` to watch and retry.
+- [x] Standard distances gained `3k` and `2mi`; existing workouts pick them up through the above.
+- [ ] Frontend and `taco`: a reprocess action, and dead jobs surfaced somewhere visible.
+
+**Deferred:**
+- **Async uploads.** Parsing takes milliseconds, so `202` plus polling in both clients isn't worth it yet. Uploads that genuinely run in the background arrive with M8's `sync_source` jobs.
+- **`update_stats` jobs.** Nothing is aggregated across workouts yet. Add the job kind with the first stat that needs it (M6 trends, M7 zones).
 
 ## M6 — Visualisations
 

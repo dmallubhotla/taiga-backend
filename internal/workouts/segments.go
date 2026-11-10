@@ -14,6 +14,8 @@ type NamedDistance struct {
 var StandardDistances = []NamedDistance{
 	{"1k", 1000},
 	{"1mi", 1609.344},
+	{"3k", 3000},
+	{"2mi", 3218.688},
 	{"5k", 5000},
 	{"5mi", 8046.72},
 	{"10k", 10000},

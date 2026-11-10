@@ -26,6 +26,20 @@ type Hat struct {
 	UserID      *int32             `json:"user_id"`
 }
 
+type Job struct {
+	ID         int32              `json:"id"`
+	UserID     int32              `json:"user_id"`
+	Kind       string             `json:"kind"`
+	WorkoutID  *int32             `json:"workout_id"`
+	State      string             `json:"state"`
+	Attempts   int32              `json:"attempts"`
+	RunAt      pgtype.Timestamptz `json:"run_at"`
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	LastError  *string            `json:"last_error"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
 type User struct {
 	ID          int32              `json:"id"`
 	Email       string             `json:"email"`
@@ -36,17 +50,18 @@ type User struct {
 }
 
 type Workout struct {
-	ID             int32              `json:"id"`
-	DistanceMiles  *float64           `json:"distance_miles"`
-	TimeSeconds    *float64           `json:"time_seconds"`
-	SpeedMph       *float64           `json:"speed_mph"`
-	PaceMinPerMile *float64           `json:"pace_min_per_mile"`
-	StartTime      pgtype.Timestamptz `json:"start_time"`
-	EndTime        pgtype.Timestamptz `json:"end_time"`
-	ActivityFileID *int32             `json:"activity_file_id"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	UserID         int32              `json:"user_id"`
+	ID               int32              `json:"id"`
+	DistanceMiles    *float64           `json:"distance_miles"`
+	TimeSeconds      *float64           `json:"time_seconds"`
+	SpeedMph         *float64           `json:"speed_mph"`
+	PaceMinPerMile   *float64           `json:"pace_min_per_mile"`
+	StartTime        pgtype.Timestamptz `json:"start_time"`
+	EndTime          pgtype.Timestamptz `json:"end_time"`
+	ActivityFileID   *int32             `json:"activity_file_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	UserID           int32              `json:"user_id"`
+	ProcessorVersion string             `json:"processor_version"`
 }
 
 type WorkoutSegment struct {

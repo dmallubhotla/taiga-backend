@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -12,6 +14,7 @@ import (
 
 	"gitea.deepak.science/deepak/taiga/internal/config"
 	"gitea.deepak.science/deepak/taiga/internal/filerepo"
+	"gitea.deepak.science/deepak/taiga/internal/jobs"
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/routes"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
@@ -22,6 +25,10 @@ type Server struct {
 	config *config.Config
 	model  models.Model
 	server *http.Server
+	worker *jobs.Worker
+
+	mu         sync.Mutex
+	stopWorker func()
 }
 
 // New creates a new server instance
@@ -99,23 +106,47 @@ func New(cfg *config.Config) (*Server, error) {
 		config: cfg,
 		model:  m,
 		server: server,
+		worker: jobs.NewWorker(m, fileRepo),
 	}, nil
 }
 
-// Start starts the HTTP server
+// Start runs the job worker and serves HTTP until Shutdown.
 func (s *Server) Start() error {
-	return s.server.ListenAndServe()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	s.mu.Lock()
+	s.stopWorker = func() { cancel(); <-done }
+	s.mu.Unlock()
+	go func() {
+		defer close(done)
+		s.worker.Run(ctx)
+	}()
+
+	err := s.server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
+		s.haltWorker()
+	}
+	return err
 }
 
-// Shutdown gracefully shuts down the server
+func (s *Server) haltWorker() {
+	s.mu.Lock()
+	stop := s.stopWorker
+	s.stopWorker = nil
+	s.mu.Unlock()
+	if stop != nil {
+		stop()
+	}
+}
+
+// Shutdown stops taking requests, lets the current job finish, then closes the store.
 func (s *Server) Shutdown(ctx context.Context) error {
-	// Close store
+	err := s.server.Shutdown(ctx)
+	s.haltWorker()
 	if s.model != nil {
 		if err := s.model.Close(); err != nil {
 			log.Printf("Error closing model: %v", err)
 		}
 	}
-
-	// Shutdown HTTP server
-	return s.server.Shutdown(ctx)
+	return err
 }
