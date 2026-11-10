@@ -2,7 +2,7 @@
 
 The goal is seeing and comparing runs in a browser.
 Pieces: this API, the browser frontend (`taiga-frontend`), and the `taco` CLI (`taiga-cliclient`) for scripting.
-Milestones are roughly ordered; each should fit in one PR per repo.
+Milestones are roughly ordered; each should fit in one PR per repo. M5 comes before M6/M7 because both need old workouts re-read from their files.
 
 ---
 
@@ -97,8 +97,36 @@ The test stack is internal-only (LAN and tailnet). These must land before taiga 
 - [ ] Fix CLAUDE.md drift (it documents `/auth/login`; the endpoint is `/auth/tokens`).
 - [ ] Tests for `internal/tokens`, `internal/store`, `internal/filerepo`.
 
+## M5 — Reprocessing and a work queue
+
+The FIT file is the source of truth; everything taiga computes from it (summary, segments, and later series and heart rate) is derived data that should be rebuildable whenever the app learns something new.
+`POST /segments/recompute` is a one-off version of this; M5 generalises it.
+
+- [ ] **Versioned processing.** A `processor_version` on each workout, bumped in code whenever extraction changes (new fields, a segment algorithm fix). Workouts below the current version are stale.
+- [ ] **Reprocess from the file.** Re-read the FIT file and rebuild every derived table for a workout in one place, replacing `RecomputeSegments`.
+  Decide what happens to fields a user edited through `PUT /workouts/{id}`: either reprocessing never overwrites them, or edits move to separate override columns.
+- [ ] **A job queue in Postgres**, not new infrastructure: a `jobs` table claimed with `SELECT … FOR UPDATE SKIP LOCKED`, and a worker loop in the server process (SQLite in dev runs a single worker).
+  - Job kinds to start: `process_workout`, `reprocess_stale` (enqueues one `process_workout` per stale workout on boot or on demand), and `update_stats`.
+  - Retries with backoff, and a dead state with the last error, visible through the API.
+- [ ] **Async uploads.** Creating a workout enqueues `process_workout` and returns `202` with a job to poll, so a large file doesn't hold a request open; the frontend and `taco` show progress.
+  Keep the 422 for files that can't be decoded at all, checked up front, so obviously bad uploads still fail fast.
+- [ ] **Stats as derived data.** Anything aggregated across workouts (weekly/monthly totals, best-effort history) is recomputed by `update_stats` jobs after processing, not on every read.
+
+## M6 — Visualisations
+
+- [ ] **Per-record series.** Store a downsampled series per workout at processing time (time, distance, pace, elevation, heart rate, lat/long), as a derived table or one compact blob per workout, rebuilt by M5.
+  Serve it from `GET /workouts/{id}/series`. Don't re-parse the FIT file on every page view.
+- [ ] **Graphs** in the frontend: pace, elevation and heart rate over distance or time for one workout; the best segments from `workout_segments` highlighted on the pace graph; a distance's best-effort trend over time.
+- [ ] **Maps.** The GPS track from the series (FIT stores positions in semicircles; convert at processing time), drawn with Leaflet on OpenStreetMap tiles, with segments highlighted.
+  Tracks reveal where runs start and end, i.e. home. That's fine internally, but any later sharing needs a privacy zone that trims the track near chosen points.
+- [ ] Compare view: overlay two workouts' pace graphs aligned by distance.
+
+## M7 — Heart rate (lower priority)
+
+- [ ] Average and max HR per workout from the FIT session (`avg_heart_rate`, `max_heart_rate`), and HR in the M6 series. Old workouts pick these up through M5 reprocessing.
+- [ ] A per-user max HR (and optionally resting HR) setting, defaulting to the highest HR seen across the user's workouts.
+- [ ] Time in HR zones per workout, derived from that setting. Changing the setting enqueues stats jobs rather than reprocessing files.
+
 ## Later
 
 - `taco compare` / `taco best <distance>` in the CLI.
-- Charts in the frontend: pace over a workout, a distance's best-effort trend over time.
-- Per-record data (pace/HR over time) exposed by the API for those charts.
