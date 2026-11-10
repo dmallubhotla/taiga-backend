@@ -16,6 +16,7 @@ INSERT INTO
   activity_file (timestamp, file_repo_hash, user_id)
 VALUES
   ($1, $2, $3)
+ON CONFLICT (user_id, file_repo_hash) DO NOTHING
 RETURNING
   id, timestamp, file_repo_hash, created_at, updated_at, user_id
 `
@@ -88,6 +89,39 @@ func (q *Queries) GetActivityFile(ctx context.Context, arg *GetActivityFileParam
 	return &i, err
 }
 
+const getActivityFileByHash = `-- name: GetActivityFileByHash :one
+SELECT
+  id, timestamp, file_repo_hash, created_at, updated_at, user_id
+FROM
+  activity_file
+WHERE
+  user_id = $1
+  AND file_repo_hash = $2
+ORDER BY
+  id
+LIMIT
+  1
+`
+
+type GetActivityFileByHashParams struct {
+	UserID       *int32  `json:"user_id"`
+	FileRepoHash *string `json:"file_repo_hash"`
+}
+
+func (q *Queries) GetActivityFileByHash(ctx context.Context, arg *GetActivityFileByHashParams) (*ActivityFile, error) {
+	row := q.db.QueryRow(ctx, getActivityFileByHash, arg.UserID, arg.FileRepoHash)
+	var i ActivityFile
+	err := row.Scan(
+		&i.ID,
+		&i.Timestamp,
+		&i.FileRepoHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+	)
+	return &i, err
+}
+
 const listActivityFilesByUser = `-- name: ListActivityFilesByUser :many
 SELECT
   id, timestamp, file_repo_hash, created_at, updated_at, user_id
@@ -101,6 +135,52 @@ ORDER BY
 
 func (q *Queries) ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error) {
 	rows, err := q.db.Query(ctx, listActivityFilesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ActivityFile{}
+	for rows.Next() {
+		var i ActivityFile
+		if err := rows.Scan(
+			&i.ID,
+			&i.Timestamp,
+			&i.FileRepoHash,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActivityFilesWithoutWorkout = `-- name: ListActivityFilesWithoutWorkout :many
+SELECT
+  id, timestamp, file_repo_hash, created_at, updated_at, user_id
+FROM
+  activity_file
+WHERE
+  activity_file.user_id = $1
+  AND NOT EXISTS (
+    SELECT
+      1
+    FROM
+      workouts
+    WHERE
+      workouts.activity_file_id = activity_file.id
+  )
+ORDER BY
+  timestamp DESC
+`
+
+func (q *Queries) ListActivityFilesWithoutWorkout(ctx context.Context, userID *int32) ([]*ActivityFile, error) {
+	rows, err := q.db.Query(ctx, listActivityFilesWithoutWorkout, userID)
 	if err != nil {
 		return nil, err
 	}

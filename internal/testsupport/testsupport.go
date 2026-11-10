@@ -73,6 +73,20 @@ type Split struct {
 // FIT timestamps are whole seconds, so pick splits where 10m takes a whole number of seconds.
 func EncodeFIT(t *testing.T, start time.Time, splits []Split) []byte {
 	t.Helper()
+	return encode(t, buildActivity(start, splits))
+}
+
+// EncodeMultiSessionFIT is EncodeFIT with the session repeated, the shape of a multi-sport (e.g. triathlon) file.
+func EncodeMultiSessionFIT(t *testing.T, start time.Time, splits []Split, sessions int) []byte {
+	t.Helper()
+	activity := buildActivity(start, splits)
+	for range sessions - 1 {
+		activity.Sessions = append(activity.Sessions, activity.Sessions[0])
+	}
+	return encode(t, activity)
+}
+
+func buildActivity(start time.Time, splits []Split) *filedef.Activity {
 	const step = 10.0
 
 	activity := filedef.NewActivity()
@@ -101,7 +115,11 @@ func EncodeFIT(t *testing.T, start time.Time, splits []Split) []byte {
 		SetTotalDistanceScaled(meters).
 		SetTotalElapsedTimeScaled(seconds).
 		SetSport(typedef.SportRunning))
+	return activity
+}
 
+func encode(t *testing.T, activity *filedef.Activity) []byte {
+	t.Helper()
 	fit := activity.ToFIT(nil)
 	var buf bytes.Buffer
 	if err := encoder.New(&buf).Encode(&fit); err != nil {

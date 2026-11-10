@@ -252,17 +252,19 @@ file_repo:
 - `DELETE /hats/{id}` - Delete hat
 
 ### Activity Files API (requires JWT token)
-- `GET /activity_files` - List all activity files for authenticated user (newest first)
+- `GET /activity_files` - List all activity files for authenticated user (newest first); `?without_workout=true` lists only files with no workout, e.g. ones that failed to parse
 - `GET /activity_files/{id}` - Get specific activity file metadata
-- `POST /activity_files` - Upload new activity file (multipart form with `file` and optional `timestamp`)
+- `POST /activity_files` - Upload new activity file (multipart form with `file` and optional `timestamp`); `201` when new, `200` with the existing file when the user already uploaded the same content
 - `PUT /activity_files/{id}` - Update activity file metadata (timestamp, file_repo_hash)
-- `DELETE /activity_files/{id}` - Delete activity file and its content
+- `DELETE /activity_files/{id}` - Delete the activity file record (stored content is shared by hash and kept); `409` while workouts still reference it
 - `GET /activity_files/{id}/download` - Download the actual file content
 
 ### Workouts and Segments API (requires JWT token)
 - `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD
-- `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file into a workout and store its segments
+- `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
 - `GET /workouts/{id}/segments` - Fastest effort at each standard distance the workout covers, shortest distance first
+- `POST /workouts/{id}/segments/recompute` - Re-read the workout's file and replace its segments; `422` for a hand-entered workout with no file
+- `POST /segments/recompute` - Recompute segments for all the user's workouts (backfill); returns `{recomputed, skipped, failed: [{workout_id, error}]}`
 - `GET /workouts/compare?ids=1,2` - Up to 10 workouts with segments keyed by distance name, plus `distances` (the names any of them cover)
 - `GET /segments` - The standard distances (`1k`, `1mi`, `5k`, `5mi`, `10k`, `half`, `marathon`)
 - `GET /segments/{name}/best?limit=N` - The user's fastest efforts at that distance across workouts (default 10, max 100)
@@ -361,4 +363,4 @@ The application provides a comprehensive API for managing activity files (primar
 - File content is immutable once stored, ensuring data integrity
 
 ### Testing
-- `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, and `EncodeFIT` for synthetic activity files
+- `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, , and `EncodeFIT` / `EncodeMultiSessionFIT` for synthetic activity files

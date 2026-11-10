@@ -161,8 +161,8 @@ func (m *storeModel) GetWorkoutsByActivityFile(ctx context.Context, activityFile
 	return retWorkouts, nil
 }
 
-func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error) {
-	// Get the activity file content
+// readRun parses an activity file's stored content.
+func (m *storeModel) readRun(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*workouts.Run, error) {
 	content, err := m.GetActivityFileContent(ctx, activityFileID, userToken, fileRepo)
 	if err != nil {
 		log.Printf("Could not get activity file content: %v", err)
@@ -170,11 +170,27 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 	}
 	defer func() { _ = content.Close() }()
 
-	// Parse the FIT file
 	run, err := workouts.ReadFitFile(content)
 	if err != nil {
 		log.Printf("Could not parse FIT file: %v", err)
 		return nil, err
+	}
+	return run, nil
+}
+
+func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, bool, error) {
+	existing, err := m.GetWorkoutsByActivityFile(ctx, activityFileID, userToken)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(existing) > 0 {
+		log.Printf("Activity file %d already has workout %d", activityFileID, existing[0].ID)
+		return existing[0], false, nil
+	}
+
+	run, err := m.readRun(ctx, activityFileID, userToken, fileRepo)
+	if err != nil {
+		return nil, false, err
 	}
 
 	// Convert RunSummary to Workout
@@ -196,7 +212,7 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 
 	saved, err := m.AddWorkout(ctx, workout, userToken)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if err := m.addSegments(ctx, saved.ID, workouts.FastestSegments(run, workouts.StandardDistances), userToken); err != nil {
@@ -204,9 +220,9 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 		if delErr := m.DeleteWorkout(ctx, saved.ID, userToken); delErr != nil {
 			log.Printf("Could not roll back workout %d after segment failure: %v", saved.ID, delErr)
 		}
-		return nil, err
+		return nil, false, err
 	}
-	return saved, nil
+	return saved, true, nil
 }
 
 func (m *storeModel) addSegments(ctx context.Context, workoutID int32, segments []*workouts.BestSegment, userToken *tokens.UserToken) error {

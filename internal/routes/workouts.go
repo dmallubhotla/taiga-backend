@@ -21,6 +21,7 @@ func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router.Get("/compare", compareWorkoutsFunc(m))
 	router.Get("/{workoutid}", getWorkoutFunc(m))
 	router.Get("/{workoutid}/segments", getWorkoutSegmentsFunc(m))
+	router.Post("/{workoutid}/segments/recompute", recomputeSegmentsFunc(m, fileRepo))
 	router.Post("/", postWorkoutFunc(m))
 	router.Put("/{workoutid}", putWorkoutFunc(m))
 	router.Delete("/{workoutid}", deleteWorkoutFunc(m))
@@ -298,15 +299,20 @@ func postWorkoutFromActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo)
 		activityFileID := int32(activityFileID64)
 
 		log.Printf("Creating workout from activity file %v", activityFileID)
-		workout, err := m.CreateWorkoutFromActivityFile(ctx, activityFileID, userToken, fileRepo)
+		workout, created, err := m.CreateWorkoutFromActivityFile(ctx, activityFileID, userToken, fileRepo)
 		if err != nil {
+			if activityContentError(w, r, err) {
+				return
+			}
 			log.Printf("Error creating workout from activity file! %v", err)
 			serverError(w, err)
 			return
 		}
 
 		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		if created {
+			w.WriteHeader(http.StatusCreated)
+		}
 		if err := json.NewEncoder(w).Encode(workout); err != nil {
 			serverError(w, err)
 		}

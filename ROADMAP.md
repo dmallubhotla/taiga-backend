@@ -54,7 +54,7 @@ Milestones are roughly ordered; each should fit in one PR per repo.
 ### Tasks
 
 - [ ] Config: `auth.*` section, provider list, secrets read from files; refuse to start if a provider's discovery fails at boot (log which).
-- [ ] Migration `000003_user_identities` (postgres + sqlite) and sqlc queries.
+- [ ] Migration `000004_user_identities` (postgres + sqlite) and sqlc queries.
 - [ ] `internal/oidc`: provider registry from config, login redirect, callback handling, state/nonce/PKCE cookie.
 - [ ] Routes: `/auth/providers`, `/auth/oidc/{provider}/{login,callback}`, `/auth/identities` (list, link, unlink).
 - [ ] Tests against an in-process fake provider (e.g. `github.com/oauth2-proxy/mockoidc`): happy path, bad `state`, bad `nonce`, wrong audience, expired token, signup disabled, email auto-link on and off, `email_verified: false`.
@@ -67,10 +67,11 @@ Milestones are roughly ordered; each should fit in one PR per repo.
 
 ## M2 — Upload hygiene
 
-- [ ] Unparsable FIT files and multi-session files (e.g. triathlons) return **422** with a reason, not 500.
-- [ ] Don't leave orphan `activity_file` rows when parsing fails (or expose them so they can be retried or deleted).
-- [ ] Deduplicate uploads: the same file (same content hash, already computed) for the same user returns the existing workout instead of creating a second one.
-- [ ] Backfill segments for workouts created before `workout_segments` existed (a one-off command or `POST /workouts/{id}/segments/recompute`).
+- [x] Unparsable FIT files and multi-session files (e.g. triathlons) return **422** with a reason, not 500.
+- [x] Don't leave orphan `activity_file` rows when parsing fails (or expose them so they can be retried or deleted). Exposed via `GET /activity_files?without_workout=true`; kept rather than deleted so multi-sport files can be processed once supported.
+- [x] Deduplicate uploads: the same file (same content hash, already computed) for the same user returns the existing workout instead of creating a second one.
+- [x] Backfill segments for workouts created before `workout_segments` existed: `POST /segments/recompute` (all) and `POST /workouts/{id}/segments/recompute`.
+- [ ] Frontend and `taco`: say "already uploaded" on a `200` re-upload, offer a backfill action, and list files that failed to parse.
 
 ## M3 — Deploy
 

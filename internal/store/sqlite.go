@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"gitea.deepak.science/deepak/taiga/internal/config"
@@ -138,6 +139,10 @@ func GetSqliteStore(cfg *config.Config) (Store, error) {
 	dsn := cfg.Db.DSN()
 	if dsn == "" {
 		return nil, fmt.Errorf("invalid database configuration")
+	}
+	// Without a busy timeout, concurrent writers across the pool fail immediately with SQLITE_BUSY instead of waiting their turn.
+	if !strings.Contains(dsn, "?") {
+		dsn += "?_pragma=busy_timeout(5000)"
 	}
 	// Use database/sql for SQLite (pgx doesn't support SQLite)
 	dbconn, err := sql.Open(cfg.Db.Driver, dsn)

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"gitea.deepak.science/deepak/taiga/internal/filerepo"
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	"gitea.deepak.science/deepak/taiga/internal/workouts"
@@ -30,10 +31,11 @@ type compareResponse struct {
 	Workouts  []*models.WorkoutComparison `json:"workouts"`
 }
 
-func newSegmentRouter(m models.Model) http.Handler {
+func newSegmentRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router := chi.NewRouter()
 	router.Get("/", getStandardDistancesFunc())
 	router.Get("/{name}/best", getBestSegmentsFunc(m))
+	router.Post("/recompute", recomputeAllSegmentsFunc(m, fileRepo))
 	return router
 }
 
@@ -110,6 +112,52 @@ func getWorkoutSegmentsFunc(m models.Model) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, segments)
+	}
+}
+
+func recomputeSegmentsFunc(m models.Model, fileRepo filerepo.FileRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		userToken, err := tokens.UserTokenFromContext(ctx)
+		if err != nil {
+			unauthorizedHandler(w, r)
+			return
+		}
+
+		workoutID64, err := strconv.ParseInt(chi.URLParam(r, "workoutid"), 10, 32)
+		if err != nil {
+			notFoundHandler(w, r)
+			return
+		}
+
+		segments, err := m.RecomputeSegments(ctx, int32(workoutID64), userToken, fileRepo)
+		if err != nil {
+			if !activityContentError(w, r, err) {
+				serverError(w, err)
+			}
+			return
+		}
+		writeJSON(w, segments)
+	}
+}
+
+func recomputeAllSegmentsFunc(m models.Model, fileRepo filerepo.FileRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		userToken, err := tokens.UserTokenFromContext(ctx)
+		if err != nil {
+			unauthorizedHandler(w, r)
+			return
+		}
+
+		summary, err := m.RecomputeAllSegments(ctx, userToken, fileRepo)
+		if err != nil {
+			serverError(w, err)
+			return
+		}
+		writeJSON(w, summary)
 	}
 }
 

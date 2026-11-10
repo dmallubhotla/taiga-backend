@@ -2,13 +2,11 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 
 	"gitea.deepak.science/deepak/taiga/internal/db"
-	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -91,8 +89,7 @@ func (m *storeModel) VerifyUserByEmailPassword(ctx context.Context, email string
 	userWithPassword, err := querier.SelectEmailPasswordForAuth(ctx, email)
 	if err != nil {
 		_, _ = hashPassword(password)
-		// The sqlite wrapper surfaces database/sql's ErrNoRows, the postgres store pgx's.
-		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+		if IsNotFound(err) {
 			return nil, ErrInvalidLogin
 		}
 		return nil, fmt.Errorf("couldn't select a user: %w", err)
