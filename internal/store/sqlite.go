@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type sqliteStore struct {
@@ -106,6 +107,11 @@ func (r *sqliteRowsWrapper) FieldDescriptions() []pgconn.FieldDescription {
 
 func (r *sqliteRowsWrapper) CommandTag() pgconn.CommandTag {
 	return pgconn.CommandTag{}
+}
+
+// Values are scanned via database/sql, so there is no pgtype map; the interface permits nil.
+func (r *sqliteRowsWrapper) TypeMap() *pgtype.Map {
+	return nil
 }
 
 func (w *sqliteWrapper) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {

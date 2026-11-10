@@ -114,7 +114,7 @@ go run cmd/migrate/main.go [options]    # Manual database migrations
 
 ## Project Structure
 
-- **Go 1.25** with modern module structure
+- **Go 1.26** with modern module structure
 - **sqlc** for type-safe SQL code generation
 - **golang-migrate** for database migrations
 - **Chi v5** router with middleware support
@@ -318,7 +318,7 @@ Switch by updating `config.yaml` or setting `TAIGA_DB_DRIVER` environment variab
 ### CI / GitHub Actions
 - `ci.yml` runs `nix flake check`, builds the binary and Docker image, and
   publishes the image to `ghcr.io/<owner>/taiga` on every push. Tag fan-out is
-  delegated to `hanko stamp docker tags`:
+  delegated to `hanko version docker tags --latest-on-release-tag`:
   - Tagged release (`vX.Y.Z`) → `:X.Y.Z`, `:X.Y`, `:X`, `:latest`, `:master-<sha>`
   - `master` between releases → `:0.Y.0-master.N.<sha>` + `:master-<sha>` (prerelease, no moving tags)
   - Feature branches → `:<semver-prerelease>` + `:<branch>-<sha>` (prerelease, no moving tags)

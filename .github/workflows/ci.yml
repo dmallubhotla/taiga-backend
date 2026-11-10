@@ -16,12 +16,12 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # hanko computes its version from git history (branch, tags, sha),
           # so we need the full history available locally.
           fetch-depth: 0
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
       - uses: DeterminateSystems/flakehub-cache-action@main
       - name: Flake check (formatting, lint, tests)
         run: nix flake check --print-build-logs
@@ -39,7 +39,7 @@ jobs:
           IMAGE="ghcr.io/${OWNER,,}/taiga"
           echo "$GHCR_TOKEN" | nix run nixpkgs#skopeo -- login ghcr.io \
             --username "$GHCR_USER" --password-stdin
-          nix develop --command hanko stamp docker tags "$IMAGE" \
+          nix develop --command hanko version docker tags --latest-on-release-tag "$IMAGE" \
           | while IFS= read -r tag; do
               [[ -z "$tag" ]] && continue
               echo "::group::skopeo copy → $tag"
