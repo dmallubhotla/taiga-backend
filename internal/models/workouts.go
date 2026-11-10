@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"log"
+	"math"
 
 	"gitea.deepak.science/deepak/taiga/internal/db"
 	"gitea.deepak.science/deepak/taiga/internal/filerepo"
@@ -168,10 +169,10 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 
 	// Convert RunSummary to Workout
 	workout := &Workout{
-		DistanceMiles:  &run.Summary.DistanceMiles,
-		TimeSeconds:    &run.Summary.TimeSeconds,
-		SpeedMph:       &run.Summary.SpeedMph,
-		PaceMinPerMile: &run.Summary.PaceMinPerMile,
+		DistanceMiles:  finiteOrNil(run.Summary.DistanceMiles),
+		TimeSeconds:    finiteOrNil(run.Summary.TimeSeconds),
+		SpeedMph:       finiteOrNil(run.Summary.SpeedMph),
+		PaceMinPerMile: finiteOrNil(run.Summary.PaceMinPerMile),
 		StartTime: pgtype.Timestamptz{
 			Time:  run.Summary.StartTime,
 			Valid: true,
@@ -185,4 +186,12 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 
 	// Save the workout
 	return m.AddWorkout(ctx, workout, userToken)
+}
+
+// Missing FIT fields decode as NaN and zero distance yields an infinite pace; neither survives JSON encoding, so store them as NULL.
+func finiteOrNil(v float64) *float64 {
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return nil
+	}
+	return &v
 }
