@@ -6,56 +6,93 @@ import (
 	"time"
 )
 
+type NamedDistance struct {
+	Name   string
+	Meters float64
+}
+
+var StandardDistances = []NamedDistance{
+	{"1k", 1000},
+	{"1mi", 1609.344},
+	{"5k", 5000},
+	{"5mi", 8046.72},
+	{"10k", 10000},
+	{"half", 21097.5},
+	{"marathon", 42195},
+}
+
+func StandardDistance(name string) (NamedDistance, bool) {
+	for _, d := range StandardDistances {
+		if d.Name == name {
+			return d, true
+		}
+	}
+	return NamedDistance{}, false
+}
+
 type BestSegment struct {
 	Distance *Distance
 	Name     string
-	// StartTimestamp time.Time
 	Duration time.Duration
 	Run      *Run
-	Start    int
-	End      int
+	// Indices into Run.Records.
+	Start int
+	End   int
+}
+
+func (bs *BestSegment) StartOffset() time.Duration {
+	return bs.Run.Records[bs.Start].DurationFromStart
+}
+
+func (bs *BestSegment) EndOffset() time.Duration {
+	return bs.Run.Records[bs.End].DurationFromStart
 }
 
 func (bs *BestSegment) String() string {
-	startDist := bs.Run.Records[bs.Start].DurationFromStart
-	endDist := bs.Run.Records[bs.End].DurationFromStart
-	return fmt.Sprintf("Best %v in %v, from %v to %v", bs.Distance, bs.Duration, startDist, endDist)
+	return fmt.Sprintf("Best %v in %v, from %v to %v", bs.Distance, bs.Duration, bs.StartOffset(), bs.EndOffset())
 }
 
-func FastestSegments(run *Run, targetDistanceMeters []float64) []*BestSegment {
-
-	records := run.Records
-
-	results := make([]*BestSegment, len(targetDistanceMeters))
-	for i, td := range targetDistanceMeters {
-		results[i] = &BestSegment{Distance: &Distance{td}, Run: run, Duration: time.Duration(math.MaxInt64)}
+// FastestSegments finds, for each target, the quickest stretch of records covering at least that distance.
+// Targets the run never covers are omitted.
+// The stretch is measured between recorded points, so it can overshoot the target by up to one record interval.
+func FastestSegments(run *Run, targets []NamedDistance) []*BestSegment {
+	// Records with no distance fix decode as NaN and would stall the window.
+	var idx []int
+	for i, rec := range run.Records {
+		if rec.Distance != nil && !math.IsNaN(rec.Distance.Meters) {
+			idx = append(idx, i)
+		}
 	}
+	meters := func(k int) float64 { return run.Records[idx[k]].Distance.Meters }
+	offset := func(k int) time.Duration { return run.Records[idx[k]].DurationFromStart }
 
-	// most efficient to do multiple targets, but need to store an array of lefts for each distance
-	lefts := make([]int, len(targetDistanceMeters))
-
-	for right, rightRecord := range records {
-		// for each target, we will see if we can advance the left, and if valid see if it helps.
-		for i, targetDistance := range targetDistanceMeters {
-
-			segDistance := rightRecord.Distance.Meters - records[lefts[i]].Distance.Meters
-
-			if segDistance > targetDistance {
-
-				for lefts[i] < right && rightRecord.Distance.Meters-records[lefts[i]].Distance.Meters > targetDistance {
-					lefts[i]++
-				}
-
-				duration := rightRecord.DurationFromStart - records[lefts[i]].DurationFromStart
-
-				if duration < results[i].Duration {
-					results[i].Duration = duration
-					results[i].Start = lefts[i]
-					results[i].End = right
+	var results []*BestSegment
+	for _, target := range targets {
+		var best *BestSegment
+		left := 0
+		for right := range idx {
+			// Shrink from the left while the window would still cover the target.
+			for left+1 < right && meters(right)-meters(left+1) >= target.Meters {
+				left++
+			}
+			if meters(right)-meters(left) < target.Meters {
+				continue
+			}
+			duration := offset(right) - offset(left)
+			if best == nil || duration < best.Duration {
+				best = &BestSegment{
+					Distance: &Distance{target.Meters},
+					Name:     target.Name,
+					Duration: duration,
+					Run:      run,
+					Start:    idx[left],
+					End:      idx[right],
 				}
 			}
 		}
+		if best != nil {
+			results = append(results, best)
+		}
 	}
-
 	return results
 }

@@ -113,6 +113,16 @@ func (m *storeModel) DeleteWorkout(ctx context.Context, id int32, userToken *tok
 		return err
 	}
 
+	// SQLite doesn't enforce ON DELETE CASCADE without a per-connection pragma, so clear segments explicitly.
+	err = querier.DeleteSegmentsByWorkout(ctx, &db.DeleteSegmentsByWorkoutParams{
+		WorkoutID: id,
+		UserID:    userToken.ID,
+	})
+	if err != nil {
+		log.Printf("Could not delete segments for workout %d: %v", id, err)
+		return err
+	}
+
 	deleteWorkoutParams := &db.DeleteWorkoutParams{
 		ID:     id,
 		UserID: userToken.ID,
@@ -184,8 +194,43 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 		ActivityFileID: &activityFileID,
 	}
 
-	// Save the workout
-	return m.AddWorkout(ctx, workout, userToken)
+	saved, err := m.AddWorkout(ctx, workout, userToken)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := m.addSegments(ctx, saved.ID, workouts.FastestSegments(run, workouts.StandardDistances), userToken); err != nil {
+		// No transactions through the store yet, so undo by hand rather than leave a workout missing segments.
+		if delErr := m.DeleteWorkout(ctx, saved.ID, userToken); delErr != nil {
+			log.Printf("Could not roll back workout %d after segment failure: %v", saved.ID, delErr)
+		}
+		return nil, err
+	}
+	return saved, nil
+}
+
+func (m *storeModel) addSegments(ctx context.Context, workoutID int32, segments []*workouts.BestSegment, userToken *tokens.UserToken) error {
+	querier, err := m.store.GetQuerier()
+	if err != nil {
+		log.Printf("could not get a querier: %v", err)
+		return err
+	}
+	for _, seg := range segments {
+		_, err := querier.CreateWorkoutSegment(ctx, &db.CreateWorkoutSegmentParams{
+			WorkoutID:          workoutID,
+			UserID:             userToken.ID,
+			Name:               seg.Name,
+			DistanceMeters:     seg.Distance.Meters,
+			DurationSeconds:    seg.Duration.Seconds(),
+			StartOffsetSeconds: seg.StartOffset().Seconds(),
+			EndOffsetSeconds:   seg.EndOffset().Seconds(),
+		})
+		if err != nil {
+			log.Printf("Could not create %s segment for workout %d: %v", seg.Name, workoutID, err)
+			return err
+		}
+	}
+	return nil
 }
 
 // Missing FIT fields decode as NaN and zero distance yields an infinite pace; neither survives JSON encoding, so store them as NULL.

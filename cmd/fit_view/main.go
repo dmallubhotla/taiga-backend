@@ -74,12 +74,9 @@ func main() {
 	// 	log.Printf("Record: [%d]. %v mi in %v minutes \n", idx, rec.Distance.AsMiles(), rec.DurationFromStart.Minutes())
 	// 	// printJson(rec)
 	// }
-	results := workouts.FastestSegments(run, []float64{1000, 1609.344, 3000, 5000, 8046.72, 10000})
-	// log.Printf("results: %+v", results[1])
+	results := workouts.FastestSegments(run, workouts.StandardDistances)
 	for _, result := range results {
-		if result.End > 0 {
-			log.Println(result)
-		}
+		log.Println(result)
 	}
 
 }
