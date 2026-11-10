@@ -114,7 +114,7 @@ go run cmd/migrate/main.go [options]    # Manual database migrations
 
 ## Project Structure
 
-- **Go 1.25** with modern module structure
+- **Go 1.26** with modern module structure
 - **sqlc** for type-safe SQL code generation
 - **golang-migrate** for database migrations
 - **Chi v5** router with middleware support
