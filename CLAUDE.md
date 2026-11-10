@@ -138,6 +138,8 @@ go run cmd/useradd/main.go -email you@example.com  # Create an account while reg
    SELECT * FROM users WHERE id = $1;
    ```
 
+   Name parameters with `sqlc.arg(name)`, not `@name`: `just fmt` rewrites `@name` to `@ name`, which sqlc can't parse.
+
 2. **Generate Go code**:
    ```bash
    sqlc generate
