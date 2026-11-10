@@ -110,6 +110,7 @@ just exec-docker         # Run interactive shell in Docker container
 ```bash
 go run cmd/fit_view/main.go [file.fit]  # View FIT workout files
 go run cmd/migrate/main.go [options]    # Manual database migrations
+go run cmd/useradd/main.go -email you@example.com  # Create an account while registration is closed (prompts for the password; in the cluster: kubectl -n taiga exec -it deploy/taiga-backend -- useradd -email ...)
 ```
 
 ## Project Structure
@@ -241,7 +242,8 @@ file_repo:
 - `GET /` - Hello World with service info
 - `GET /ping` - Simple ping/pong response
 - `GET /health` - Health check with database connectivity status
-- `POST /auth/register` - User registration
+- `POST /auth/register` - User registration; `403` when `auth.registration` is closed (env `TAIGA_AUTH_REGISTRATION=open|closed`, default open in development and closed otherwise)
+- `GET /auth/providers` - What the login page should offer: `{password_login, registration_open, providers}` (OIDC providers arrive with ROADMAP M1)
 - `POST /auth/login` - User login (returns JWT token)
 
 ### Protected Endpoints (require JWT token)

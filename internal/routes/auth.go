@@ -12,12 +12,34 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func newAuthRouter(m models.Model, tok tokens.Toker) http.Handler {
+func newAuthRouter(m models.Model, tok tokens.Toker, o options) http.Handler {
 	router := chi.NewRouter()
 
-	router.Post("/register", postUser(m))
+	router.Get("/providers", getProvidersFunc(o))
+	if o.registrationOpen {
+		router.Post("/register", postUser(m))
+	} else {
+		router.Post("/register", registrationClosed)
+	}
 	router.Post("/tokens", createTokenFunc(m, tok))
 	return router
+}
+
+// providersResponse tells the login page what to offer; OIDC providers (ROADMAP M1) will be listed here too.
+type providersResponse struct {
+	PasswordLogin    bool     `json:"password_login"`
+	RegistrationOpen bool     `json:"registration_open"`
+	Providers        []string `json:"providers"`
+}
+
+func getProvidersFunc(o options) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, providersResponse{PasswordLogin: true, RegistrationOpen: o.registrationOpen, Providers: []string{}})
+	}
+}
+
+func registrationClosed(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "registration is closed; ask an admin for an account", http.StatusForbidden)
 }
 
 // type createUserResponse struct {

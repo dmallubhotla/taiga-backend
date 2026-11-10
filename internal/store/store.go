@@ -29,13 +29,13 @@ func GetStore(cfg *config.Config) (Store, error) {
 	case "postgres":
 		store, err = GetPostgresStore(cfg)
 		if err != nil {
-			return nil, fmt.Errorf("tried to get postgres stored and failed")
+			return nil, fmt.Errorf("opening postgres store: %w", err)
 		}
 
 	case "sqlite":
 		store, err = GetSqliteStore(cfg)
 		if err != nil {
-			return nil, fmt.Errorf("tried to get sqlite stored and failed")
+			return nil, fmt.Errorf("opening sqlite store: %w", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Db.Driver)
