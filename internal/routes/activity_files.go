@@ -12,7 +12,6 @@ import (
 	"gitea.deepak.science/deepak/taiga/internal/filerepo"
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
-	"gitea.deepak.science/deepak/taiga/internal/workouts"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -261,17 +260,6 @@ func downloadActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo) http.H
 			return
 		}
 		defer func() { _ = content.Close() }()
-
-		log.Println("retrieved content from repo")
-		run, err := workouts.ReadFitFile(content)
-		if err != nil {
-			log.Printf("Error reading fit file")
-			// for now don't care, continue.
-			// TODO error handling here once we've decided what the interface is like
-		} else {
-			log.Printf("Got run with summary %+v", run.Summary)
-			log.Printf("%+v", workouts.FastestSegments(run, []float64{1609.344, 5000, 8046.72, 10000}))
-		}
 
 		// Set appropriate headers for file download
 		w.Header().Set("Content-Type", "application/octet-stream")

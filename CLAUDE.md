@@ -259,6 +259,14 @@ file_repo:
 - `DELETE /activity_files/{id}` - Delete activity file and its content
 - `GET /activity_files/{id}/download` - Download the actual file content
 
+### Workouts and Segments API (requires JWT token)
+- `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD
+- `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file into a workout and store its segments
+- `GET /workouts/{id}/segments` - Fastest effort at each standard distance the workout covers, shortest distance first
+- `GET /workouts/compare?ids=1,2` - Up to 10 workouts with segments keyed by distance name, plus `distances` (the names any of them cover)
+- `GET /segments` - The standard distances (`1k`, `1mi`, `5k`, `5mi`, `10k`, `half`, `marathon`)
+- `GET /segments/{name}/best?limit=N` - The user's fastest efforts at that distance across workouts (default 10, max 100)
+
 ## Development Workflow
 
 1. **Set up development environment**: `nix develop` (or use existing Nix shell)
@@ -343,12 +351,14 @@ The application provides a comprehensive API for managing activity files (primar
 - **Secure file upload** with 32MB size limit and multipart form support
 - **Content-addressable storage** using SHA-256 hashes for deduplication
 - **Metadata management** with RFC3339 timestamps and user ownership
-- **Download with processing** - FIT files are processed for workout analysis during download
 - **User isolation** - users can only access their own files
-- **Automatic file analysis** - uploaded FIT files are automatically analyzed for workout segments and performance metrics
 
 ### File Processing
 - FIT files are processed using the `muktihari/fit` library for workout data extraction
-- Segment analysis includes fastest segments for common distances (mile, 5K, 5-mile, 10K)
-- Processing happens during download to provide real-time workout insights
+- `POST /workouts/from-activity-file/{id}` parses the file once, storing the workout summary and its fastest segments (`workout_segments` table) for each standard distance in `workouts.StandardDistances`
+- Segments are measured between recorded points, so a segment can overshoot its distance by up to one record interval
+- Download returns the stored bytes untouched
 - File content is immutable once stored, ensuring data integrity
+
+### Testing
+- `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, and `EncodeFIT` for synthetic activity files
