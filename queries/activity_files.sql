@@ -24,6 +24,7 @@ INSERT INTO
   activity_file (timestamp, file_repo_hash, user_id)
 VALUES
   ($1, $2, $3)
+ON CONFLICT (user_id, file_repo_hash) DO NOTHING
 RETURNING
   *;
 

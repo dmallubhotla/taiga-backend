@@ -82,38 +82,31 @@ func (m *storeModel) AddActivityFile(ctx context.Context, fileReader io.Reader, 
 		return nil, false, err
 	}
 
-	// Check-then-insert can race two simultaneous uploads into a duplicate; there's no unique constraint because existing databases may already hold duplicates.
-	existing, err := querier.GetActivityFileByHash(ctx, &db.GetActivityFileByHashParams{
-		UserID:       &userToken.ID,
-		FileRepoHash: &hash,
-	})
-	if err == nil {
-		log.Printf("Activity file with hash %s already uploaded as %d", hash, existing.ID)
-		return existing, false, nil
-	}
-	if !IsNotFound(err) {
-		log.Printf("Could not look up activity file by hash: %v", err)
-		return nil, false, err
-	}
-
-	// Convert time.Time to pgtype.Timestamptz
-	pgTimestamp := pgtype.Timestamptz{
-		Time:  timestamp,
-		Valid: true,
-	}
-
 	createActivityFileParams := &db.CreateActivityFileParams{
-		Timestamp:    pgTimestamp,
+		Timestamp:    pgtype.Timestamptz{Time: timestamp, Valid: true},
 		FileRepoHash: &hash,
 		UserID:       &userToken.ID,
 	}
 	log.Printf("Adding activity file %v", createActivityFileParams)
-	returnActivityFile, err := querier.CreateActivityFile(ctx, createActivityFileParams)
-	if err != nil {
+	created, err := querier.CreateActivityFile(ctx, createActivityFileParams)
+	if err == nil {
+		return created, true, nil
+	}
+	// ON CONFLICT DO NOTHING returns no row when the user already has this content, so concurrent re-uploads can't duplicate it.
+	if !IsNotFound(err) {
 		log.Printf("Could not create activity file: %v", err)
 		return nil, false, err
 	}
-	return returnActivityFile, true, nil
+	existing, err := querier.GetActivityFileByHash(ctx, &db.GetActivityFileByHashParams{
+		UserID:       &userToken.ID,
+		FileRepoHash: &hash,
+	})
+	if err != nil {
+		log.Printf("Could not look up activity file by hash: %v", err)
+		return nil, false, err
+	}
+	log.Printf("Activity file with hash %s already uploaded as %d", hash, existing.ID)
+	return existing, false, nil
 }
 
 func (m *storeModel) UpdateActivityFile(ctx context.Context, id int32, timestamp time.Time, fileRepoHash *string, userToken *tokens.UserToken) (*ActivityFile, error) {

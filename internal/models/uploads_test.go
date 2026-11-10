@@ -3,6 +3,7 @@ package models_test
 import (
 	"bytes"
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -46,6 +47,41 @@ func TestReuploadReturnsExistingFileAndWorkout(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, created)
 	assert.NotEqual(t, af.ID, bobs.ID)
+}
+
+func TestConcurrentReuploadsMakeOneFile(t *testing.T) {
+	ctx := context.Background()
+	m, repo := testsupport.NewModel(t), testsupport.NewFileRepo(t)
+	alice := createUser(t, m, "alice@example.com")
+	fit := testsupport.EncodeFIT(t, day1, fourK)
+
+	const n = 8
+	ids := make([]int32, n)
+	createdCount := make([]bool, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Go(func() {
+			af, created, err := m.AddActivityFile(ctx, bytes.NewReader(fit), day1, alice, repo)
+			if assert.NoError(t, err) {
+				ids[i], createdCount[i] = af.ID, created
+			}
+		})
+	}
+	wg.Wait()
+
+	for _, id := range ids {
+		assert.Equal(t, ids[0], id)
+	}
+	var created int
+	for _, c := range createdCount {
+		if c {
+			created++
+		}
+	}
+	assert.Equal(t, 1, created, "exactly one upload creates the row")
+	all, err := m.ActivityFiles(ctx, alice)
+	require.NoError(t, err)
+	assert.Len(t, all, 1)
 }
 
 func TestCreateWorkoutRejectsUnusableFiles(t *testing.T) {
