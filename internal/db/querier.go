@@ -26,7 +26,9 @@ type Querier interface {
 	//
 	CreateUser(ctx context.Context, arg *CreateUserParams) (*CreateUserRow, error)
 	CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (*Workout, error)
+	CreateWorkoutSegment(ctx context.Context, arg *CreateWorkoutSegmentParams) (*WorkoutSegment, error)
 	DeleteActivityFile(ctx context.Context, arg *DeleteActivityFileParams) error
+	DeleteSegmentsByWorkout(ctx context.Context, arg *DeleteSegmentsByWorkoutParams) error
 	DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) error
 	GetActivityFile(ctx context.Context, arg *GetActivityFileParams) (*ActivityFile, error)
 	GetHat(ctx context.Context, arg *GetHatParams) (*Hat, error)
@@ -34,7 +36,9 @@ type Querier interface {
 	GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Workout, error)
 	GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkoutsByActivityFileParams) ([]*Workout, error)
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
+	ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
+	ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error)
 	ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Workout, error)
 	// --
 	// really we don't want to select password except specifically for auth.

@@ -18,7 +18,9 @@ import (
 func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router := chi.NewRouter()
 	router.Get("/", getWorkoutsFunc(m))
+	router.Get("/compare", compareWorkoutsFunc(m))
 	router.Get("/{workoutid}", getWorkoutFunc(m))
+	router.Get("/{workoutid}/segments", getWorkoutSegmentsFunc(m))
 	router.Post("/", postWorkoutFunc(m))
 	router.Put("/{workoutid}", putWorkoutFunc(m))
 	router.Delete("/{workoutid}", deleteWorkoutFunc(m))

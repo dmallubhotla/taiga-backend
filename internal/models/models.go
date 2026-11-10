@@ -37,6 +37,9 @@ type Model interface {
 	DeleteWorkout(ctx context.Context, id int32, userToken *tokens.UserToken) error
 	GetWorkoutsByActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken) ([]*Workout, error)
 	CreateWorkoutFromActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
+	WorkoutSegments(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]*WorkoutSegment, error)
+	BestSegments(ctx context.Context, name string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error)
+	CompareWorkouts(ctx context.Context, workoutIDs []int32, userToken *tokens.UserToken) ([]*WorkoutComparison, error)
 }
 
 type storeModel struct {

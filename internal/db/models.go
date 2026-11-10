@@ -48,3 +48,15 @@ type Workout struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	UserID         int32              `json:"user_id"`
 }
+
+type WorkoutSegment struct {
+	ID                 int32              `json:"id"`
+	WorkoutID          int32              `json:"workout_id"`
+	UserID             int32              `json:"user_id"`
+	Name               string             `json:"name"`
+	DistanceMeters     float64            `json:"distance_meters"`
+	DurationSeconds    float64            `json:"duration_seconds"`
+	StartOffsetSeconds float64            `json:"start_offset_seconds"`
+	EndOffsetSeconds   float64            `json:"end_offset_seconds"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+}
