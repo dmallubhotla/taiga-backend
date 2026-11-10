@@ -1,5 +1,6 @@
 -- Which extraction code built a workout's derived data; workouts from a file whose version isn't the current one get reprocessed.
-ALTER TABLE workouts ADD COLUMN processor_version VARCHAR(64) NOT NULL DEFAULT '';
+ALTER TABLE workouts
+ADD COLUMN processor_version VARCHAR(64) NOT NULL DEFAULT '';
 
 -- Background work, claimed by the in-process worker.
 CREATE TABLE jobs (

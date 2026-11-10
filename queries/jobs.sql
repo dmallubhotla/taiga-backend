@@ -35,8 +35,8 @@ UPDATE jobs
 SET
   state = 'running',
   attempts = attempts + 1,
-  lease_until = @lease_until,
-  updated_at = @now
+  lease_until = sqlc.arg (lease_until),
+  updated_at = sqlc.arg (now)
 WHERE
   id = (
     SELECT
@@ -46,11 +46,11 @@ WHERE
     WHERE
       (
         state = 'queued'
-        AND run_at <= @now
+        AND run_at <= sqlc.arg (now)
       )
       OR (
         state = 'running'
-        AND lease_until < @now
+        AND lease_until < sqlc.arg (now)
       )
     ORDER BY
       run_at,
@@ -60,7 +60,7 @@ WHERE
   )
   AND (
     state = 'queued'
-    OR lease_until < @now
+    OR lease_until < sqlc.arg (now)
   )
 RETURNING
   *;
