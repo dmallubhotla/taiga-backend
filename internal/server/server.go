@@ -9,8 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/lib/pq"  // PostgreSQL driver
-	_ "modernc.org/sqlite" // SQLite driver
 
 	"gitea.deepak.science/deepak/taiga/internal/config"
 	"gitea.deepak.science/deepak/taiga/internal/filerepo"
@@ -28,6 +26,12 @@ type Server struct {
 
 // New creates a new server instance
 func New(cfg *config.Config) (*Server, error) {
+	registrationOpen, err := cfg.RegistrationOpen()
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("Registration open: %v", registrationOpen)
+
 	// Initialize store
 	m, err := models.New(cfg)
 	if err != nil {
@@ -47,7 +51,7 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 
 	// Create routes handler
-	routesHandler := routes.New(m, toker, fileRepo)
+	routesHandler := routes.New(m, toker, fileRepo, routes.WithRegistration(registrationOpen))
 
 	// Create chi router for middleware
 	r := chi.NewRouter()

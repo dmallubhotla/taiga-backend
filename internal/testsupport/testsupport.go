@@ -23,7 +23,6 @@ import (
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/store"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
-	_ "modernc.org/sqlite" // SQLite driver
 )
 
 func repoRoot() string {

@@ -325,3 +325,38 @@ func copyFile(t *testing.T, src, dst string) {
 	err = os.WriteFile(dst, data, 0644)
 	require.NoError(t, err)
 }
+
+func TestRegistrationOpen(t *testing.T) {
+	for _, tc := range []struct {
+		environment, registration string
+		want                      bool
+		wantErr                   bool
+	}{
+		{"development", "", true, false},
+		{"production", "", false, false},
+		{"test", "", false, false},
+		{"production", "open", true, false},
+		{"development", "closed", false, false},
+		{"production", "Open", false, true},
+	} {
+		cfg := &config.Config{App: config.AppConfig{Environment: tc.environment}, Auth: config.AuthConfig{Registration: tc.registration}}
+		got, err := cfg.RegistrationOpen()
+		if tc.wantErr {
+			assert.Error(t, err, "%+v", tc)
+			assert.False(t, got, "an invalid value must not open registration")
+			continue
+		}
+		require.NoError(t, err, "%+v", tc)
+		assert.Equal(t, tc.want, got, "%+v", tc)
+	}
+}
+
+func TestRegistrationFromEnv(t *testing.T) {
+	clearEnvVars(t)
+	t.Setenv("TAIGA_AUTH_REGISTRATION", "closed")
+	t.Chdir(t.TempDir())
+
+	cfg, err := config.Load("config")
+	require.NoError(t, err)
+	assert.Equal(t, "closed", cfg.Auth.Registration)
+}

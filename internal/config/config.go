@@ -43,8 +43,14 @@ type FileRepoConfig struct {
 	S3Prefix     string `mapstructure:"s3_prefix"`     // S3 key prefix
 }
 
+type AuthConfig struct {
+	// "open" or "closed"; empty means open in development and closed everywhere else.
+	Registration string `mapstructure:"registration"`
+}
+
 type Config struct {
 	App      AppConfig      `mapstructure:"app"`
+	Auth     AuthConfig     `mapstructure:"auth"`
 	Db       DBConfig       `mapstructure:"db"`
 	Tokens   TokensConfig   `mapstructure:"tokens"`
 	FileRepo FileRepoConfig `mapstructure:"file_repo"`
@@ -117,6 +123,21 @@ func (d *DBConfig) DSN() string {
 // IsDevelopment returns true if running in development mode
 func (a *AppConfig) IsDevelopment() bool {
 	return a.Environment == "development" || a.Environment == "dev"
+}
+
+// RegistrationOpen reports whether POST /auth/register accepts new users.
+// An unrecognised value is an error rather than a guess, so a typo can't leave registration open.
+func (c *Config) RegistrationOpen() (bool, error) {
+	switch c.Auth.Registration {
+	case "":
+		return c.App.IsDevelopment(), nil
+	case "open":
+		return true, nil
+	case "closed":
+		return false, nil
+	default:
+		return false, fmt.Errorf("auth.registration must be \"open\" or \"closed\", got %q", c.Auth.Registration)
+	}
 }
 
 // IsProduction returns true if running in production mode

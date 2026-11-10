@@ -72,6 +72,14 @@ func TestNew(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNewRejectsUnknownRegistrationSetting(t *testing.T) {
+	cfg := createTestConfig(t)
+	cfg.Auth.Registration = "opne"
+
+	_, err := server.New(cfg)
+	assert.ErrorContains(t, err, "auth.registration")
+}
+
 func TestNewWithInvalidDBConfig(t *testing.T) {
 	cfg := &config.Config{
 		App: config.AppConfig{

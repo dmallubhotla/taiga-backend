@@ -15,8 +15,24 @@ import (
 // 	db *sql.DB
 // }
 
+type options struct {
+	registrationOpen bool
+}
+
+type Option func(*options)
+
+// WithRegistration sets whether POST /auth/register accepts new users; it's open unless set.
+func WithRegistration(open bool) Option {
+	return func(o *options) { o.registrationOpen = open }
+}
+
 // New creates a new handlers instance
-func New(m models.Model, tok tokens.Toker, fileRepo filerepo.FileRepo) http.Handler {
+func New(m models.Model, tok tokens.Toker, fileRepo filerepo.FileRepo, opts ...Option) http.Handler {
+	o := options{registrationOpen: true}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	r := chi.NewRouter()
 
 	// Basic routes
@@ -24,7 +40,7 @@ func New(m models.Model, tok tokens.Toker, fileRepo filerepo.FileRepo) http.Hand
 	r.Get("/ping", ping)
 
 	r.Mount("/health", newHealthRouter(m))
-	r.Mount("/auth", newAuthRouter(m, tok))
+	r.Mount("/auth", newAuthRouter(m, tok, o))
 
 	// authenticated routes
 	r.Group(func(r chi.Router) {
