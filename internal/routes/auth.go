@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -85,14 +86,13 @@ func createTokenFunc(m models.Model, tok tokens.Toker) http.HandlerFunc {
 		}
 
 		user, err := m.VerifyUserByEmailPassword(ctx, creds.Email, creds.Password)
+		if errors.Is(err, models.ErrInvalidLogin) {
+			unauthorizedHandler(w, r)
+			return
+		}
 		if err != nil {
-			// if models.IsInvalidLoginError(err) {
-			// 	unauthorizedHandler(w, r)
-			// 	return
-			// }
 			serverError(w, err)
 			return
-
 		}
 		w.Header().Add("Content-Type", "application/json")
 		userToken := &tokens.UserToken{
