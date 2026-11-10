@@ -116,7 +116,7 @@ func TestSegmentRoutes(t *testing.T) {
 		require.Equal(t, http.StatusOK, status)
 		var segments []models.WorkoutSegment
 		require.NoError(t, json.Unmarshal(body, &segments))
-		require.Len(t, segments, 2)
+		require.Len(t, segments, 4, "1k, 1mi, 3k and 2mi")
 		assert.Equal(t, "1k", segments[0].Name, "ordered by distance")
 		assert.Equal(t, 200.0, segments[0].DurationSeconds)
 
@@ -137,7 +137,7 @@ func TestSegmentRoutes(t *testing.T) {
 		require.Equal(t, http.StatusOK, status)
 		assert.JSONEq(t, "[]", string(body))
 
-		status, _ = alice.get("/segments/3k/best")
+		status, _ = alice.get("/segments/4k/best")
 		assert.Equal(t, http.StatusNotFound, status)
 		for _, limit := range []string{"0", "101", "x"} {
 			status, _ = alice.get("/segments/1k/best?limit=" + limit)
@@ -160,7 +160,7 @@ func TestSegmentRoutes(t *testing.T) {
 			} `json:"workouts"`
 		}
 		require.NoError(t, json.Unmarshal(body, &resp))
-		assert.Equal(t, []string{"1k", "1mi"}, resp.Distances)
+		assert.Equal(t, []string{"1k", "1mi", "3k", "2mi"}, resp.Distances)
 		require.Len(t, resp.Workouts, 2, "duplicate ids collapse")
 		assert.Equal(t, short, resp.Workouts[0].Workout.ID)
 		assert.NotContains(t, resp.Workouts[0].Segments, "1mi")

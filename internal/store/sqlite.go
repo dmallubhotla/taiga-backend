@@ -20,8 +20,15 @@ type sqliteStore struct {
 	db *sql.DB
 }
 
+// sqlConn is what the wrapper needs from database/sql; both *sql.DB and *sql.Tx have it, so queries run the same inside a transaction.
+type sqlConn interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 type sqliteWrapper struct {
-	db *sql.DB
+	db sqlConn
 }
 
 // Exec implements db.DBTX interface for SQLite
@@ -141,8 +148,9 @@ func GetSqliteStore(cfg *config.Config) (Store, error) {
 		return nil, fmt.Errorf("invalid database configuration")
 	}
 	// Without a busy timeout, concurrent writers across the pool fail immediately with SQLITE_BUSY instead of waiting their turn.
+	// Immediate transactions take the write lock up front: a deferred one that reads then writes can deadlock with another and gets SQLITE_BUSY without waiting.
 	if !strings.Contains(dsn, "?") {
-		dsn += "?_pragma=busy_timeout(5000)"
+		dsn += "?_pragma=busy_timeout(5000)&_txlock=immediate"
 	}
 	// Use database/sql for SQLite (pgx doesn't support SQLite)
 	dbconn, err := sql.Open(cfg.Db.Driver, dsn)
@@ -188,4 +196,16 @@ func (s *sqliteStore) Close() error {
 		return s.db.Close()
 	}
 	return nil
+}
+
+func (s *sqliteStore) InTx(ctx context.Context, fn func(db.Querier) error) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning sqlite transaction: %w", err)
+	}
+	if err := fn(db.New(&sqliteWrapper{db: tx})); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }

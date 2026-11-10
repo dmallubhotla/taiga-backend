@@ -18,6 +18,8 @@ type Store interface {
 	Healthy(ctx context.Context) error // ping the store's connection
 	Close() error                      // cleanup resources
 	GetQuerier() (db.Querier, error)
+	// InTx runs fn in one transaction, committing if it returns nil and rolling back otherwise.
+	InTx(ctx context.Context, fn func(db.Querier) error) error
 }
 
 func GetStore(cfg *config.Config) (Store, error) {

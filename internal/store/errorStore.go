@@ -25,3 +25,7 @@ func (m *errorStore) Close() error {
 func (m *errorStore) GetQuerier() (db.Querier, error) {
 	return nil, fmt.Errorf("error store can't actually query")
 }
+
+func (m *errorStore) InTx(ctx context.Context, fn func(db.Querier) error) error {
+	return fmt.Errorf("error store can't actually query")
+}

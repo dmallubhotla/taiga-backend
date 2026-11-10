@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 
@@ -73,4 +74,10 @@ func (s *pgStore) Close() error {
 		s.pgPool.Close()
 	}
 	return nil
+}
+
+func (s *pgStore) InTx(ctx context.Context, fn func(db.Querier) error) error {
+	return pgx.BeginFunc(ctx, s.pgPool, func(tx pgx.Tx) error {
+		return fn(db.New(tx))
+	})
 }

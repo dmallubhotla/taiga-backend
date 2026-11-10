@@ -21,23 +21,25 @@ INSERT INTO
     start_time,
     end_time,
     activity_file_id,
-    user_id
+    user_id,
+    processor_version
   )
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8)
+  ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version
 `
 
 type CreateWorkoutParams struct {
-	DistanceMiles  *float64           `json:"distance_miles"`
-	TimeSeconds    *float64           `json:"time_seconds"`
-	SpeedMph       *float64           `json:"speed_mph"`
-	PaceMinPerMile *float64           `json:"pace_min_per_mile"`
-	StartTime      pgtype.Timestamptz `json:"start_time"`
-	EndTime        pgtype.Timestamptz `json:"end_time"`
-	ActivityFileID *int32             `json:"activity_file_id"`
-	UserID         int32              `json:"user_id"`
+	DistanceMiles    *float64           `json:"distance_miles"`
+	TimeSeconds      *float64           `json:"time_seconds"`
+	SpeedMph         *float64           `json:"speed_mph"`
+	PaceMinPerMile   *float64           `json:"pace_min_per_mile"`
+	StartTime        pgtype.Timestamptz `json:"start_time"`
+	EndTime          pgtype.Timestamptz `json:"end_time"`
+	ActivityFileID   *int32             `json:"activity_file_id"`
+	UserID           int32              `json:"user_id"`
+	ProcessorVersion string             `json:"processor_version"`
 }
 
 func (q *Queries) CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (*Workout, error) {
@@ -50,6 +52,7 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (
 		arg.EndTime,
 		arg.ActivityFileID,
 		arg.UserID,
+		arg.ProcessorVersion,
 	)
 	var i Workout
 	err := row.Scan(
@@ -64,6 +67,7 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
+		&i.ProcessorVersion,
 	)
 	return &i, err
 }
@@ -87,7 +91,7 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) e
 
 const getWorkout = `-- name: GetWorkout :one
 SELECT
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version
 FROM
   workouts
 WHERE
@@ -117,13 +121,14 @@ func (q *Queries) GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Worko
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
+		&i.ProcessorVersion,
 	)
 	return &i, err
 }
 
 const getWorkoutsByActivityFile = `-- name: GetWorkoutsByActivityFile :many
 SELECT
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version
 FROM
   workouts
 WHERE
@@ -159,6 +164,7 @@ func (q *Queries) GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkout
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserID,
+			&i.ProcessorVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -172,7 +178,7 @@ func (q *Queries) GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkout
 
 const listWorkoutsByUser = `-- name: ListWorkoutsByUser :many
 SELECT
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version
 FROM
   workouts
 WHERE
@@ -202,6 +208,7 @@ func (q *Queries) ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Work
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserID,
+			&i.ProcessorVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -228,7 +235,7 @@ WHERE
   id = $1
   AND user_id = $2
 RETURNING
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version
 `
 
 type UpdateWorkoutParams struct {
@@ -268,6 +275,68 @@ func (q *Queries) UpdateWorkout(ctx context.Context, arg *UpdateWorkoutParams) (
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
+		&i.ProcessorVersion,
+	)
+	return &i, err
+}
+
+const updateWorkoutDerived = `-- name: UpdateWorkoutDerived :one
+UPDATE workouts
+SET
+  distance_miles = $3,
+  time_seconds = $4,
+  speed_mph = $5,
+  pace_min_per_mile = $6,
+  start_time = $7,
+  end_time = $8,
+  processor_version = $9,
+  updated_at = CURRENT_TIMESTAMP
+WHERE
+  id = $1
+  AND user_id = $2
+RETURNING
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version
+`
+
+type UpdateWorkoutDerivedParams struct {
+	ID               int32              `json:"id"`
+	UserID           int32              `json:"user_id"`
+	DistanceMiles    *float64           `json:"distance_miles"`
+	TimeSeconds      *float64           `json:"time_seconds"`
+	SpeedMph         *float64           `json:"speed_mph"`
+	PaceMinPerMile   *float64           `json:"pace_min_per_mile"`
+	StartTime        pgtype.Timestamptz `json:"start_time"`
+	EndTime          pgtype.Timestamptz `json:"end_time"`
+	ProcessorVersion string             `json:"processor_version"`
+}
+
+// Everything reprocessing rebuilds from the activity file.
+func (q *Queries) UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDerivedParams) (*Workout, error) {
+	row := q.db.QueryRow(ctx, updateWorkoutDerived,
+		arg.ID,
+		arg.UserID,
+		arg.DistanceMiles,
+		arg.TimeSeconds,
+		arg.SpeedMph,
+		arg.PaceMinPerMile,
+		arg.StartTime,
+		arg.EndTime,
+		arg.ProcessorVersion,
+	)
+	var i Workout
+	err := row.Scan(
+		&i.ID,
+		&i.DistanceMiles,
+		&i.TimeSeconds,
+		&i.SpeedMph,
+		&i.PaceMinPerMile,
+		&i.StartTime,
+		&i.EndTime,
+		&i.ActivityFileID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.ProcessorVersion,
 	)
 	return &i, err
 }
