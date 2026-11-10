@@ -130,6 +130,20 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
 - [ ] A per-user max HR (and optionally resting HR) setting, defaulting to the highest HR seen across the user's workouts.
 - [ ] Time in HR zones per workout, derived from that setting. Changing the setting enqueues stats jobs rather than reprocessing files.
 
+## M8 — Automatic import (exploration)
+
+Today every run is a manual FIT export from COROS, then `taco upload` or the browser.
+The goal is new runs showing up on their own. Each option still needs checking against current docs and terms before building.
+
+- [ ] **Survey the routes**, cheapest first:
+  - **Via intervals.icu.** COROS already auto-syncs to intervals.icu, and its API returns the original uploaded file (`GET /api/v1/activity/{id}/file`, gzipped FIT) with a personal API key. Works for a single user today, at the cost of a third party in the path.
+  - **COROS self-service developer access.** Reportedly OAuth 2.0 for personal apps with no approval step. Unconfirmed: whether it can download FIT files, and what the limits are.
+  - **COROS Partner API.** Webhook push and FIT downloads, but it needs an application to api@coros.com and is aimed at established platforms. Probably not worth it for personal use.
+  - **No API:** a bulk import of a COROS data export (t.coros.com), and possibly a watched folder that a phone or desktop sync drops files into.
+- [ ] **A source abstraction.** Each user connection (kind, credentials, cursor) gets a periodic `sync_source` job on the M5 queue that fetches new activities and feeds them through the normal upload path.
+  Content-hash dedupe already makes re-fetching harmless. Also store the source's activity ID, to skip downloads that would only dedupe.
+- [ ] Credentials stored encrypted at rest, revocable per connection, and never logged.
+
 ## Later
 
 - `taco compare` / `taco best <distance>` in the CLI.
