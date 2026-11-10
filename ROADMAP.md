@@ -54,7 +54,7 @@ Milestones are roughly ordered; each should fit in one PR per repo.
 ### Tasks
 
 - [ ] Config: `auth.*` section, provider list, secrets read from files; refuse to start if a provider's discovery fails at boot (log which).
-- [ ] Migration `000003_user_identities` (postgres + sqlite) and sqlc queries.
+- [ ] Migration `000004_user_identities` (postgres + sqlite) and sqlc queries.
 - [ ] `internal/oidc`: provider registry from config, login redirect, callback handling, state/nonce/PKCE cookie.
 - [ ] Routes: `/auth/providers`, `/auth/oidc/{provider}/{login,callback}`, `/auth/identities` (list, link, unlink).
 - [ ] Tests against an in-process fake provider (e.g. `github.com/oauth2-proxy/mockoidc`): happy path, bad `state`, bad `nonce`, wrong audience, expired token, signup disabled, email auto-link on and off, `email_verified: false`.
