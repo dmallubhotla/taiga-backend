@@ -4,6 +4,10 @@ The goal is seeing and comparing runs in a browser.
 Pieces: this API, the browser frontend (`taiga-frontend`), and the `taco` CLI (`taiga-cliclient`) for scripting.
 Milestones are roughly ordered; each should fit in one PR per repo. M5 comes before M6/M7 because both need old workouts re-read from their files.
 
+**Non-goals:** sharing and anything cross-user (friends, feeds, public profiles, leaderboards between users).
+Each user's data is private to them, and every query stays scoped by `user_id`.
+Multiple accounts exist only so more than one person can use the same deployment.
+
 ---
 
 ## M1 — Sign in with an OIDC provider (alongside passwords)
@@ -118,7 +122,6 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
   Serve it from `GET /workouts/{id}/series`. Don't re-parse the FIT file on every page view.
 - [ ] **Graphs** in the frontend: pace, elevation and heart rate over distance or time for one workout; the best segments from `workout_segments` highlighted on the pace graph; a distance's best-effort trend over time.
 - [ ] **Maps.** The GPS track from the series (FIT stores positions in semicircles; convert at processing time), drawn with Leaflet on OpenStreetMap tiles, with segments highlighted.
-  Tracks reveal where runs start and end, i.e. home. That's fine internally, but any later sharing needs a privacy zone that trims the track near chosen points.
 - [ ] Compare view: overlay two workouts' pace graphs aligned by distance.
 
 ## M7 — Heart rate (lower priority)
