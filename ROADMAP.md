@@ -74,12 +74,14 @@ Milestones are roughly ordered; each should fit in one PR per repo.
 
 ## M3 — Deploy
 
-- [ ] Run backend + frontend images together (homelab k8s or the existing AWS terraform), with Postgres and the S3 file repo.
-- [ ] A production CORS story: none needed if the frontend's `/api` proxy is the only browser entry point; keep the dev-only wildcard CORS out of production.
+- [ ] Run backend + frontend images together. Test stack at `taiga.i.hruday.me` on the homelab k8s cluster (CNPG Postgres, local files PVC); manifests and runbook live in proxmox-homelab (`k8s-manifests/taiga`, `docs/taiga.md`), not here.
+- [x] Env-only configuration: every config key binds to its `TAIGA_*` variable, and the image starts the server by default.
+- [x] A production CORS story: none needed, because the frontend's `/api` proxy is the only browser entry point and `TAIGA_APP_ENVIRONMENT=production` keeps the dev-only wildcard CORS off.
 
 ## M4 — Cleanup
 
 - [ ] Remove the `hats` template code and its table.
+- [ ] Retire or refresh `terraform/` (AWS ECS + RDS): the homelab stack replaces it as the deploy path, and it predates env-only config.
 - [ ] Fix CLAUDE.md drift (it documents `/auth/login`; the endpoint is `/auth/tokens`).
 - [ ] Tests for `internal/tokens`, `internal/store`, `internal/filerepo`.
 
