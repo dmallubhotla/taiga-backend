@@ -35,7 +35,6 @@ func main() {
 
 	flag.Parse()
 
-
 	f, err := os.Open(filename)
 	if err != nil {
 		log.Printf("error opening filename %v: %v", filename, err)
