@@ -44,3 +44,34 @@ DELETE FROM activity_file
 WHERE
   id = $1
   AND user_id = $2;
+
+-- name: GetActivityFileByHash :one
+SELECT
+  *
+FROM
+  activity_file
+WHERE
+  user_id = $1
+  AND file_repo_hash = $2
+ORDER BY
+  id
+LIMIT
+  1;
+
+-- name: ListActivityFilesWithoutWorkout :many
+SELECT
+  *
+FROM
+  activity_file
+WHERE
+  activity_file.user_id = $1
+  AND NOT EXISTS (
+    SELECT
+      1
+    FROM
+      workouts
+    WHERE
+      workouts.activity_file_id = activity_file.id
+  )
+ORDER BY
+  timestamp DESC;

@@ -25,9 +25,9 @@ func createUser(t *testing.T, m models.Model, email string) *tokens.UserToken {
 func uploadWorkout(t *testing.T, m models.Model, repo filerepo.FileRepo, user *tokens.UserToken, start time.Time, splits []testsupport.Split) *models.Workout {
 	t.Helper()
 	ctx := context.Background()
-	af, err := m.AddActivityFile(ctx, bytes.NewReader(testsupport.EncodeFIT(t, start, splits)), start, user, repo)
+	af, _, err := m.AddActivityFile(ctx, bytes.NewReader(testsupport.EncodeFIT(t, start, splits)), start, user, repo)
 	require.NoError(t, err)
-	w, err := m.CreateWorkoutFromActivityFile(ctx, af.ID, user, repo)
+	w, _, err := m.CreateWorkoutFromActivityFile(ctx, af.ID, user, repo)
 	require.NoError(t, err)
 	return w
 }

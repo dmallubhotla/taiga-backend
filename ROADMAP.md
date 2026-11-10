@@ -67,10 +67,11 @@ Milestones are roughly ordered; each should fit in one PR per repo.
 
 ## M2 — Upload hygiene
 
-- [ ] Unparsable FIT files and multi-session files (e.g. triathlons) return **422** with a reason, not 500.
-- [ ] Don't leave orphan `activity_file` rows when parsing fails (or expose them so they can be retried or deleted).
-- [ ] Deduplicate uploads: the same file (same content hash, already computed) for the same user returns the existing workout instead of creating a second one.
-- [ ] Backfill segments for workouts created before `workout_segments` existed (a one-off command or `POST /workouts/{id}/segments/recompute`).
+- [x] Unparsable FIT files and multi-session files (e.g. triathlons) return **422** with a reason, not 500.
+- [x] Don't leave orphan `activity_file` rows when parsing fails (or expose them so they can be retried or deleted). Exposed via `GET /activity_files?without_workout=true`; kept rather than deleted so multi-sport files can be processed once supported.
+- [x] Deduplicate uploads: the same file (same content hash, already computed) for the same user returns the existing workout instead of creating a second one.
+- [x] Backfill segments for workouts created before `workout_segments` existed: `POST /segments/recompute` (all) and `POST /workouts/{id}/segments/recompute`.
+- [ ] Frontend and `taco`: say "already uploaded" on a `200` re-upload, offer a backfill action, and list files that failed to parse.
 
 ## M3 — Deploy
 

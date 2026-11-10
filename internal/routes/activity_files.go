@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -68,7 +69,12 @@ func getActivityFilesFunc(m models.Model) http.HandlerFunc {
 			return
 		}
 
-		activityFiles, err := m.ActivityFiles(ctx, userToken)
+		list := m.ActivityFiles
+		// Files whose workout creation failed (unreadable, multi-sport), so clients can retry or delete them.
+		if r.URL.Query().Get("without_workout") == "true" {
+			list = m.ActivityFilesWithoutWorkout
+		}
+		activityFiles, err := list(ctx, userToken)
 		if err != nil {
 			notFoundHandler(w, r)
 			return
@@ -122,7 +128,7 @@ func postActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo) http.Handl
 		}
 
 		log.Printf("Adding activity file for timestamp %v", timestamp)
-		activityFile, err := m.AddActivityFile(ctx, file, timestamp, userToken, fileRepo)
+		activityFile, created, err := m.AddActivityFile(ctx, file, timestamp, userToken, fileRepo)
 		if err != nil {
 			log.Printf("Error adding activity file! %v", err)
 			serverError(w, err)
@@ -130,7 +136,10 @@ func postActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo) http.Handl
 		}
 
 		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		// 200 with the existing file on a re-upload, so clients carry on to the workout it already has.
+		if created {
+			w.WriteHeader(http.StatusCreated)
+		}
 		if err := json.NewEncoder(w).Encode(activityFile); err != nil {
 			serverError(w, err)
 		}
@@ -222,6 +231,10 @@ func deleteActivityFileFunc(m models.Model) http.HandlerFunc {
 
 		log.Printf("Deleting activity file %v", activityFileID)
 		err = m.DeleteActivityFile(ctx, activityFileID, userToken)
+		if errors.Is(err, models.ErrActivityFileInUse) {
+			conflictError(w, err)
+			return
+		}
 		if err != nil {
 			log.Printf("Error deleting activity file! %v", err)
 			serverError(w, err)
@@ -251,7 +264,7 @@ func downloadActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo) http.H
 
 		content, err := m.GetActivityFileContent(ctx, activityFileID, userToken, fileRepo)
 		if err != nil {
-			if err == models.ErrNoFileContent {
+			if errors.Is(err, models.ErrNoFileContent) || models.IsNotFound(err) {
 				notFoundHandler(w, r)
 				return
 			}

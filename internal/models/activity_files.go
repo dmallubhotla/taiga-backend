@@ -54,18 +54,46 @@ func (m *storeModel) ActivityFiles(ctx context.Context, userToken *tokens.UserTo
 	return retActivityFiles, nil
 }
 
-func (m *storeModel) AddActivityFile(ctx context.Context, fileReader io.Reader, timestamp time.Time, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*ActivityFile, error) {
-	// First store the file in the filerepo
+func (m *storeModel) ActivityFilesWithoutWorkout(ctx context.Context, userToken *tokens.UserToken) ([]*ActivityFile, error) {
+	querier, err := m.store.GetQuerier()
+	if err != nil {
+		log.Printf("could not get a querier: %v", err)
+		return nil, err
+	}
+	activityFiles, err := querier.ListActivityFilesWithoutWorkout(ctx, &userToken.ID)
+	if err != nil {
+		log.Printf("Could not get activity files without workouts: %v", err)
+		return nil, err
+	}
+	return activityFiles, nil
+}
+
+func (m *storeModel) AddActivityFile(ctx context.Context, fileReader io.Reader, timestamp time.Time, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*ActivityFile, bool, error) {
+	// Storing is idempotent (content-addressed), and it's what gives us the hash to dedupe on.
 	hash, err := fileRepo.Store(ctx, fileReader)
 	if err != nil {
 		log.Printf("Could not store file in filerepo: %v", err)
-		return nil, err
+		return nil, false, err
 	}
 
 	querier, err := m.store.GetQuerier()
 	if err != nil {
 		log.Printf("could not get a querier: %v", err)
-		return nil, err
+		return nil, false, err
+	}
+
+	// Check-then-insert can race two simultaneous uploads into a duplicate; there's no unique constraint because existing databases may already hold duplicates.
+	existing, err := querier.GetActivityFileByHash(ctx, &db.GetActivityFileByHashParams{
+		UserID:       &userToken.ID,
+		FileRepoHash: &hash,
+	})
+	if err == nil {
+		log.Printf("Activity file with hash %s already uploaded as %d", hash, existing.ID)
+		return existing, false, nil
+	}
+	if !IsNotFound(err) {
+		log.Printf("Could not look up activity file by hash: %v", err)
+		return nil, false, err
 	}
 
 	// Convert time.Time to pgtype.Timestamptz
@@ -83,9 +111,9 @@ func (m *storeModel) AddActivityFile(ctx context.Context, fileReader io.Reader, 
 	returnActivityFile, err := querier.CreateActivityFile(ctx, createActivityFileParams)
 	if err != nil {
 		log.Printf("Could not create activity file: %v", err)
-		return nil, err
+		return nil, false, err
 	}
-	return returnActivityFile, nil
+	return returnActivityFile, true, nil
 }
 
 func (m *storeModel) UpdateActivityFile(ctx context.Context, id int32, timestamp time.Time, fileRepoHash *string, userToken *tokens.UserToken) (*ActivityFile, error) {
@@ -121,6 +149,19 @@ func (m *storeModel) DeleteActivityFile(ctx context.Context, id int32, userToken
 	if err != nil {
 		log.Printf("could not get a querier: %v", err)
 		return err
+	}
+
+	// Postgres would reject this with an FK violation and SQLite would leave the workouts pointing at nothing, so refuse up front either way.
+	referencing, err := querier.GetWorkoutsByActivityFile(ctx, &db.GetWorkoutsByActivityFileParams{
+		ActivityFileID: &id,
+		UserID:         userToken.ID,
+	})
+	if err != nil {
+		log.Printf("Could not check workouts for activity file %d: %v", id, err)
+		return err
+	}
+	if len(referencing) > 0 {
+		return ErrActivityFileInUse
 	}
 
 	deleteActivityFileParams := &db.DeleteActivityFileParams{

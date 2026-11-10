@@ -1,6 +1,7 @@
 package workouts
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -8,6 +9,13 @@ import (
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/mesgdef"
+)
+
+var (
+	// ErrUnreadableFile means the bytes aren't a FIT file we can decode.
+	ErrUnreadableFile = errors.New("not a readable FIT file")
+	// ErrUnsupportedActivity means the file decodes but isn't a single-session activity.
+	ErrUnsupportedActivity = errors.New("unsupported activity")
 )
 
 func summarise(sesh *mesgdef.Session) *RunSummary {
@@ -51,10 +59,11 @@ func ReadActivity(activity *filedef.Activity) (*Run, error) {
 
 	run := Run{}
 
-	sessions := activity.Sessions
-	if len(sessions) != 1 {
-		// log.Printf("Issue, got %d sessions, more than one.", len(activity.Sessions))
-		return nil, fmt.Errorf("got more than one session in activity")
+	switch n := len(activity.Sessions); {
+	case n == 0:
+		return nil, fmt.Errorf("%w: the file has no session", ErrUnsupportedActivity)
+	case n > 1:
+		return nil, fmt.Errorf("%w: the file has %d sessions and multi-sport activities aren't supported yet", ErrUnsupportedActivity, n)
 	}
 	onlySession := activity.Sessions[0]
 	summary := summarise(onlySession)
@@ -79,13 +88,13 @@ func ReadFitFile(r io.Reader) (*Run, error) {
 	dec := decoder.New(r)
 	fit, err := dec.Decode()
 	if err != nil {
-		return nil, fmt.Errorf("received error decoding file: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrUnreadableFile, err)
 	}
 
 	activity := filedef.NewActivity(fit.Messages...)
 	run, err := ReadActivity(activity)
 	if err != nil {
-		return nil, fmt.Errorf("received error while reading activity: %w", err)
+		return nil, err
 	}
 	return run, nil
 }

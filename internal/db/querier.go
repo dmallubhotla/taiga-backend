@@ -31,11 +31,13 @@ type Querier interface {
 	DeleteSegmentsByWorkout(ctx context.Context, arg *DeleteSegmentsByWorkoutParams) error
 	DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) error
 	GetActivityFile(ctx context.Context, arg *GetActivityFileParams) (*ActivityFile, error)
+	GetActivityFileByHash(ctx context.Context, arg *GetActivityFileByHashParams) (*ActivityFile, error)
 	GetHat(ctx context.Context, arg *GetHatParams) (*Hat, error)
 	GetUser(ctx context.Context, id int32) (*GetUserRow, error)
 	GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Workout, error)
 	GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkoutsByActivityFileParams) ([]*Workout, error)
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
+	ListActivityFilesWithoutWorkout(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
 	ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error)
