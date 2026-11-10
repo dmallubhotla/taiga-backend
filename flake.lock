@@ -88,11 +88,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1780260526,
-        "narHash": "sha256-s/cHy2PWy85tA0JHKnR7Q1n5DB3GlAI4idIUumENaeg=",
+        "lastModified": 1780320520,
+        "narHash": "sha256-qC4MMsuDUpWRd+uhJ0mD8zPesnuEFhS74zakngJ+ax0=",
         "owner": "dmallubhotla",
         "repo": "hanko",
-        "rev": "2f491a546f15f9f71a21a1de03825188af02fc80",
+        "rev": "529e59bcbfba17611cbefcfd55266d85d83cffe7",
         "type": "github"
       },
       "original": {
