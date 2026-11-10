@@ -35,7 +35,6 @@ func main() {
 
 	flag.Parse()
 
-	log.Printf("obtained config: %+v", cfg)
 
 	f, err := os.Open(filename)
 	if err != nil {

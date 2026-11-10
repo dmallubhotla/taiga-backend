@@ -106,7 +106,7 @@ func createTokenFunc(m models.Model, tok tokens.Toker) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("Created token [%+v]", token)
+		log.Printf("Issued token for user %d", user.ID)
 
 		response := &createdToken{Token: token}
 		if err := json.NewEncoder(w).Encode(response); err != nil {

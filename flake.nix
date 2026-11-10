@@ -98,7 +98,8 @@
             app
           ];
           config = {
-            Cmd = [ "/bin/bash" ];
+            # The server; `just exec-docker` overrides this with a shell.
+            Cmd = [ "/bin/server" ];
             Env = [
               "PATH=/bin"
             ];

@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
+	"reflect"
 	"strings"
+
+	"github.com/spf13/viper"
 )
 
 // Config represents the application configuration
@@ -76,6 +78,8 @@ func Load(filename string) (*Config, error) {
 	v.SetEnvPrefix("TAIGA")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+	// AutomaticEnv only reaches keys viper already knows, so a key with no default (e.g. db.migration_path) would ignore its env var unless bound.
+	bindEnvs(v, reflect.TypeFor[Config](), "")
 
 	// Try to read config file if it exists
 	v.SetConfigName(filename)
@@ -118,4 +122,22 @@ func (a *AppConfig) IsDevelopment() bool {
 // IsProduction returns true if running in production mode
 func (a *AppConfig) IsProduction() bool {
 	return a.Environment == "production" || a.Environment == "prod"
+}
+
+// bindEnvs binds every mapstructure key in t, so each config field can be set from TAIGA_<SECTION>_<KEY>.
+func bindEnvs(v *viper.Viper, t reflect.Type, prefix string) {
+	for field := range t.Fields() {
+		key := field.Tag.Get("mapstructure")
+		if key == "" {
+			continue
+		}
+		if prefix != "" {
+			key = prefix + "." + key
+		}
+		if field.Type.Kind() == reflect.Struct {
+			bindEnvs(v, field.Type, key)
+			continue
+		}
+		_ = v.BindEnv(key)
+	}
 }

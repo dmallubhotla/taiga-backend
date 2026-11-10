@@ -233,7 +233,7 @@ file_repo:
 ### Environment Variables
 - Prefix: `TAIGA_`
 - Examples: `TAIGA_APP_PORT`, `TAIGA_DB_DRIVER`, `TAIGA_DB_HOST`, `TAIGA_TOKENS_PRIVATE_KEY_PATH`
-- Override any config file setting using dot notation converted to underscores
+- Override any config file setting using dot notation converted to underscores, e.g. `db.migration_path` → `TAIGA_DB_MIGRATION_PATH`; every field in `config.Config` is bound, so a deployment can be configured by env alone
 
 ## API Endpoints
 
@@ -341,6 +341,7 @@ Switch by updating `config.yaml` or setting `TAIGA_DB_DRIVER` environment variab
 - Image includes compiled Go binary, migration files, and minimal runtime dependencies
 - Tagged as `taiga:latest` by default
 - Supports volume mounting for configuration, certificates, database, and file repository
+- The image runs `/bin/server` by default, with migrations at `/migrations` (postgres) and `/migrations-sqlite`
 - Example run command with volume mounts: `docker run -v ./config.yaml:/workspace/config.yaml -v ./cert:/cert -v ./data.db:/workspace/data.db -v ./filerepo:/filerepo taiga`
 
 ## Activity Files API
