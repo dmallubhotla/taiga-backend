@@ -39,7 +39,7 @@ jobs:
           IMAGE="ghcr.io/${OWNER,,}/taiga"
           echo "$GHCR_TOKEN" | nix run nixpkgs#skopeo -- login ghcr.io \
             --username "$GHCR_USER" --password-stdin
-          nix develop --command hanko stamp docker tags "$IMAGE" \
+          nix develop --command hanko version docker tags --latest-on-release-tag "$IMAGE" \
           | while IFS= read -r tag; do
               [[ -z "$tag" ]] && continue
               echo "::group::skopeo copy → $tag"
