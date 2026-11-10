@@ -3,6 +3,7 @@ package workouts
 import (
 	"fmt"
 	"io"
+	"math"
 
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/filedef"
@@ -14,10 +15,14 @@ func summarise(sesh *mesgdef.Session) *RunSummary {
 	totalDistance := &Distance{sesh.TotalDistanceScaled()}
 	distanceMiles := totalDistance.AsMiles()
 	timeSeconds := sesh.TotalElapsedTimeScaled()
-	duration := sesh.Timestamp.Sub(sesh.StartTime)
+	// Prefer the recorded elapsed time; some files close the session with Timestamp == StartTime.
+	hours := timeSeconds / 3600
+	if math.IsNaN(hours) || hours <= 0 {
+		hours = sesh.Timestamp.Sub(sesh.StartTime).Hours()
+	}
 
-	speedMph := distanceMiles / duration.Hours()
-	paceMinPerMile := duration.Minutes() / distanceMiles
+	speedMph := distanceMiles / hours
+	paceMinPerMile := hours * 60 / distanceMiles
 
 	return &RunSummary{
 		DistanceMiles:  distanceMiles,
