@@ -79,6 +79,17 @@ Milestones are roughly ordered; each should fit in one PR per repo.
 - [x] Env-only configuration: every config key binds to its `TAIGA_*` variable, and the image starts the server by default.
 - [x] A production CORS story: none needed, because the frontend's `/api` proxy is the only browser entry point and `TAIGA_APP_ENVIRONMENT=production` keeps the dev-only wildcard CORS off.
 
+### Before any public access
+
+The test stack is internal-only (LAN and tailnet). These must land before taiga is reachable from the internet.
+
+- [ ] **Closable registration.** `POST /auth/register` is always open today, so anyone who can reach the API can make an account.
+  - `auth.registration: open | closed` (env `TAIGA_AUTH_REGISTRATION`); closed returns 403 from `/auth/register`.
+  - Default closed outside development, so a prod deploy is closed unless it opts in.
+  - `cmd/useradd` to create accounts while registration is closed (run via `kubectl exec`).
+  - The frontend hides its register link based on `/auth/providers` (M1), but the 403 is the real control.
+  - Separate from M1's `auth.password_login: false`, which disables password login entirely. With OIDC, `closed` plus a provider's `allow_signup: false` gives invite-only through authentik.
+
 ## M4 — Cleanup
 
 - [ ] Remove the `hats` template code and its table.
