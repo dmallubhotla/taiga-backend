@@ -85,8 +85,15 @@ func EncodeFITHeading(t *testing.T, start time.Time, splits []Split, bearing flo
 // EncodeFITSport is EncodeFIT recorded as another sport (EncodeFIT records running).
 func EncodeFITSport(t *testing.T, start time.Time, splits []Split, sport typedef.Sport) []byte {
 	t.Helper()
+	return EncodeFITSubSport(t, start, splits, sport, typedef.SubSportGeneric)
+}
+
+// EncodeFITSubSport is EncodeFITSport with a sub-sport too, e.g. a treadmill run.
+func EncodeFITSubSport(t *testing.T, start time.Time, splits []Split, sport typedef.Sport, subSport typedef.SubSport) []byte {
+	t.Helper()
 	activity := buildActivity(start, splits, 0)
 	activity.Sessions[0].SetSport(sport)
+	activity.Sessions[0].SetSubSport(subSport)
 	return encode(t, activity)
 }
 

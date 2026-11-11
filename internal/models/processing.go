@@ -150,9 +150,9 @@ func (m *storeModel) WorkoutSeries(ctx context.Context, workoutID int32, userTok
 	return series, err
 }
 
-// addSegments stores best efforts for runs and walks; other sports keep none, so a ride never tops a running leaderboard.
+// addSegments stores best efforts for outdoor runs and walks; anything else keeps none, so neither a ride nor a treadmill run tops a running leaderboard.
 func addSegments(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
-	if !workouts.Scored(run.Summary.Sport) {
+	if !run.Summary.Scored() {
 		return nil
 	}
 	segments := append(workouts.FastestSegments(run, workouts.StandardDistances), workouts.FarthestEfforts(run, workouts.StandardDurations)...)

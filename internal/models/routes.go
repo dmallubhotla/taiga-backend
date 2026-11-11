@@ -295,7 +295,7 @@ func (m *storeModel) DetectRoutes(ctx context.Context, userToken *tokens.UserTok
 // storeTrack replaces the workout's track, removing it for a run without GPS or a sport that doesn't get routes.
 func storeTrack(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
 	var track *workouts.Track
-	if workouts.Scored(run.Summary.Sport) {
+	if run.Summary.Scored() {
 		track = workouts.BuildTrack(run)
 	}
 	if track == nil {

@@ -66,3 +66,11 @@ var ScoredSports = []string{SportRunning, SportWalking}
 func Scored(sport string) bool {
 	return sport == SportRunning || sport == SportWalking
 }
+
+// Indoor sub-sports measure distance with a foot pod or the belt, not GPS, so they never count towards best efforts or routes.
+var indoorSubSports = map[string]bool{"treadmill": true, "indoor_running": true, "indoor_walking": true}
+
+// Scored reports whether this session gets best efforts and a route: a run or walk, outdoors.
+func (s *RunSummary) Scored() bool {
+	return Scored(s.Sport) && !indoorSubSports[s.SubSport]
+}
