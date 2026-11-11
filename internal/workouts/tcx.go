@@ -67,7 +67,10 @@ type tcxTrackpoint struct {
 
 // ReadTCXFile reads one session from a TCX file, as Google Fit's Takeout writes them: one file per session, its activities the stretches Google Fit detected.
 // Each activity and lap restarts its distance from zero, so the laps are laid end to end.
-// A scored session that mixes sports, has time running backwards, or has too few GPS points for its distance was auto-detected rather than tracked: it keeps its totals but no points, and an ExcludedReason.
+// Google Fit's per-point distances can't be trusted (they update every half minute or so, or sit at the total throughout), and it pads a session with points out to the hour.
+// So a session with enough GPS keeps only its fixes, each measured along the track, and its time is the fixes' span; the stated distance stays the total.
+// A scored session that mixes sports, has time running backwards, or has too few GPS points for its distance was auto-detected rather than tracked, and one whose track strays over 10% from the stated distance has a bad track or a bad total.
+// Either keeps its stated totals but no points, and an ExcludedReason.
 func ReadTCXFile(r io.Reader) (*Run, error) {
 	var f tcxFile
 	if err := xml.NewDecoder(r).Decode(&f); err != nil {
@@ -123,6 +126,14 @@ func ReadTCXFile(r io.Reader) (*Run, error) {
 		}
 		offset += lap.DistanceMeter
 	}
+	distance := &Distance{Meters: offset}
+	sparse := float64(gps) < tcxMinPointsPerMile*distance.AsMiles()
+	trackAgrees := true
+	if !sparse && !backwards && gps >= 2 {
+		records = alongFixes(records)
+		start, end = records[0].Timestamp, records[len(records)-1].Timestamp
+		trackAgrees = math.Abs(records[len(records)-1].Distance.Meters-distance.Meters) <= pointsAgreeWithin*distance.Meters
+	}
 	for _, rec := range records {
 		rec.DurationFromStart = rec.Timestamp.Sub(start)
 	}
@@ -131,7 +142,6 @@ func ReadTCXFile(r io.Reader) (*Run, error) {
 	if sport[0] == "" {
 		sport[0] = typedef.SportGeneric.String()
 	}
-	distance := &Distance{Meters: offset}
 	duration := end.Sub(start)
 	hours := duration.Hours()
 	run := &Run{
@@ -156,12 +166,38 @@ func ReadTCXFile(r io.Reader) (*Run, error) {
 			run.Summary.ExcludedReason = ExcludedNoDistance
 		case backwards:
 			run.Summary.ExcludedReason = ExcludedTimeBackwards
-		case float64(gps) < tcxMinPointsPerMile*distance.AsMiles():
+		case sparse:
 			run.Summary.ExcludedReason = ExcludedSparseGPS
+		case !trackAgrees:
+			run.Summary.ExcludedReason = ExcludedPointsDisagree
 		}
 	}
 	if run.Summary.ExcludedReason != "" {
 		run.Records = nil
 	}
 	return run, nil
+}
+
+// alongFixes keeps only the records with a GPS fix, each measured by the distance along the fixes so far.
+func alongFixes(records []*RecordData) []*RecordData {
+	var kept []*RecordData
+	meters := 0.0
+	for _, rec := range records {
+		if math.IsNaN(rec.Latitude) {
+			continue
+		}
+		if n := len(kept); n > 0 {
+			meters += greatCircleMeters(kept[n-1].Latitude, kept[n-1].Longitude, rec.Latitude, rec.Longitude)
+		}
+		rec.Distance = &Distance{Meters: meters}
+		kept = append(kept, rec)
+	}
+	return kept
+}
+
+func greatCircleMeters(lat1, lon1, lat2, lon2 float64) float64 {
+	const rad = math.Pi / 180
+	dLat, dLon := (lat2-lat1)*rad, (lon2-lon1)*rad
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1*rad)*math.Cos(lat2*rad)*math.Sin(dLon/2)*math.Sin(dLon/2)
+	return 2 * earthRadiusM * math.Asin(math.Sqrt(a))
 }
