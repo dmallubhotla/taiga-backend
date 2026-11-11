@@ -106,7 +106,12 @@ func getBestSegmentsFunc(m models.Model) http.HandlerFunc {
 			return
 		}
 
-		efforts, err := m.BestSegments(ctx, name, sport, int32(limit), userToken)
+		window, err := parseWindow(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		efforts, err := m.BestSegments(ctx, name, sport, int32(limit), window, userToken)
 		if err != nil {
 			serverError(w, err)
 			return

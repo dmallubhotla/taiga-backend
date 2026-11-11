@@ -284,16 +284,17 @@ file_repo:
 - `GET /activity_files/{id}/download` - Download the actual file content
 
 ### Workouts and Segments API (requires JWT token)
-- `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD. `PUT` only edits hand-entered workouts; one from a file is `422`, since reprocessing owns its summary (correct its sport or exclusion instead)
+- `GET /workouts` - List workouts (newest first); `?from=&to=` keeps those starting in that window (from inclusive, to exclusive; RFC3339, or a bare date as UTC midnight; either end optional), `?limit=` (1–1000) and `?offset=` page through it, and without a limit it returns the whole window; `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD. `PUT` only edits hand-entered workouts; one from a file is `422`, since reprocessing owns its summary (correct its sport or exclusion instead)
 - `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT, Endomondo JSON or TCX file into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
 - `GET /workouts/{id}/segments` - Fastest effort at each standard distance the workout covers, shortest distance first, then the farthest effort for each standard duration it lasts (`kind` is `distance` or `duration`)
 - `GET /workouts/{id}/series` - The workout's records as parallel columns (`time_s`, `distance_m`, `speed_mps`, `altitude_m`, `heart_rate`, `lat`, `lon`; null where a sample is missing, a column omitted if never recorded), at most 2000 points, gzipped; `404` for a hand-entered workout
 - `POST /workouts/{id}/reprocess` - Rebuild the workout's summary and segments from its file now and return it; `422` for a hand-entered workout with no file
 - `PUT /workouts/{id}/corrections` - Replace a file-backed workout's corrections, `{"sport": "walking", "excluded_reason": "ran with a friend"}` (a FIT sport name; a reason of at most 64 characters), and return it reprocessed with them; a field left out or empty clears that correction. `400` for an unknown sport, `422` for a hand-entered workout
 - `POST /workouts/reprocess` - Queue reprocessing of all the user's file-backed workouts; `202` with `{enqueued}`, progress under `/jobs`
+- `GET /workouts/totals?from=&to=` - `{sports, first_start_time}`: per sport, the count (`workouts`), `distance_miles` and `time_seconds` of the workouts starting in the window that count (an `excluded_reason` keeps one out), most workouts first; and the earliest start of any workout listed in the window, so a client can offer the years there are (null when there are none)
 - `GET /workouts/compare?ids=1,2` - Up to 10 workouts with segments keyed by name, plus `distances` (the segment names any of them have, durations last)
 - `GET /segments` - The standard segments: distances (`1k`, `1mi`, `3k`, `2mi`, `5k`, `5mi`, `10k`, `half`, `marathon`) with `meters`, then durations (`30min`, `1h`) with `seconds`, each with its `kind`
-- `GET /segments/{name}/best?sport=running|walking&limit=N` - The user's best efforts at that segment across workouts of one sport (default `running`; default 10, max 100): fastest for a distance, farthest for a duration
+- `GET /segments/{name}/best?sport=running|walking&limit=N&from=&to=` - The user's best efforts at that segment across workouts of one sport (default `running`; default 10, max 100) starting in the window (same `from`/`to` as `GET /workouts`; default all time): fastest for a distance, farthest for a duration
 
 ### Routes API (requires JWT token)
 - `GET /routes` - The user's routes, most recently run first: `{id, name, sport, representative_workout_id, run_count, distance_miles, best_time_seconds, best_workout_id, latest_start_time}`
@@ -373,7 +374,7 @@ Switch by updating `config.yaml` or setting `TAIGA_DB_DRIVER` environment variab
   Auth uses the workflow's `GITHUB_TOKEN` with `packages: write`. Images are
   pushed directly from the Nix-built `docker-archive` via `skopeo copy` — no
   Docker daemon needed in CI.
-- `ci.yml` skips pushes that only touch Markdown, `docs/` or `LICENSE*` (tag pushes always run); `[skip ci]` in the head commit skips any push.
+- `ci.yml` skips pushes that only touch Markdown, `docs/` or `LICENSE*` (tag pushes always run); `[skip ci]` in the head commit skips any push. `gh workflow run ci --ref <branch>` runs it by hand (an empty commit doesn't: it touches no paths, so the docs-only skip drops it).
 - `commits.yml` checks PR commit subjects and titles are conventional commits.
 - `seal.yml` is a manually-triggered hanko release workflow.
 

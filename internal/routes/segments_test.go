@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -255,4 +256,56 @@ func TestDownloadReturnsFullFile(t *testing.T) {
 	status, body := alice.get(fmt.Sprintf("/activity_files/%d/download", afID))
 	require.Equal(t, http.StatusOK, status)
 	assert.Equal(t, fit, body)
+}
+
+func TestTimeWindowParams(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	_, earlier := alice.uploadWorkout(fourKFIT(t))
+	_, later := alice.uploadWorkout(testsupport.EncodeFIT(t, routeDay.AddDate(1, 0, 0), []testsupport.Split{{Meters: 1200, Seconds: 480}}))
+	from := routeDay.AddDate(0, 0, 1).Format(time.DateOnly)
+
+	listed := func(path string) []int32 {
+		status, body := alice.get(path)
+		require.Equal(t, http.StatusOK, status, string(body))
+		var ws []models.Workout
+		require.NoError(t, json.Unmarshal(body, &ws))
+		ids := make([]int32, 0, len(ws))
+		for _, w := range ws {
+			ids = append(ids, w.ID)
+		}
+		return ids
+	}
+	assert.Equal(t, []int32{later, earlier}, listed("/workouts"))
+	assert.Equal(t, []int32{later}, listed("/workouts?from="+from))
+	assert.Equal(t, []int32{earlier}, listed("/workouts?to="+url.QueryEscape(routeDay.Add(time.Hour).Format(time.RFC3339))))
+	assert.Equal(t, []int32{earlier}, listed("/workouts?limit=1&offset=1"))
+
+	status, body := alice.get("/workouts/totals?from=" + from)
+	require.Equal(t, http.StatusOK, status, string(body))
+	var totals models.WorkoutTotals
+	require.NoError(t, json.Unmarshal(body, &totals))
+	require.Len(t, totals.Sports, 1)
+	assert.Equal(t, int64(1), totals.Sports[0].Workouts)
+	assert.Contains(t, string(body), `"first_start_time":`)
+
+	status, body = alice.get("/segments/1k/best?to=" + from)
+	require.Equal(t, http.StatusOK, status, string(body))
+	var efforts []models.SegmentEffort
+	require.NoError(t, json.Unmarshal(body, &efforts))
+	require.Len(t, efforts, 1)
+	assert.Equal(t, earlier, efforts[0].WorkoutID)
+
+	for _, bad := range []string{
+		"/workouts?from=yesterday",
+		"/workouts?from=2026-02-01&to=2026-01-01",
+		"/workouts?limit=0",
+		"/workouts?limit=1001",
+		"/workouts?offset=-1",
+		"/workouts/totals?to=soon",
+		"/segments/1k/best?from=nope",
+	} {
+		status, _ := alice.get(bad)
+		assert.Equal(t, http.StatusBadRequest, status, bad)
+	}
 }

@@ -24,6 +24,7 @@ func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router := chi.NewRouter()
 	router.Get("/", getWorkoutsFunc(m))
 	router.Get("/compare", compareWorkoutsFunc(m))
+	router.Get("/totals", getWorkoutTotalsFunc(m))
 	router.Get("/{workoutid}", getWorkoutFunc(m))
 	router.Get("/{workoutid}/segments", getWorkoutSegmentsFunc(m))
 	router.Get("/{workoutid}/route", getWorkoutRouteFunc(m))
@@ -80,7 +81,12 @@ func getWorkoutsFunc(m models.Model) http.HandlerFunc {
 			return
 		}
 
-		workouts, err := m.Workouts(ctx, userToken)
+		query, err := parseWorkoutQuery(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		workouts, err := m.Workouts(ctx, query, userToken)
 		if err != nil {
 			notFoundHandler(w, r)
 			return
@@ -138,7 +144,7 @@ func postWorkoutFunc(m models.Model) http.HandlerFunc {
 				badRequestError(w, fmt.Errorf("invalid start_time format, use RFC3339: %w", err))
 				return
 			}
-			workout.StartTime = pgtype.Timestamptz{Time: startTime, Valid: true}
+			workout.StartTime = pgtype.Timestamptz{Time: startTime.UTC(), Valid: true}
 		}
 
 		if workoutRequest.EndTime != nil {
@@ -147,7 +153,7 @@ func postWorkoutFunc(m models.Model) http.HandlerFunc {
 				badRequestError(w, fmt.Errorf("invalid end_time format, use RFC3339: %w", err))
 				return
 			}
-			workout.EndTime = pgtype.Timestamptz{Time: endTime, Valid: true}
+			workout.EndTime = pgtype.Timestamptz{Time: endTime.UTC(), Valid: true}
 		}
 
 		log.Printf("Adding workout %v", workout)
@@ -240,7 +246,7 @@ func putWorkoutFunc(m models.Model) http.HandlerFunc {
 				badRequestError(w, fmt.Errorf("invalid start_time format, use RFC3339: %w", err))
 				return
 			}
-			existingWorkout.StartTime = pgtype.Timestamptz{Time: startTime, Valid: true}
+			existingWorkout.StartTime = pgtype.Timestamptz{Time: startTime.UTC(), Valid: true}
 		}
 
 		if workoutRequest.EndTime != nil {
@@ -249,7 +255,7 @@ func putWorkoutFunc(m models.Model) http.HandlerFunc {
 				badRequestError(w, fmt.Errorf("invalid end_time format, use RFC3339: %w", err))
 				return
 			}
-			existingWorkout.EndTime = pgtype.Timestamptz{Time: endTime, Valid: true}
+			existingWorkout.EndTime = pgtype.Timestamptz{Time: endTime.UTC(), Valid: true}
 		}
 
 		log.Printf("Updating workout %v", workoutID)
@@ -415,5 +421,28 @@ func putCorrectionsFunc(m models.Model, fileRepo filerepo.FileRepo) http.Handler
 		// A new sport or exclusion can add the workout to a route or take it off one.
 		queueRouteDetection(ctx, m, userToken)
 		writeJSON(w, workout)
+	}
+}
+
+// getWorkoutTotalsFunc sums each sport's counted workouts starting in ?from=/?to=; excluded workouts stay out.
+func getWorkoutTotalsFunc(m models.Model) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		userToken, err := tokens.UserTokenFromContext(ctx)
+		if err != nil {
+			unauthorizedHandler(w, r)
+			return
+		}
+		window, err := parseWindow(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		totals, err := m.WorkoutTotals(ctx, window, userToken)
+		if err != nil {
+			serverError(w, err)
+			return
+		}
+		writeJSON(w, totals)
 	}
 }

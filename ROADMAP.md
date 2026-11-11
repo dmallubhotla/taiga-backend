@@ -207,7 +207,7 @@ Builds on the M6 series (positions); everything is per user, never matched acros
   - Extensions (the usual loop plus an extra mile) cover most of the route but add length: match them as a variant of the route, flagged, and keep them out of the route's total-time comparison. Today they fail the length check and become a route of their own.
   - Truly different runs become their own route. Partial overlap between routes is what sub-route segments (Strava-style, user-drawn or detected from shared stretches) would handle; that's a later step.
 - [ ] **User control beats detection:** naming is done (`PUT /routes/{id}`). Still to do: merge two routes, move a run to another route or detach it, mark "not this route". Those decisions are stored separately and survive re-detection. A route that dissolves (down to one run) loses its name today; overrides would fix that too.
-- [ ] Frontend: a routes list, a route page (map of the representative track, its runs and a time trend), and the route shown on each workout.
+- [x] Frontend: a routes list, a route page (map of the representative track, its runs and a time trend), and the route shown on each workout.
 
 ## M10 — Corrections
 
@@ -218,7 +218,7 @@ The file is the source of truth, but files are sometimes wrong: a ride saved as 
   - First case, to exclude once this is deployed: the 2023-04-25 Google Fit run (test stack workout 739), whose total is inflated by a sparse GPS start (see M8).
 - [x] **Edit a workout's sport**: `sport_override`, set the same way, wins over the file's sport, and changing it reprocesses the workout and requeues route detection, so segments and routes follow. The file's sub-sport stays, so a treadmill run corrected to a walk is still indoors.
 - [ ] Other fields the file got wrong, as more override columns applied the same way, once there's a case for one.
-- [ ] Frontend: the sport and exclusion controls on the workout page, and showing what's been corrected or excluded.
+- [x] Frontend: the sport and exclusion controls on the workout page ("Correct"), with a corrected sport marked and an exclusion shown as "Counted: No".
 - [x] **Indoor runs aren't scored.** Treadmill, `indoor_running` and `indoor_walking` sessions measure distance with a belt or foot pod, so they get no segments and no track (`RunSummary.Scored`, #65).
 - [ ] Route changes (rename is done; merge, move, detach, "not this route") are M9's user control.
 
@@ -226,8 +226,8 @@ The file is the source of truth, but files are sometimes wrong: a ride saved as 
 
 Years of history (an Endomondo archive goes back to 2016) make an all-time list long and all-time bests stale.
 
-- [ ] **Restrict the workout list by time.** `GET /workouts?from=&to=` (and paging, since the list returns everything today); the frontend picks a year (default: this one, with an "all" option) or a month, keeps it in the URL, and shows the year's totals (count, distance, time) above the list.
-- [ ] **Best efforts per year or window.** The same `from`/`to` on `GET /segments/{name}/best`, so the best page can show a season's bests beside all-time ones: tabs or a picker for years, plus rolling windows such as the last 12 months or 90 days. A per-year table (each standard distance's best in each year) shows progression at a glance.
+- [x] **Restrict the workout list by time.** `GET /workouts?from=&to=&limit=&offset=`, and `GET /workouts/totals` for a window's count, distance and time per sport (counted workouts only) with the earliest start, so the frontend can list the years there are. The frontend opens on this year, keeps the period in the URL (`?period=`), and shows its totals above the list. A month picker isn't there yet.
+- [x] **Best efforts per year or window.** The same `from`/`to` on `GET /segments/{name}/best`. The best page picks all time, the last 12 months, the last 90 days or a year, and under all time shows the distance's best in each year. A table of every distance by year is still to do: it would take a call per distance per year, so it wants one backend query.
 - [ ] Route pages and trends take the same window, so a route's best can be this year's.
 
 ## Later

@@ -51,6 +51,8 @@ type Querier interface {
 	EnqueueStaleWorkouts(ctx context.Context, arg *EnqueueStaleWorkoutsParams) (int64, error)
 	EnqueueUserWorkouts(ctx context.Context, arg *EnqueueUserWorkoutsParams) (int64, error)
 	FinishJob(ctx context.Context, arg *FinishJobParams) error
+	// The earliest start in [window_from, window_to), excluded workouts included since they're still listed; no rows when the window is empty.
+	FirstWorkoutStartInWindow(ctx context.Context, arg *FirstWorkoutStartInWindowParams) (pgtype.Timestamptz, error)
 	GetActivityFile(ctx context.Context, arg *GetActivityFileParams) (*ActivityFile, error)
 	GetActivityFileByHash(ctx context.Context, arg *GetActivityFileByHashParams) (*ActivityFile, error)
 	GetHat(ctx context.Context, arg *GetHatParams) (*Hat, error)
@@ -65,7 +67,7 @@ type Querier interface {
 	KillJob(ctx context.Context, arg *KillJobParams) error
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	ListActivityFilesWithoutWorkout(ctx context.Context, userID *int32) ([]*ActivityFile, error)
-	// A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport compete.
+	// A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport starting in [window_from, window_to) compete.
 	ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
 	ListJobsByUser(ctx context.Context, arg *ListJobsByUserParams) ([]*Job, error)
@@ -77,6 +79,8 @@ type Querier interface {
 	// Oldest first, the order route detection assigns runs in; routes only group runs of one sport.
 	ListWorkoutTracksByUser(ctx context.Context, userID int32) ([]*ListWorkoutTracksByUserRow, error)
 	ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Workout, error)
+	// Starting in [window_from, window_to); callers pass far-off bounds for an open end, so the same SQL runs on SQLite.
+	ListWorkoutsByUserInWindow(ctx context.Context, arg *ListWorkoutsByUserInWindowParams) ([]*Workout, error)
 	RenameRoute(ctx context.Context, arg *RenameRouteParams) (*Route, error)
 	RequeueDeadJob(ctx context.Context, arg *RequeueDeadJobParams) (*Job, error)
 	RetryJobLater(ctx context.Context, arg *RetryJobLaterParams) error
@@ -91,6 +95,8 @@ type Querier interface {
 	UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDerivedParams) (*Workout, error)
 	UpsertWorkoutSeries(ctx context.Context, arg *UpsertWorkoutSeriesParams) error
 	UpsertWorkoutTrack(ctx context.Context, arg *UpsertWorkoutTrackParams) error
+	// Per sport, for workouts starting in [window_from, window_to) that count; an excluded workout stays out of stats.
+	WorkoutTotalsByUser(ctx context.Context, arg *WorkoutTotalsByUserParams) ([]*WorkoutTotalsByUserRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

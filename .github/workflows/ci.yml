@@ -9,6 +9,8 @@ on:
       - '**.md'
       - 'docs/**'
       - 'LICENSE*'
+  # A manual run, for when GitHub drops or wedges a push's run: gh workflow run ci --ref <branch>.
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

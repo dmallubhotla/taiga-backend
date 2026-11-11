@@ -112,3 +112,60 @@ WHERE
   AND user_id = $2
 RETURNING
   *;
+
+-- name: ListWorkoutsByUserInWindow :many
+-- Starting in [window_from, window_to); callers pass far-off bounds for an open end, so the same SQL runs on SQLite.
+SELECT
+  *
+FROM
+  workouts
+WHERE
+  user_id = sqlc.arg(user_id)
+  AND start_time >= sqlc.arg(window_from)
+  AND start_time < sqlc.arg(window_to)
+ORDER BY
+  start_time DESC,
+  id DESC
+LIMIT
+  sqlc.arg(page_limit)
+OFFSET
+  sqlc.arg(page_offset);
+
+-- name: WorkoutTotalsByUser :many
+-- Per sport, for workouts starting in [window_from, window_to) that count; an excluded workout stays out of stats.
+SELECT
+  sport,
+  COUNT(*) AS workouts,
+  CAST(
+    COALESCE(SUM(distance_miles), 0) AS DOUBLE PRECISION
+  ) AS distance_miles,
+  CAST(
+    COALESCE(SUM(time_seconds), 0) AS DOUBLE PRECISION
+  ) AS time_seconds
+FROM
+  workouts
+WHERE
+  user_id = sqlc.arg(user_id)
+  AND excluded_reason = ''
+  AND start_time >= sqlc.arg(window_from)
+  AND start_time < sqlc.arg(window_to)
+GROUP BY
+  sport
+ORDER BY
+  workouts DESC,
+  sport;
+
+-- name: FirstWorkoutStartInWindow :one
+-- The earliest start in [window_from, window_to), excluded workouts included since they're still listed; no rows when the window is empty.
+SELECT
+  start_time
+FROM
+  workouts
+WHERE
+  user_id = sqlc.arg(user_id)
+  AND start_time >= sqlc.arg(window_from)
+  AND start_time < sqlc.arg(window_to)
+ORDER BY
+  start_time
+LIMIT
+  1;
