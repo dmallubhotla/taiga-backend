@@ -17,21 +17,23 @@ INSERT INTO
     workout_id,
     user_id,
     name,
+    kind,
     distance_meters,
     duration_seconds,
     start_offset_seconds,
     end_offset_seconds
   )
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7)
+  ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING
-  id, workout_id, user_id, name, distance_meters, duration_seconds, start_offset_seconds, end_offset_seconds, created_at
+  id, workout_id, user_id, name, distance_meters, duration_seconds, start_offset_seconds, end_offset_seconds, created_at, kind
 `
 
 type CreateWorkoutSegmentParams struct {
 	WorkoutID          int32   `json:"workout_id"`
 	UserID             int32   `json:"user_id"`
 	Name               string  `json:"name"`
+	Kind               string  `json:"kind"`
 	DistanceMeters     float64 `json:"distance_meters"`
 	DurationSeconds    float64 `json:"duration_seconds"`
 	StartOffsetSeconds float64 `json:"start_offset_seconds"`
@@ -43,6 +45,7 @@ func (q *Queries) CreateWorkoutSegment(ctx context.Context, arg *CreateWorkoutSe
 		arg.WorkoutID,
 		arg.UserID,
 		arg.Name,
+		arg.Kind,
 		arg.DistanceMeters,
 		arg.DurationSeconds,
 		arg.StartOffsetSeconds,
@@ -59,6 +62,7 @@ func (q *Queries) CreateWorkoutSegment(ctx context.Context, arg *CreateWorkoutSe
 		&i.StartOffsetSeconds,
 		&i.EndOffsetSeconds,
 		&i.CreatedAt,
+		&i.Kind,
 	)
 	return &i, err
 }
@@ -82,7 +86,7 @@ func (q *Queries) DeleteSegmentsByWorkout(ctx context.Context, arg *DeleteSegmen
 
 const listBestSegmentsByName = `-- name: ListBestSegmentsByName :many
 SELECT
-  workout_segments.id, workout_segments.workout_id, workout_segments.user_id, workout_segments.name, workout_segments.distance_meters, workout_segments.duration_seconds, workout_segments.start_offset_seconds, workout_segments.end_offset_seconds, workout_segments.created_at,
+  workout_segments.id, workout_segments.workout_id, workout_segments.user_id, workout_segments.name, workout_segments.distance_meters, workout_segments.duration_seconds, workout_segments.start_offset_seconds, workout_segments.end_offset_seconds, workout_segments.created_at, workout_segments.kind,
   workouts.start_time AS workout_start_time
 FROM
   workout_segments
@@ -91,7 +95,10 @@ WHERE
   workout_segments.user_id = $1
   AND workout_segments.name = $2
 ORDER BY
-  workout_segments.duration_seconds
+  CASE
+    WHEN workout_segments.kind = 'duration' THEN - workout_segments.distance_meters
+    ELSE workout_segments.duration_seconds
+  END
 LIMIT
   $3
 `
@@ -112,9 +119,11 @@ type ListBestSegmentsByNameRow struct {
 	StartOffsetSeconds float64            `json:"start_offset_seconds"`
 	EndOffsetSeconds   float64            `json:"end_offset_seconds"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	Kind               string             `json:"kind"`
 	WorkoutStartTime   pgtype.Timestamptz `json:"workout_start_time"`
 }
 
+// A distance segment ranks by time, a duration segment by distance covered.
 func (q *Queries) ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error) {
 	rows, err := q.db.Query(ctx, listBestSegmentsByName, arg.UserID, arg.Name, arg.Limit)
 	if err != nil {
@@ -134,6 +143,7 @@ func (q *Queries) ListBestSegmentsByName(ctx context.Context, arg *ListBestSegme
 			&i.StartOffsetSeconds,
 			&i.EndOffsetSeconds,
 			&i.CreatedAt,
+			&i.Kind,
 			&i.WorkoutStartTime,
 		); err != nil {
 			return nil, err
@@ -148,14 +158,18 @@ func (q *Queries) ListBestSegmentsByName(ctx context.Context, arg *ListBestSegme
 
 const listSegmentsByWorkout = `-- name: ListSegmentsByWorkout :many
 SELECT
-  id, workout_id, user_id, name, distance_meters, duration_seconds, start_offset_seconds, end_offset_seconds, created_at
+  id, workout_id, user_id, name, distance_meters, duration_seconds, start_offset_seconds, end_offset_seconds, created_at, kind
 FROM
   workout_segments
 WHERE
   workout_id = $1
   AND user_id = $2
 ORDER BY
-  distance_meters
+  kind,
+  CASE
+    WHEN kind = 'duration' THEN duration_seconds
+    ELSE distance_meters
+  END
 `
 
 type ListSegmentsByWorkoutParams struct {
@@ -163,6 +177,7 @@ type ListSegmentsByWorkoutParams struct {
 	UserID    int32 `json:"user_id"`
 }
 
+// Distance segments shortest first, then duration segments shortest first.
 func (q *Queries) ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error) {
 	rows, err := q.db.Query(ctx, listSegmentsByWorkout, arg.WorkoutID, arg.UserID)
 	if err != nil {
@@ -182,6 +197,7 @@ func (q *Queries) ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsBy
 			&i.StartOffsetSeconds,
 			&i.EndOffsetSeconds,
 			&i.CreatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}

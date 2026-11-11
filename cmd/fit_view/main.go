@@ -72,7 +72,7 @@ func main() {
 	// 	log.Printf("Record: [%d]. %v mi in %v minutes \n", idx, rec.Distance.AsMiles(), rec.DurationFromStart.Minutes())
 	// 	// printJson(rec)
 	// }
-	results := workouts.FastestSegments(run, workouts.StandardDistances)
+	results := append(workouts.FastestSegments(run, workouts.StandardDistances), workouts.FarthestEfforts(run, workouts.StandardDurations)...)
 	for _, result := range results {
 		log.Println(result)
 	}

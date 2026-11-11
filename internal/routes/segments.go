@@ -19,13 +19,16 @@ const (
 	maxCompareIDs    = 10
 )
 
-type standardDistanceResponse struct {
-	Name   string  `json:"name"`
-	Meters float64 `json:"meters"`
+// standardSegmentResponse is a distance (meters) or a duration (seconds), told apart by kind.
+type standardSegmentResponse struct {
+	Name    string  `json:"name"`
+	Kind    string  `json:"kind"`
+	Meters  float64 `json:"meters,omitempty"`
+	Seconds float64 `json:"seconds,omitempty"`
 }
 
 type compareResponse struct {
-	// Standard distances at least one compared workout covers, shortest first.
+	// Standard segments at least one compared workout has: distances shortest first, then durations.
 	Distances []string                    `json:"distances"`
 	Workouts  []*models.WorkoutComparison `json:"workouts"`
 }
@@ -44,13 +47,28 @@ func writeJSON(w http.ResponseWriter, v any) {
 	}
 }
 
+// standardSegmentNames is every standard segment name in display order: distances shortest first, then durations.
+func standardSegmentNames() []string {
+	names := make([]string, 0, len(workouts.StandardDistances)+len(workouts.StandardDurations))
+	for _, d := range workouts.StandardDistances {
+		names = append(names, d.Name)
+	}
+	for _, d := range workouts.StandardDurations {
+		names = append(names, d.Name)
+	}
+	return names
+}
+
 func getStandardDistancesFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		distances := make([]standardDistanceResponse, 0, len(workouts.StandardDistances))
+		segments := make([]standardSegmentResponse, 0, len(workouts.StandardDistances)+len(workouts.StandardDurations))
 		for _, d := range workouts.StandardDistances {
-			distances = append(distances, standardDistanceResponse{Name: d.Name, Meters: d.Meters})
+			segments = append(segments, standardSegmentResponse{Name: d.Name, Kind: workouts.KindDistance, Meters: d.Meters})
 		}
-		writeJSON(w, distances)
+		for _, d := range workouts.StandardDurations {
+			segments = append(segments, standardSegmentResponse{Name: d.Name, Kind: workouts.KindDuration, Seconds: d.Duration.Seconds()})
+		}
+		writeJSON(w, segments)
 	}
 }
 
@@ -65,7 +83,7 @@ func getBestSegmentsFunc(m models.Model) http.HandlerFunc {
 		}
 
 		name := chi.URLParam(r, "name")
-		if _, ok := workouts.StandardDistance(name); !ok {
+		if _, ok := workouts.SegmentKind(name); !ok {
 			notFoundHandler(w, r)
 			return
 		}
@@ -159,10 +177,10 @@ func compareWorkoutsFunc(m models.Model) http.HandlerFunc {
 		}
 
 		resp := compareResponse{Distances: []string{}, Workouts: comparisons}
-		for _, d := range workouts.StandardDistances {
+		for _, name := range standardSegmentNames() {
 			for _, c := range comparisons {
-				if _, ok := c.Segments[d.Name]; ok {
-					resp.Distances = append(resp.Distances, d.Name)
+				if _, ok := c.Segments[name]; ok {
+					resp.Distances = append(resp.Distances, name)
 					break
 				}
 			}

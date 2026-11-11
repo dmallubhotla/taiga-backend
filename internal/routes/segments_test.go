@@ -183,6 +183,69 @@ func TestSegmentRoutes(t *testing.T) {
 	})
 }
 
+func TestDurationSegmentRoutes(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+
+	// 50 minutes with a fast 30 in the middle, and a steady 40.
+	_, surge := alice.uploadWorkout(testsupport.EncodeFIT(t, routeDay, []testsupport.Split{{Meters: 1000, Seconds: 600}, {Meters: 6000, Seconds: 1800}, {Meters: 1000, Seconds: 600}}))
+	_, steady := alice.uploadWorkout(testsupport.EncodeFIT(t, routeDay.AddDate(0, 0, 1), []testsupport.Split{{Meters: 6000, Seconds: 2400}}))
+
+	t.Run("listed with their kind", func(t *testing.T) {
+		status, body := alice.get("/segments")
+		require.Equal(t, http.StatusOK, status)
+		var segments []struct {
+			Name    string  `json:"name"`
+			Kind    string  `json:"kind"`
+			Meters  float64 `json:"meters"`
+			Seconds float64 `json:"seconds"`
+		}
+		require.NoError(t, json.Unmarshal(body, &segments))
+		assert.Equal(t, "distance", segments[0].Kind)
+		last := segments[len(segments)-1]
+		assert.Equal(t, "1h", last.Name)
+		assert.Equal(t, "duration", last.Kind)
+		assert.Equal(t, 3600.0, last.Seconds)
+	})
+
+	t.Run("workout segments put durations after distances", func(t *testing.T) {
+		status, body := alice.get(fmt.Sprintf("/workouts/%d/segments", surge))
+		require.Equal(t, http.StatusOK, status)
+		var segments []models.WorkoutSegment
+		require.NoError(t, json.Unmarshal(body, &segments))
+		last := segments[len(segments)-1]
+		assert.Equal(t, "30min", last.Name, "an hour is longer than the run")
+		assert.Equal(t, "duration", last.Kind)
+		assert.InDelta(t, 6000, last.DistanceMeters, 1e-6, "the fast middle")
+		assert.InDelta(t, 600, last.StartOffsetSeconds, 1e-6)
+	})
+
+	t.Run("best ranks by distance", func(t *testing.T) {
+		status, body := alice.get("/segments/30min/best")
+		require.Equal(t, http.StatusOK, status)
+		var efforts []models.SegmentEffort
+		require.NoError(t, json.Unmarshal(body, &efforts))
+		require.Len(t, efforts, 2)
+		assert.Equal(t, surge, efforts[0].WorkoutID)
+		assert.Equal(t, steady, efforts[1].WorkoutID)
+		assert.InDelta(t, 4500, efforts[1].DistanceMeters, 1e-6)
+
+		status, body = alice.get("/segments/1h/best")
+		require.Equal(t, http.StatusOK, status)
+		assert.JSONEq(t, "[]", string(body))
+	})
+
+	t.Run("compare lists durations after distances", func(t *testing.T) {
+		status, body := alice.get(fmt.Sprintf("/workouts/compare?ids=%d,%d", surge, steady))
+		require.Equal(t, http.StatusOK, status, string(body))
+		var resp struct {
+			Distances []string `json:"distances"`
+		}
+		require.NoError(t, json.Unmarshal(body, &resp))
+		assert.Equal(t, "30min", resp.Distances[len(resp.Distances)-1])
+	})
+}
+
 func TestDownloadReturnsFullFile(t *testing.T) {
 	srv, m, toker := newAPI(t)
 	alice := newUserClient(t, srv, m, toker, "alice@example.com")

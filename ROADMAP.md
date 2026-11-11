@@ -130,6 +130,7 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
 - [x] **Maps.** The GPS track from the series drawn with Leaflet on OpenStreetMap tiles, with segments highlighted. Tiles come from openstreetmap.org, so the map's area is visible to the tile server.
 - [x] Compare view: overlay workouts' pace graphs aligned by distance.
 - [x] Workout page laid out as a desktop dashboard: map top left, splits top right, the graph along the bottom, sized to the screen.
+- [x] **Best efforts by time**: the farthest stretch in 30 minutes and an hour, stored as `kind = duration` segments beside the distance ones and ranked by distance; they show on the workout page, best efforts and compare. More durations (20 minutes, 2 hours) are one line in `StandardDurations`, and reprocessing backfills them.
 
 ### Series sampling: today, and upgrades for when they're needed
 

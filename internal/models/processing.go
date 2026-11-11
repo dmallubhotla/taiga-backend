@@ -112,7 +112,7 @@ func (m *storeModel) ReprocessWorkout(ctx context.Context, workoutID int32, user
 	return updated, nil
 }
 
-// storeDerived replaces everything computed from the run's records; replacing the whole segment set drops distances no longer in StandardDistances.
+// storeDerived replaces everything computed from the run's records; replacing the whole segment set drops distances and durations no longer standard.
 func storeDerived(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
 	if err := q.DeleteSegmentsByWorkout(ctx, &db.DeleteSegmentsByWorkoutParams{WorkoutID: workoutID, UserID: userToken.ID}); err != nil {
 		return err
@@ -144,11 +144,13 @@ func (m *storeModel) WorkoutSeries(ctx context.Context, workoutID int32, userTok
 }
 
 func addSegments(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
-	for _, seg := range workouts.FastestSegments(run, workouts.StandardDistances) {
+	segments := append(workouts.FastestSegments(run, workouts.StandardDistances), workouts.FarthestEfforts(run, workouts.StandardDurations)...)
+	for _, seg := range segments {
 		_, err := q.CreateWorkoutSegment(ctx, &db.CreateWorkoutSegmentParams{
 			WorkoutID:          workoutID,
 			UserID:             userToken.ID,
 			Name:               seg.Name,
+			Kind:               seg.Kind,
 			DistanceMeters:     seg.Distance.Meters,
 			DurationSeconds:    seg.Duration.Seconds(),
 			StartOffsetSeconds: seg.StartOffset().Seconds(),

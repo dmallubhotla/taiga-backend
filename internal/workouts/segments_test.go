@@ -95,3 +95,48 @@ func TestStandardDistance(t *testing.T) {
 		t.Error("StandardDistance(4k) should not exist")
 	}
 }
+
+func TestFarthestEffortsFindsFarthestWindow(t *testing.T) {
+	// Three 1000m splits: slow, fast, slow.
+	run := runFromPaces([]float64{0.36, 0.24, 0.36}, 1000)
+
+	got := FarthestEfforts(run, []NamedDuration{{"4min", 4 * time.Minute}, {"1h", time.Hour}})
+
+	if len(got) != 1 {
+		t.Fatalf("got %d efforts, want 1 (the run is shorter than an hour)", len(got))
+	}
+	if got[0].Name != "4min" || got[0].Kind != KindDuration {
+		t.Errorf("Name, Kind = %q, %q", got[0].Name, got[0].Kind)
+	}
+	if math.Abs(got[0].Distance.Meters-1000) > 1e-9 {
+		t.Errorf("Distance = %vm, want 1000m", got[0].Distance.Meters)
+	}
+	if got[0].StartOffset() != 360*time.Second || got[0].EndOffset() != 600*time.Second {
+		t.Errorf("window = %v..%v, want 6m0s..10m0s", got[0].StartOffset(), got[0].EndOffset())
+	}
+}
+
+func TestFarthestEffortsLastsFullTarget(t *testing.T) {
+	// Records every 21s, so no window lasts exactly 100s.
+	run := runFromPaces([]float64{0.3, 0.3}, 700)
+
+	got := FarthestEfforts(run, []NamedDuration{{"100s", 100 * time.Second}})
+
+	if len(got) != 1 {
+		t.Fatalf("got %d efforts, want 1", len(got))
+	}
+	if got[0].Duration < 100*time.Second {
+		t.Errorf("lasted %v, want >= 100s", got[0].Duration)
+	}
+}
+
+func TestSegmentKind(t *testing.T) {
+	for name, want := range map[string]string{"5k": KindDistance, "30min": KindDuration, "1h": KindDuration} {
+		if kind, ok := SegmentKind(name); !ok || kind != want {
+			t.Errorf("SegmentKind(%s) = %q, %v; want %q", name, kind, ok, want)
+		}
+	}
+	if _, ok := SegmentKind("4k"); ok {
+		t.Error("SegmentKind(4k) should not exist")
+	}
+}
