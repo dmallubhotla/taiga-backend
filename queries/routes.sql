@@ -121,20 +121,6 @@ FROM
 WHERE
   user_id = $1;
 
--- name: ListRouteWorkoutsByUser :many
--- Every routed workout with its route, newest first, for route summaries and pages.
-SELECT
-  workout_routes.route_id,
-  sqlc.embed (workouts)
-FROM
-  workout_routes
-  JOIN workouts ON workouts.id = workout_routes.workout_id
-WHERE
-  workout_routes.user_id = $1
-ORDER BY
-  workouts.start_time DESC,
-  workouts.id DESC;
-
 -- name: GetWorkoutRouteID :one
 SELECT
   route_id

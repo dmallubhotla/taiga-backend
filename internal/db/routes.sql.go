@@ -229,60 +229,6 @@ func (q *Queries) GetWorkoutTrack(ctx context.Context, arg *GetWorkoutTrackParam
 	return track, err
 }
 
-const listRouteWorkoutsByUser = `-- name: ListRouteWorkoutsByUser :many
-SELECT
-  workout_routes.route_id,
-  workouts.id, workouts.distance_miles, workouts.time_seconds, workouts.speed_mph, workouts.pace_min_per_mile, workouts.start_time, workouts.end_time, workouts.activity_file_id, workouts.created_at, workouts.updated_at, workouts.user_id, workouts.processor_version
-FROM
-  workout_routes
-  JOIN workouts ON workouts.id = workout_routes.workout_id
-WHERE
-  workout_routes.user_id = $1
-ORDER BY
-  workouts.start_time DESC,
-  workouts.id DESC
-`
-
-type ListRouteWorkoutsByUserRow struct {
-	RouteID int32   `json:"route_id"`
-	Workout Workout `json:"workout"`
-}
-
-// Every routed workout with its route, newest first, for route summaries and pages.
-func (q *Queries) ListRouteWorkoutsByUser(ctx context.Context, userID int32) ([]*ListRouteWorkoutsByUserRow, error) {
-	rows, err := q.db.Query(ctx, listRouteWorkoutsByUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []*ListRouteWorkoutsByUserRow{}
-	for rows.Next() {
-		var i ListRouteWorkoutsByUserRow
-		if err := rows.Scan(
-			&i.RouteID,
-			&i.Workout.ID,
-			&i.Workout.DistanceMiles,
-			&i.Workout.TimeSeconds,
-			&i.Workout.SpeedMph,
-			&i.Workout.PaceMinPerMile,
-			&i.Workout.StartTime,
-			&i.Workout.EndTime,
-			&i.Workout.ActivityFileID,
-			&i.Workout.CreatedAt,
-			&i.Workout.UpdatedAt,
-			&i.Workout.UserID,
-			&i.Workout.ProcessorVersion,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listRoutesByUser = `-- name: ListRoutesByUser :many
 SELECT
   id, user_id, name, representative_workout_id, created_at

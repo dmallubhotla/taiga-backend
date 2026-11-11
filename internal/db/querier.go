@@ -70,8 +70,6 @@ type Querier interface {
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
 	ListJobsByUser(ctx context.Context, arg *ListJobsByUserParams) ([]*Job, error)
 	ListJobsByUserAndState(ctx context.Context, arg *ListJobsByUserAndStateParams) ([]*Job, error)
-	// Every routed workout with its route, newest first, for route summaries and pages.
-	ListRouteWorkoutsByUser(ctx context.Context, userID int32) ([]*ListRouteWorkoutsByUserRow, error)
 	ListRoutesByUser(ctx context.Context, userID int32) ([]*Route, error)
 	// Distance segments shortest first, then duration segments shortest first.
 	ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error)

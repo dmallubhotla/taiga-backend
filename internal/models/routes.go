@@ -61,14 +61,24 @@ func summarize(route *db.Route, runs []*Workout) *RouteSummary {
 
 // routeRuns groups the user's routed workouts by route, each newest first.
 func routeRuns(ctx context.Context, q db.Querier, userToken *tokens.UserToken) (map[int32][]*Workout, error) {
-	rows, err := q.ListRouteWorkoutsByUser(ctx, userToken.ID)
+	memberships, err := q.ListWorkoutRoutesByUser(ctx, userToken.ID)
+	if err != nil {
+		return nil, err
+	}
+	routeOf := make(map[int32]int32, len(memberships))
+	for _, wr := range memberships {
+		routeOf[wr.WorkoutID] = wr.RouteID
+	}
+	// Already newest first.
+	all, err := q.ListWorkoutsByUser(ctx, userToken.ID)
 	if err != nil {
 		return nil, err
 	}
 	runs := make(map[int32][]*Workout)
-	for _, row := range rows {
-		w := row.Workout
-		runs[row.RouteID] = append(runs[row.RouteID], &w)
+	for _, w := range all {
+		if r, ok := routeOf[w.ID]; ok {
+			runs[r] = append(runs[r], w)
+		}
 	}
 	return runs, nil
 }
