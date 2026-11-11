@@ -374,7 +374,7 @@ Switch by updating `config.yaml` or setting `TAIGA_DB_DRIVER` environment variab
   Auth uses the workflow's `GITHUB_TOKEN` with `packages: write`. Images are
   pushed directly from the Nix-built `docker-archive` via `skopeo copy` — no
   Docker daemon needed in CI.
-- `ci.yml` skips pushes that only touch Markdown, `docs/` or `LICENSE*` (tag pushes always run); `[skip ci]` in the head commit skips any push.
+- `ci.yml` skips pushes that only touch Markdown, `docs/` or `LICENSE*` (tag pushes always run); `[skip ci]` in the head commit skips any push. `gh workflow run ci --ref <branch>` runs it by hand (an empty commit doesn't: it touches no paths, so the docs-only skip drops it).
 - `commits.yml` checks PR commit subjects and titles are conventional commits.
 - `seal.yml` is a manually-triggered hanko release workflow.
 
