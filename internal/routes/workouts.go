@@ -23,6 +23,7 @@ func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router.Get("/compare", compareWorkoutsFunc(m))
 	router.Get("/{workoutid}", getWorkoutFunc(m))
 	router.Get("/{workoutid}/segments", getWorkoutSegmentsFunc(m))
+	router.Get("/{workoutid}/route", getWorkoutRouteFunc(m))
 	router.With(middleware.Compress(5, "application/json")).Get("/{workoutid}/series", getWorkoutSeriesFunc(m))
 	router.Post("/reprocess", reprocessAllFunc(m))
 	router.Post("/{workoutid}/reprocess", reprocessWorkoutFunc(m, fileRepo))
@@ -287,6 +288,7 @@ func deleteWorkoutFunc(m models.Model) http.HandlerFunc {
 			return
 		}
 
+		queueRouteDetection(ctx, m, userToken)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -321,6 +323,7 @@ func postWorkoutFromActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo)
 
 		w.Header().Add("Content-Type", "application/json")
 		if created {
+			queueRouteDetection(ctx, m, userToken)
 			w.WriteHeader(http.StatusCreated)
 		}
 		if err := json.NewEncoder(w).Encode(workout); err != nil {

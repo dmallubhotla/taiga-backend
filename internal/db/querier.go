@@ -11,10 +11,14 @@ import (
 )
 
 type Querier interface {
+	AddWorkoutRoute(ctx context.Context, arg *AddWorkoutRouteParams) error
 	// The outer state check makes a lost race claim nothing (postgres re-checks it after waiting on the row lock), so no SKIP LOCKED and the same SQL runs on sqlite.
 	ClaimJob(ctx context.Context, arg *ClaimJobParams) (*Job, error)
+	// SQLite doesn't enforce ON DELETE SET NULL without a per-connection pragma, so a deleted workout clears itself.
+	ClearRouteRepresentative(ctx context.Context, arg *ClearRouteRepresentativeParams) error
 	CreateActivityFile(ctx context.Context, arg *CreateActivityFileParams) (*ActivityFile, error)
 	CreateHat(ctx context.Context, arg *CreateHatParams) (*Hat, error)
+	CreateRoute(ctx context.Context, arg *CreateRouteParams) (*Route, error)
 	//
 	// -- name: ListUsers :many
 	// SELECT
@@ -34,9 +38,15 @@ type Querier interface {
 	DeleteActivityFile(ctx context.Context, arg *DeleteActivityFileParams) error
 	DeleteDoneJobsBefore(ctx context.Context, updatedAt pgtype.Timestamptz) (int64, error)
 	DeleteJobsByWorkout(ctx context.Context, arg *DeleteJobsByWorkoutParams) error
+	DeleteRoute(ctx context.Context, arg *DeleteRouteParams) error
 	DeleteSegmentsByWorkout(ctx context.Context, arg *DeleteSegmentsByWorkoutParams) error
 	DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) error
+	DeleteWorkoutRoute(ctx context.Context, arg *DeleteWorkoutRouteParams) error
+	DeleteWorkoutRoutesByUser(ctx context.Context, userID int32) error
 	DeleteWorkoutSeries(ctx context.Context, arg *DeleteWorkoutSeriesParams) error
+	DeleteWorkoutTrack(ctx context.Context, arg *DeleteWorkoutTrackParams) error
+	// One pending detection per user (idx_jobs_pending), however many workouts change before it runs.
+	EnqueueDetectRoutes(ctx context.Context, arg *EnqueueDetectRoutesParams) error
 	// Every user's file-backed workouts not built by the current processor; one already queued is skipped by idx_jobs_pending.
 	EnqueueStaleWorkouts(ctx context.Context, arg *EnqueueStaleWorkoutsParams) (int64, error)
 	EnqueueUserWorkouts(ctx context.Context, arg *EnqueueUserWorkoutsParams) (int64, error)
@@ -45,9 +55,12 @@ type Querier interface {
 	GetActivityFileByHash(ctx context.Context, arg *GetActivityFileByHashParams) (*ActivityFile, error)
 	GetHat(ctx context.Context, arg *GetHatParams) (*Hat, error)
 	GetJob(ctx context.Context, arg *GetJobParams) (*Job, error)
+	GetRoute(ctx context.Context, arg *GetRouteParams) (*Route, error)
 	GetUser(ctx context.Context, id int32) (*GetUserRow, error)
 	GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Workout, error)
+	GetWorkoutRouteID(ctx context.Context, arg *GetWorkoutRouteIDParams) (int32, error)
 	GetWorkoutSeries(ctx context.Context, arg *GetWorkoutSeriesParams) ([]byte, error)
+	GetWorkoutTrack(ctx context.Context, arg *GetWorkoutTrackParams) ([]byte, error)
 	GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkoutsByActivityFileParams) ([]*Workout, error)
 	KillJob(ctx context.Context, arg *KillJobParams) error
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
@@ -57,20 +70,29 @@ type Querier interface {
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
 	ListJobsByUser(ctx context.Context, arg *ListJobsByUserParams) ([]*Job, error)
 	ListJobsByUserAndState(ctx context.Context, arg *ListJobsByUserAndStateParams) ([]*Job, error)
+	// Every routed workout with its route, newest first, for route summaries and pages.
+	ListRouteWorkoutsByUser(ctx context.Context, userID int32) ([]*ListRouteWorkoutsByUserRow, error)
+	ListRoutesByUser(ctx context.Context, userID int32) ([]*Route, error)
 	// Distance segments shortest first, then duration segments shortest first.
 	ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error)
+	ListWorkoutRoutesByUser(ctx context.Context, userID int32) ([]*WorkoutRoute, error)
+	// Oldest first, the order route detection assigns runs in.
+	ListWorkoutTracksByUser(ctx context.Context, userID int32) ([]*ListWorkoutTracksByUserRow, error)
 	ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Workout, error)
+	RenameRoute(ctx context.Context, arg *RenameRouteParams) (*Route, error)
 	RequeueDeadJob(ctx context.Context, arg *RequeueDeadJobParams) (*Job, error)
 	RetryJobLater(ctx context.Context, arg *RetryJobLaterParams) error
 	// --
 	// really we don't want to select password except specifically for auth.
 	// This query is useful for auth only and for nothing else, which should discourage misuse
 	SelectEmailPasswordForAuth(ctx context.Context, email string) (*SelectEmailPasswordForAuthRow, error)
+	SetRouteRepresentative(ctx context.Context, arg *SetRouteRepresentativeParams) error
 	UpdateActivityFile(ctx context.Context, arg *UpdateActivityFileParams) (*ActivityFile, error)
 	UpdateWorkout(ctx context.Context, arg *UpdateWorkoutParams) (*Workout, error)
 	// Everything reprocessing rebuilds from the activity file.
 	UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDerivedParams) (*Workout, error)
 	UpsertWorkoutSeries(ctx context.Context, arg *UpsertWorkoutSeriesParams) error
+	UpsertWorkoutTrack(ctx context.Context, arg *UpsertWorkoutTrackParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -72,20 +73,26 @@ type Split struct {
 // FIT timestamps are whole seconds, so pick splits where 10m takes a whole number of seconds.
 func EncodeFIT(t *testing.T, start time.Time, splits []Split) []byte {
 	t.Helper()
-	return encode(t, buildActivity(start, splits))
+	return encode(t, buildActivity(start, splits, 0))
+}
+
+// EncodeFITHeading is EncodeFIT with the track heading the given compass bearing in degrees (0 is north, 90 east), for runs on different routes.
+func EncodeFITHeading(t *testing.T, start time.Time, splits []Split, bearing float64) []byte {
+	t.Helper()
+	return encode(t, buildActivity(start, splits, bearing))
 }
 
 // EncodeMultiSessionFIT is EncodeFIT with the session repeated, the shape of a multi-sport (e.g. triathlon) file.
 func EncodeMultiSessionFIT(t *testing.T, start time.Time, splits []Split, sessions int) []byte {
 	t.Helper()
-	activity := buildActivity(start, splits)
+	activity := buildActivity(start, splits, 0)
 	for range sessions - 1 {
 		activity.Sessions = append(activity.Sessions, activity.Sessions[0])
 	}
 	return encode(t, activity)
 }
 
-// What EncodeFIT records alongside distance: a steady heart rate, a gentle climb, and a track due north from the start.
+// What EncodeFIT records alongside distance: a steady heart rate, a gentle climb, and a straight track due north from the start.
 const (
 	RecordHeartRate = 150
 	StartLatitude   = 45.0
@@ -96,7 +103,9 @@ const (
 // RecordAltitude climbs 1m per 100m covered.
 func RecordAltitude(meters float64) float64 { return 100 + meters/100 }
 
-func buildActivity(start time.Time, splits []Split) *filedef.Activity {
+func buildActivity(start time.Time, splits []Split, bearing float64) *filedef.Activity {
+	north, east := math.Cos(bearing*math.Pi/180), math.Sin(bearing*math.Pi/180)
+	lonScale := metersPerDegree * math.Cos(StartLatitude*math.Pi/180)
 	const step = 10.0
 
 	activity := filedef.NewActivity()
@@ -109,8 +118,8 @@ func buildActivity(start time.Time, splits []Split) *filedef.Activity {
 			SetDistanceScaled(meters).
 			SetHeartRate(RecordHeartRate).
 			SetEnhancedAltitudeScaled(RecordAltitude(meters)).
-			SetPositionLatDegrees(StartLatitude+meters/metersPerDegree).
-			SetPositionLongDegrees(StartLongitude))
+			SetPositionLatDegrees(StartLatitude+north*meters/metersPerDegree).
+			SetPositionLongDegrees(StartLongitude+east*meters/lonScale))
 	}
 	addRecord()
 	for _, split := range splits {

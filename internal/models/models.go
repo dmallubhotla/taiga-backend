@@ -69,6 +69,13 @@ type Model interface {
 	// ReprocessWorkout rebuilds the workout's summary, segments and series from its activity file.
 	ReprocessWorkout(ctx context.Context, workoutID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
 	EnqueueReprocessAll(ctx context.Context, now time.Time, userToken *tokens.UserToken) (int64, error)
+	Routes(ctx context.Context, userToken *tokens.UserToken) ([]*RouteSummary, error)
+	Route(ctx context.Context, id int32, userToken *tokens.UserToken) (*RouteDetail, error)
+	RenameRoute(ctx context.Context, id int32, name *string, userToken *tokens.UserToken) (*RouteSummary, error)
+	WorkoutRoute(ctx context.Context, workoutID int32, userToken *tokens.UserToken) (*RouteSummary, error)
+	// EnqueueDetectRoutes is called after anything that changes the user's tracks: a new, reprocessed or deleted workout.
+	EnqueueDetectRoutes(ctx context.Context, now time.Time, userToken *tokens.UserToken) error
+	DetectRoutes(ctx context.Context, userToken *tokens.UserToken) error
 	Jobs(ctx context.Context, state string, limit int32, userToken *tokens.UserToken) ([]*Job, error)
 	Job(ctx context.Context, id int32, userToken *tokens.UserToken) (*Job, error)
 	RetryDeadJob(ctx context.Context, id int32, now time.Time, userToken *tokens.UserToken) (*Job, error)

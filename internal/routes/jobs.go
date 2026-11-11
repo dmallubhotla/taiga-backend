@@ -125,6 +125,7 @@ func reprocessWorkoutFunc(m models.Model, fileRepo filerepo.FileRepo) http.Handl
 			}
 			return
 		}
+		queueRouteDetection(ctx, m, userToken)
 		writeJSON(w, workout)
 	}
 }

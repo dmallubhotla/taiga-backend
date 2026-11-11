@@ -112,7 +112,7 @@ func (m *storeModel) ReprocessWorkout(ctx context.Context, workoutID int32, user
 	return updated, nil
 }
 
-// storeDerived replaces everything computed from the run's records; replacing the whole segment set drops distances and durations no longer standard.
+// storeDerived replaces everything computed from the run's records (segments, series, track); replacing the whole segment set drops distances and durations no longer standard.
 func storeDerived(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
 	if err := q.DeleteSegmentsByWorkout(ctx, &db.DeleteSegmentsByWorkoutParams{WorkoutID: workoutID, UserID: userToken.ID}); err != nil {
 		return err
@@ -124,7 +124,10 @@ func storeDerived(ctx context.Context, q db.Querier, workoutID int32, run *worko
 	if err != nil {
 		return fmt.Errorf("encoding series for workout %d: %w", workoutID, err)
 	}
-	return q.UpsertWorkoutSeries(ctx, &db.UpsertWorkoutSeriesParams{WorkoutID: workoutID, UserID: userToken.ID, Series: series})
+	if err := q.UpsertWorkoutSeries(ctx, &db.UpsertWorkoutSeriesParams{WorkoutID: workoutID, UserID: userToken.ID, Series: series}); err != nil {
+		return err
+	}
+	return storeTrack(ctx, q, workoutID, run, userToken)
 }
 
 // WorkoutSeries returns the stored series JSON; ErrNoSeries for a workout with nothing recorded (hand-entered, or not yet reprocessed).
