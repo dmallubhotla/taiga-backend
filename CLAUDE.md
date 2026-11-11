@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This is a modern Go web API template with PostgreSQL/SQLite support, JWT authentication, file handling, and workout data processing. The application follows clean architecture principles with clear separation of concerns.
+This is the taiga API: upload FIT files, derive workouts, segments and per-record series from them, and serve them to the browser frontend and the `taco` CLI. PostgreSQL in production, SQLite in development, JWT auth. The application follows clean architecture principles with clear separation of concerns.
 
 ### Core Components
 
 - **cmd/server**: Application entrypoint with graceful shutdown and automatic migrations
 - **cmd/migrate**: Standalone migration tool with up/down/steps/goto commands
+- **cmd/useradd**: Create an account while registration is closed
 - **cmd/fit_view**: Utility for viewing FIT (Garmin) workout files
 
 - **internal/config**: Configuration management with Viper
@@ -52,6 +53,15 @@ This is a modern Go web API template with PostgreSQL/SQLite support, JWT authent
 - **internal/workouts**: Garmin FIT file processing
   - FIT file parsing and workout data extraction
   - Segment analysis and activity processing
+  - `BuildSeries` (per-record columns, thinned to `MaxSeriesPoints`) and `ProcessorVersion`
+
+- **internal/models**: The model layer handlers call; processing a file into a workout (`processing.go`) and the job queue (`jobs.go`)
+
+- **internal/jobs**: The in-process worker that drains the `jobs` table (see Reprocessing below)
+
+- **internal/migration**: golang-migrate wrapper used on startup and by `cmd/migrate`
+
+- **internal/testsupport**: Real dependencies for integration tests (see Testing below)
 
 ## Development Commands
 
@@ -155,9 +165,9 @@ go run cmd/useradd/main.go -email you@example.com  # Create an account while reg
 The project uses **golang-migrate** for database schema management with proper up and down migrations.
 
 #### Migration Files
-- Located in `migrations/` directory
+- Two directories with the same numbering: `migrations/` (PostgreSQL) and `migrations-sqlite/` (SQLite); every migration needs both
 - Naming convention: `NNNNNN_description.up.sql` and `NNNNNN_description.down.sql`
-- Example: `000001_create_users_table.up.sql`, `000001_create_users_table.down.sql`
+- Use the next free number after the highest existing one
 
 #### Migration Commands
 
@@ -181,14 +191,14 @@ go run cmd/migrate/main.go -command=goto -version=2
 ```
 
 **Automatic migrations:**
-- Migrations run automatically on server startup when `migration.auto_up: true` (default)
-- In development, can auto-rollback on shutdown with `migration.auto_down: true`
+- Migrations run automatically on server startup when `db.auto_migrate_up: true` (default)
+- `db.drop_on_start: true` (development only) drops every table on startup
 
 #### Creating New Migrations
 
 1. **Create up migration:**
    ```sql
-   -- migrations/000005_add_posts_comments.up.sql
+   -- migrations/NNNNNN_add_comments.up.sql (and the same in migrations-sqlite/)
    CREATE TABLE comments (
        id SERIAL PRIMARY KEY,
        post_id INTEGER REFERENCES posts(id),
@@ -199,7 +209,7 @@ go run cmd/migrate/main.go -command=goto -version=2
 
 2. **Create down migration:**
    ```sql
-   -- migrations/000005_add_posts_comments.down.sql
+   -- migrations/NNNNNN_add_comments.down.sql
    DROP TABLE IF EXISTS comments;
    ```
 
@@ -215,7 +225,9 @@ go run cmd/migrate/main.go -command=goto -version=2
 app:
   port: "8080"
   environment: "development"
-  token_key: "token"
+
+auth:
+  registration: "open"             # "open" or "closed"; defaults to open only in development
 
 db:
   driver: "sqlite"                 # "sqlite" or "postgres"
@@ -229,6 +241,7 @@ tokens:
   private_key_path: "cert/test.key"  # RSA private key for JWT signing
 
 file_repo:
+  type: "local"                      # "local" or "s3" (s3_bucket, s3_region, s3_prefix)
   asset_path: "local/filerepo/"      # content-addressable file storage
   prefix_length: 2                   # directory structure depth
 ```
@@ -246,7 +259,7 @@ file_repo:
 - `GET /health` - Health check with database connectivity status
 - `POST /auth/register` - User registration; `403` when `auth.registration` is closed (env `TAIGA_AUTH_REGISTRATION=open|closed`, default open in development and closed otherwise)
 - `GET /auth/providers` - What the login page should offer: `{password_login, registration_open, providers}` (OIDC providers arrive with ROADMAP M1)
-- `POST /auth/login` - User login (returns JWT token)
+- `POST /auth/tokens` - User login with `{email, password}` (returns a JWT token)
 
 ### Protected Endpoints (require JWT token)
 - `GET /hats` - List all hats
@@ -375,6 +388,7 @@ The application provides a comprehensive API for managing activity files (primar
 
 ### Reprocessing and the job queue
 - The FIT file is the source of truth; a workout's summary, segments and series (`workout_series`, one JSON document per workout) are derived from it and stamped with `workouts.ProcessorVersion`
+- The series keeps every Nth record (at most `MaxSeriesPoints`, rounded per column) and is the only copy of per-record data in the database; segments and totals use every record from the file. ROADMAP M6 lists better sampling methods and when each would be needed
 - `ProcessorVersion` combines `extractorVersion` (bump it in `internal/workouts/processor.go` whenever extraction changes) with a hash of `StandardDistances`, so adding or removing a distance reprocesses old workouts on its own
 - `internal/jobs` runs a worker goroutine in the server: on boot it queues a `process_workout` job for every workout whose version isn't current, then polls the `jobs` table
 - The claim query runs unchanged on both databases (no `SKIP LOCKED`); a claimed job holds a 5-minute lease, so a crashed worker's job is picked up again
@@ -382,4 +396,4 @@ The application provides a comprehensive API for managing activity files (primar
 - Store writes that must land together go through `store.InTx`; SQLite opens transactions `IMMEDIATE` so concurrent writers wait on `busy_timeout` instead of failing
 
 ### Testing
-- `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, , and `EncodeFIT` / `EncodeMultiSessionFIT` for synthetic activity files
+- `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, and `EncodeFIT` / `EncodeMultiSessionFIT` for synthetic activity files
