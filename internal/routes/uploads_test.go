@@ -57,7 +57,7 @@ func TestUnusableFilesAre422WithAReason(t *testing.T) {
 		content []byte
 		reason  string
 	}{
-		"junk":        {[]byte("definitely not a FIT file"), "not a readable FIT file"},
+		"junk":        {[]byte("definitely not a FIT file"), "not a readable activity file"},
 		"multi-sport": {testsupport.EncodeMultiSessionFIT(t, routeDay, []testsupport.Split{{Meters: 1000, Seconds: 300}}, 3), "3 sessions"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -241,4 +241,40 @@ func TestWorkoutSeries(t *testing.T) {
 	status, body = alice.get(fmt.Sprintf("/workouts/%d/series", manual.ID))
 	assert.Equal(t, http.StatusNotFound, status)
 	assert.Contains(t, string(body), "entered by hand")
+}
+
+func TestEndomondoUploads(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	splits := []testsupport.Split{{Meters: 2000, Seconds: 1200}}
+
+	_, walkID := alice.uploadWorkout(testsupport.NewEndomondo(routeDay, splits, "WALKING").Encode(t))
+	status, body := alice.get(fmt.Sprintf("/workouts/%d", walkID))
+	require.Equal(t, http.StatusOK, status, string(body))
+	var walk models.Workout
+	require.NoError(t, json.Unmarshal(body, &walk))
+	assert.Equal(t, "walking", walk.Sport)
+	assert.Empty(t, walk.ExcludedReason)
+	status, body = alice.get(fmt.Sprintf("/workouts/%d/segments", walkID))
+	require.Equal(t, http.StatusOK, status)
+	assert.Contains(t, string(body), `"name":"1k"`)
+	status, _ = alice.get(fmt.Sprintf("/workouts/%d/series", walkID))
+	assert.Equal(t, http.StatusOK, status)
+
+	manual := testsupport.NewEndomondo(routeDay.AddDate(0, 0, 1), splits, "WALKING")
+	manual.Source, manual.Points = "INPUT_MANUAL", nil
+	_, manualID := alice.uploadWorkout(manual.Encode(t))
+	status, body = alice.get(fmt.Sprintf("/workouts/%d", manualID))
+	require.Equal(t, http.StatusOK, status)
+	assert.Contains(t, string(body), `"excluded_reason":"hand-entered"`)
+	status, body = alice.get(fmt.Sprintf("/workouts/%d/segments", manualID))
+	require.Equal(t, http.StatusOK, status)
+	assert.JSONEq(t, `[]`, string(body))
+
+	status, body = alice.get("/segments/1k/best?sport=walking")
+	require.Equal(t, http.StatusOK, status)
+	var best []models.SegmentEffort
+	require.NoError(t, json.Unmarshal(body, &best))
+	require.Len(t, best, 1, "the hand-entered walk doesn't count")
+	assert.Equal(t, walkID, best[0].WorkoutID)
 }

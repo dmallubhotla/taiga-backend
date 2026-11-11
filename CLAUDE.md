@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This is the taiga API: upload FIT files, derive workouts, segments and per-record series from them, and serve them to the browser frontend and the `taco` CLI. PostgreSQL in production, SQLite in development, JWT auth. The application follows clean architecture principles with clear separation of concerns.
+This is the taiga API: upload FIT files (or Endomondo export JSON), derive workouts, segments and per-record series from them, and serve them to the browser frontend and the `taco` CLI. PostgreSQL in production, SQLite in development, JWT auth. The application follows clean architecture principles with clear separation of concerns.
 
 ### Core Components
 
@@ -50,8 +50,8 @@ This is the taiga API: upload FIT files, derive workouts, segments and per-recor
   - SHA-256 based file organization
   - Configurable prefix length for directory structure
 
-- **internal/workouts**: Garmin FIT file processing
-  - FIT file parsing and workout data extraction
+- **internal/workouts**: Activity file processing
+  - FIT and Endomondo JSON parsing (`ReadActivityFile` tells them apart by content) and workout data extraction
   - Segment analysis and activity processing
   - `BuildSeries` (per-record columns, thinned to `MaxSeriesPoints`) and `ProcessorVersion`
 
@@ -278,7 +278,7 @@ file_repo:
 
 ### Workouts and Segments API (requires JWT token)
 - `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD. `PUT` only edits hand-entered workouts; one from a file is `422`, since reprocessing owns its summary
-- `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
+- `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file or Endomondo JSON into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
 - `GET /workouts/{id}/segments` - Fastest effort at each standard distance the workout covers, shortest distance first, then the farthest effort for each standard duration it lasts (`kind` is `distance` or `duration`)
 - `GET /workouts/{id}/series` - The workout's records as parallel columns (`time_s`, `distance_m`, `speed_mps`, `altitude_m`, `heart_rate`, `lat`, `lon`; null where a sample is missing, a column omitted if never recorded), at most 2000 points, gzipped; `404` for a hand-entered workout
 - `POST /workouts/{id}/reprocess` - Rebuild the workout's summary and segments from its file now and return it; `422` for a hand-entered workout with no file
@@ -387,6 +387,7 @@ The application provides a comprehensive API for managing activity files (primar
 
 ### File Processing
 - FIT files are processed using the `muktihari/fit` library for workout data extraction
+- Endomondo export JSON (`workouts.ReadEndomondoFile`, one file per workout; the export's `.tcx` twins aren't read, since TCX calls walks and treadmill runs `Other`) maps Endomondo's sport names onto FIT's. Its stated totals are the summary. A run or walk whose data can't be trusted (hand-entered, no distance, time running backwards, points that disagree with the totals) keeps those totals but no points, and gets an `excluded_reason`
 - `POST /workouts/from-activity-file/{id}` parses the file once, storing the workout summary and its fastest segments (`workout_segments` table) for each standard distance in `workouts.StandardDistances`, plus the farthest stretch for each duration in `workouts.StandardDurations` (`kind = duration`, same table), in one transaction
 - Segments are measured between recorded points, so a segment can overshoot its distance (or duration) by up to one record interval
 - Download returns the stored bytes untouched
@@ -396,7 +397,7 @@ The application provides a comprehensive API for managing activity files (primar
 - The FIT file is the source of truth; a workout's summary, segments and series (`workout_series`, one JSON document per workout) are derived from it and stamped with `workouts.ProcessorVersion`
 - The series keeps every Nth record (at most `MaxSeriesPoints`, rounded per column) and is the only copy of per-record data in the database; segments and totals use every record from the file. ROADMAP M6 lists better sampling methods and when each would be needed
 - `ProcessorVersion` combines `extractorVersion` (bump it in `internal/workouts/processor.go` whenever extraction changes) with a hash of `StandardDistances` and `StandardDurations`, so adding or removing one reprocesses old workouts on its own
-- Each workout keeps the FIT session's `sport` and `sub_sport` (e.g. `running` / `indoor_running`). Only outdoor runs and walks (`workouts.ScoredSports`, less the indoor sub-sports `treadmill`, `indoor_running` and `indoor_walking`; `RunSummary.Scored`) get segments and tracks, and each sport is ranked and grouped on its own; rides, generic sessions and treadmill runs are stored and listed but never scored
+- Each workout keeps the FIT session's `sport` and `sub_sport` (e.g. `running` / `indoor_running`). Only outdoor runs and walks (`workouts.ScoredSports`, less the indoor sub-sports `treadmill`, `indoor_running` and `indoor_walking`; `RunSummary.Scored`) get segments and tracks, and each sport is ranked and grouped on its own; rides, generic sessions and treadmill runs are stored and listed but never scored. A workout with an `excluded_reason` (set by processing, never by hand yet) never counts either: it stays out of best efforts, routes and any stats
 - Processing also stores the run's GPS track resampled every 20m by distance (`workout_tracks`, `workouts.BuildTrack`); a run without GPS gets none
 - Routes (`routes`, `workout_routes`) group a user's runs on the same route, never across users. Two runs match when starts and ends are within 150m, lengths within 10%, and the discrete Fréchet distance between tracks is under 75m (`workouts.SameRoute`). Fréchet follows the points in order, so a loop run the other way round is a separate route
 - Routes are derived across workouts, so they aren't part of per-workout reprocessing: a new, reprocessed or deleted workout queues one `detect_routes` job per user, which regroups every tracked run of each sport from scratch (`workouts.GroupRoutes`: oldest first against each route's first run, then merging routes whose representatives match) and keeps the id and name of the old route each group overlaps most. A run matching nothing isn't a route until a second run matches it

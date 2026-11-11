@@ -172,13 +172,15 @@ The goal is new runs showing up on their own. Each option still needs checking a
 - [ ] **A source abstraction.** Each user connection (kind, credentials, cursor) gets a periodic `sync_source` job on the M5 queue that fetches new activities and feeds them through the normal upload path.
   Content-hash dedupe already makes re-fetching harmless. Also store the source's activity ID, to skip downloads that would only dedupe.
 - [ ] Credentials stored encrypted at rest, revocable per connection, and never logged.
-- [ ] **Endomondo archive import.** Endomondo shut down in 2020; its export has a `.tcx` and a `.json` per workout. Surveyed on a 405-workout export (2016–2020):
+- [x] **Endomondo archive import.** Endomondo shut down in 2020; its export has a `.tcx` and a `.json` per workout. Surveyed on a 405-workout export (2016–2020):
   - **Sport needs the JSON.** TCX says `Running` for 202 runs, `Biking` for 1 ride and `Other` for everything else, walks (83) and treadmill runs (23) included. The JSON's `sport` (`RUNNING`, `WALKING`, `TREADMILL_RUNNING`, `CYCLING_SPORT`, `SPINNING`, `STAIR_CLIMBING`, `WEIGHT_TRAINING`, …) maps onto FIT names, e.g. `TREADMILL_RUNNING` → running / treadmill.
-  - **Points are in both.** Time, position, cumulative distance and altitude every 1–5s; no heart rate in this export. TCX times are ISO UTC; JSON point timestamps switch between `"Thu Jul 23 22:20:14 UTC 2020"` and `"2020-12-07 20:44:46.0"`.
+  - **Points are in both.** Time, position, cumulative distance and altitude every 1–5s, and heart rate (`heart_rate_bpm`) where a strap was worn. TCX times are ISO UTC; JSON point timestamps switch between `"Thu Jul 23 22:20:14 UTC 2020"` and `"2020-12-07 20:44:46.0"`.
   - **GPS:** 280 of 285 runs and walks have a track. Treadmill, spinning, stairs and weights have 1–5 placeholder points, and 14 are hand-entered (`source: INPUT_MANUAL*`): no points, just a distance and duration.
-  - **Broken files exist:** one run has 16 points over 120m against a stated 4.02 km (GPS lost, distance typed in), and its points jump back an hour after the first. Check points against the stated totals; when they disagree, keep the stated totals and skip segments and routes.
+  - **Broken files exist:** one run has 16 points over 120m against a stated 4.02 km (GPS lost, distance typed in), and its points jump back an hour after the first. Several 2016 runs' points carry on minutes past `end_time`, which is the start plus moving time, so that's a pause, not a fault.
   - 52 workouts carry a note (`message`); photo URLs point at Endomondo's dead servers.
-  - **Shape:** sniff the uploaded content (FIT header, XML, JSON) and read each into the same `workouts.Run`, so storage, reprocessing, segments and routes work unchanged; the `.tcx`/`.json` pair could be uploaded together, or the JSON alone, since it has the points too. Content dedupe won't catch a run that's also in a FIT export; match on start time and sport instead.
+  - **Built:** upload the `.json` files (`taco upload Workouts/*.json`, or the browser). `workouts.ReadActivityFile` tells FIT from Endomondo JSON by content and reads either into the same `workouts.Run`, so storage, reprocessing, segments and routes work unchanged. Untrustworthy files lean towards not counting: hand-entered, no distance, time running backwards, or points that disagree with the totals keep their stated totals but no points, and an `excluded_reason`. On the export that leaves 198 of 202 runs and 80 of 83 walks counted.
+  - [ ] Notes (`message`) aren't kept; workouts have nowhere to put them yet.
+  - [ ] Content dedupe won't catch a run that's also in a FIT export; match on start time and sport. Not needed for this archive, which ends before the COROS history starts.
 
 ## M9 — Routes
 
@@ -201,7 +203,7 @@ Builds on the M6 series (positions); everything is per user, never matched acros
 The file is the source of truth, but files are sometimes wrong: a ride saved as a walk, a GPS glitch, a run that shouldn't count. Corrections are stored beside the derived data and survive reprocessing.
 
 - [ ] **Per-sport plausibility cap.** Efforts faster than a sport could manage (a walking mile at 3:38) aren't stored as segments, so a mislabeled activity or a GPS jump can't top a leaderboard. Caps per sport live in code, next to `ScoredSports`.
-- [ ] **Exclude from stats.** A per-workout flag that keeps it listed but out of best efforts, route comparisons and trends (a run with a friend, a watch left running in the car).
+- [ ] **Exclude from stats.** A per-workout flag that keeps it listed but out of best efforts, route comparisons and trends (a run with a friend, a watch left running in the car). Processing already sets `excluded_reason` for untrustworthy Endomondo files; the user's flag would be an override beside it, surviving reprocessing.
 - [ ] **Edit a workout's sport** (and later other fields the file got wrong). An override column wins over the file's value, and changing it reprocesses the workout, so segments and routes follow.
 - [x] **Indoor runs aren't scored.** Treadmill, `indoor_running` and `indoor_walking` sessions measure distance with a belt or foot pod, so they get no segments and no track (`RunSummary.Scored`, #65).
 - [ ] Route changes (rename is done; merge, move, detach, "not this route") are M9's user control.

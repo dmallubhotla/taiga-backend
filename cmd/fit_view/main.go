@@ -57,7 +57,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	run, err := workouts.ReadFitFile(retrievedFile)
+	run, err := workouts.ReadActivityFile(retrievedFile)
 	if err != nil {
 		log.Printf("Failed with error %v\n", err)
 		panic(err)
