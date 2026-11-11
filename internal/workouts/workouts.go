@@ -71,6 +71,25 @@ func Scored(sport string) bool {
 	return sport == SportRunning || sport == SportWalking
 }
 
+// maxSpeedMps caps each scored sport: an effort faster than this is a mislabeled activity or a GPS jump, so it isn't stored.
+// Running's is about the 1k world record (2:11.96), walking's the race-walking mile record (5:31).
+var maxSpeedMps = map[string]float64{SportRunning: 7.6, SportWalking: 4.9}
+
+// Plausible drops efforts faster than the sport's cap; sports without one keep all of theirs.
+func Plausible(sport string, efforts []*BestSegment) []*BestSegment {
+	limit, ok := maxSpeedMps[sport]
+	if !ok {
+		return efforts
+	}
+	kept := make([]*BestSegment, 0, len(efforts))
+	for _, e := range efforts {
+		if e.Distance.Meters <= limit*e.Duration.Seconds() {
+			kept = append(kept, e)
+		}
+	}
+	return kept
+}
+
 // Indoor sub-sports measure distance with a foot pod or the belt, not GPS, so they never count towards best efforts or routes.
 var indoorSubSports = map[string]bool{"treadmill": true, "indoor_running": true, "indoor_walking": true}
 

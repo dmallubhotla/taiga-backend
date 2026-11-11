@@ -55,6 +55,12 @@ func sportName(s typedef.Sport) string {
 	return s.String()
 }
 
+// KnownSport reports whether name is a FIT sport as sportName writes it, e.g. "running" or "cycling".
+func KnownSport(name string) bool {
+	s := typedef.SportFromString(name)
+	return s != typedef.SportInvalid && s.String() == name
+}
+
 // subSportName is the FIT sub-sport, e.g. "indoor_running"; empty when there's none beyond the sport.
 func subSportName(s typedef.SubSport) string {
 	if s == typedef.SubSportInvalid || s == typedef.SubSportGeneric {

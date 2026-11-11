@@ -90,7 +90,7 @@ ORDER BY
   start_time DESC;
 
 -- name: UpdateWorkoutDerived :one
--- Everything reprocessing rebuilds from the activity file.
+-- Everything reprocessing rebuilds from the activity file, and the corrections it applied over it.
 UPDATE workouts
 SET
   distance_miles = $3,
@@ -104,6 +104,8 @@ SET
   sub_sport = $11,
   excluded_reason = $12,
   source = $13,
+  sport_override = $14,
+  user_excluded_reason = $15,
   updated_at = CURRENT_TIMESTAMP
 WHERE
   id = $1

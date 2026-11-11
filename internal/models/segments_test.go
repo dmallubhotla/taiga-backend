@@ -82,7 +82,7 @@ func TestBestSegmentsAcrossWorkouts(t *testing.T) {
 
 	slow := uploadWorkout(t, m, repo, user, day1, []testsupport.Split{{Meters: 2000, Seconds: 800}})
 	fast := uploadWorkout(t, m, repo, user, day2, fourK)
-	uploadWorkout(t, m, repo, other, day2, []testsupport.Split{{Meters: 1000, Seconds: 100}})
+	uploadWorkout(t, m, repo, other, day2, []testsupport.Split{{Meters: 1000, Seconds: 150}})
 
 	efforts, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, user)
 	require.NoError(t, err)

@@ -25,7 +25,7 @@ var ErrActivityFileInUse = errors.New("activity file still has workouts; delete 
 var ErrNoActivityFile = errors.New("workout has no activity file")
 
 // ErrDerivedWorkout means an edit would change fields that reprocessing owns.
-var ErrDerivedWorkout = errors.New("workout comes from an activity file, so its summary is rebuilt from the file; reprocess it instead of editing")
+var ErrDerivedWorkout = errors.New("workout comes from an activity file, so its summary is rebuilt from the file; reprocess it instead of editing, or correct its sport or exclusion with PUT /workouts/{id}/corrections")
 
 // ErrNoSeries means the workout has no stored records to graph or map.
 var ErrNoSeries = errors.New("workout has no recorded series: it was entered by hand, or is waiting to be reprocessed")
@@ -69,6 +69,8 @@ type Model interface {
 	WorkoutSeries(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]byte, error)
 	// ReprocessWorkout rebuilds the workout's summary, segments and series from its activity file.
 	ReprocessWorkout(ctx context.Context, workoutID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
+	// CorrectWorkout replaces a file-backed workout's corrections and reprocesses it with them.
+	CorrectWorkout(ctx context.Context, workoutID int32, corrections Corrections, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
 	EnqueueReprocessAll(ctx context.Context, now time.Time, userToken *tokens.UserToken) (int64, error)
 	Routes(ctx context.Context, userToken *tokens.UserToken) ([]*RouteSummary, error)
 	Route(ctx context.Context, id int32, userToken *tokens.UserToken) (*RouteDetail, error)

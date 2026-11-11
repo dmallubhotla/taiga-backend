@@ -213,10 +213,12 @@ Builds on the M6 series (positions); everything is per user, never matched acros
 
 The file is the source of truth, but files are sometimes wrong: a ride saved as a walk, a GPS glitch, a run that shouldn't count. Corrections are stored beside the derived data and survive reprocessing.
 
-- [ ] **Per-sport plausibility cap.** Efforts faster than a sport could manage (a walking mile at 3:38) aren't stored as segments, so a mislabeled activity or a GPS jump can't top a leaderboard. Caps per sport live in code, next to `ScoredSports`.
-- [ ] **Exclude from stats.** A per-workout flag that keeps it listed but out of best efforts, route comparisons and trends (a run with a friend, a watch left running in the car). Processing already sets `excluded_reason` for untrustworthy Endomondo files; the user's flag would be an override beside it, surviving reprocessing.
-  - First case: the 2023-04-25 Google Fit run (test stack workout 739), whose total is inflated by a sparse GPS start (see M8).
-- [ ] **Edit a workout's sport** (and later other fields the file got wrong). An override column wins over the file's value, and changing it reprocesses the workout, so segments and routes follow.
+- [x] **Per-sport plausibility cap.** Efforts faster than a sport could manage (a walking mile at 3:38) aren't stored as segments, so a mislabeled activity or a GPS jump can't top a leaderboard. The caps (`maxSpeedMps`, next to `ScoredSports`) are about the 1k world record for running and the race-walking mile record for walking.
+- [x] **Exclude from stats.** A per-workout reason that keeps it listed but out of best efforts, route comparisons and trends (a run with a friend, a watch left running in the car): `user_excluded_reason`, set with `PUT /workouts/{id}/corrections` and applied over the file on every reprocess. Processing's own `excluded_reason`, for untrustworthy Endomondo and Google Fit files, wins over it.
+  - First case, to exclude once this is deployed: the 2023-04-25 Google Fit run (test stack workout 739), whose total is inflated by a sparse GPS start (see M8).
+- [x] **Edit a workout's sport**: `sport_override`, set the same way, wins over the file's sport, and changing it reprocesses the workout and requeues route detection, so segments and routes follow. The file's sub-sport stays, so a treadmill run corrected to a walk is still indoors.
+- [ ] Other fields the file got wrong, as more override columns applied the same way, once there's a case for one.
+- [ ] Frontend: the sport and exclusion controls on the workout page, and showing what's been corrected or excluded.
 - [x] **Indoor runs aren't scored.** Treadmill, `indoor_running` and `indoor_walking` sessions measure distance with a belt or foot pod, so they get no segments and no track (`RunSummary.Scored`, #65).
 - [ ] Route changes (rename is done; merge, move, detach, "not this route") are M9's user control.
 
@@ -235,6 +237,5 @@ Years of history (an Endomondo archive goes back to 2016) make an all-time list 
   - Make sure the Nix cache actually hits for Go modules (a vendored-dependencies derivation that only changes with `go.mod`/`gomod2nix.toml`), so a code change doesn't rebuild dependencies.
   - Run formatting, lint and tests as parallel jobs, so a formatting failure reports in seconds.
   - Skip the image build and publish on PRs, or only on `master` and tags; homelab deploys only use `master-<sha>`.
-  - Skip the backend pipeline for docs-only changes (`paths-ignore` for `*.md`).
 - `taco compare` / `taco best <distance>` in the CLI.
 - **Admin panel** in the frontend, for running the deployment rather than looking at runs: the job queue (queued, running, dead jobs with their last error, retry), reprocess one or all workouts, files that failed to parse, and eventually account management in place of `kubectl exec … useradd`. Needs a notion of an admin user first.

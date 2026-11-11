@@ -7,11 +7,14 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gitea.deepak.science/deepak/taiga/internal/filerepo"
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/workouts"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -27,6 +30,7 @@ func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router.With(middleware.Compress(5, "application/json")).Get("/{workoutid}/series", getWorkoutSeriesFunc(m))
 	router.Post("/reprocess", reprocessAllFunc(m))
 	router.Post("/{workoutid}/reprocess", reprocessWorkoutFunc(m, fileRepo))
+	router.Put("/{workoutid}/corrections", putCorrectionsFunc(m, fileRepo))
 	router.Post("/", postWorkoutFunc(m))
 	router.Put("/{workoutid}", putWorkoutFunc(m))
 	router.Delete("/{workoutid}", deleteWorkoutFunc(m))
@@ -205,7 +209,7 @@ func putWorkoutFunc(m models.Model) http.HandlerFunc {
 			notFoundHandler(w, r)
 			return
 		}
-		// Edits would be lost on the next reprocess; override columns can come later if hand corrections are wanted.
+		// Edits would be lost on the next reprocess; corrections that survive it go through PUT /workouts/{id}/corrections.
 		if existingWorkout.ActivityFileID != nil {
 			unprocessableError(w, models.ErrDerivedWorkout)
 			return
@@ -361,5 +365,55 @@ func getWorkoutSeriesFunc(m models.Model) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write(series)
 		}
+	}
+}
+
+// maxExcludedReasonLength matches the excluded_reason column.
+const maxExcludedReasonLength = 64
+
+// putCorrectionsFunc replaces a file-backed workout's corrections and returns it reprocessed with them; a field left out or empty clears that correction.
+func putCorrectionsFunc(m models.Model, fileRepo filerepo.FileRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		userToken, err := tokens.UserTokenFromContext(ctx)
+		if err != nil {
+			unauthorizedHandler(w, r)
+			return
+		}
+		workoutID, err := strconv.ParseInt(chi.URLParam(r, "workoutid"), 10, 32)
+		if err != nil {
+			notFoundHandler(w, r)
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, 1024)
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		var corrections models.Corrections
+		if err := dec.Decode(&corrections); err != nil {
+			badRequestError(w, err)
+			return
+		}
+		corrections.Sport = strings.TrimSpace(corrections.Sport)
+		corrections.ExcludedReason = strings.TrimSpace(corrections.ExcludedReason)
+		if corrections.Sport != "" && !workouts.KnownSport(corrections.Sport) {
+			http.Error(w, fmt.Sprintf("unknown sport %q: use a FIT sport name such as running, walking or cycling", corrections.Sport), http.StatusBadRequest)
+			return
+		}
+		if utf8.RuneCountInString(corrections.ExcludedReason) > maxExcludedReasonLength {
+			http.Error(w, fmt.Sprintf("excluded_reason must be at most %d characters", maxExcludedReasonLength), http.StatusBadRequest)
+			return
+		}
+
+		workout, err := m.CorrectWorkout(ctx, int32(workoutID), corrections, userToken, fileRepo)
+		if err != nil {
+			if !activityContentError(w, r, err) {
+				serverError(w, err)
+			}
+			return
+		}
+		// A new sport or exclusion can add the workout to a route or take it off one.
+		queueRouteDetection(ctx, m, userToken)
+		writeJSON(w, workout)
 	}
 }
