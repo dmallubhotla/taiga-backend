@@ -125,7 +125,7 @@ WHERE
 -- Every routed workout with its route, newest first, for route summaries and pages.
 SELECT
   workout_routes.route_id,
-  sqlc.embed(workouts)
+  sqlc.embed (workouts)
 FROM
   workout_routes
   JOIN workouts ON workouts.id = workout_routes.workout_id
