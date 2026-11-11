@@ -87,7 +87,7 @@ type Querier interface {
 	SetRouteRepresentative(ctx context.Context, arg *SetRouteRepresentativeParams) error
 	UpdateActivityFile(ctx context.Context, arg *UpdateActivityFileParams) (*ActivityFile, error)
 	UpdateWorkout(ctx context.Context, arg *UpdateWorkoutParams) (*Workout, error)
-	// Everything reprocessing rebuilds from the activity file.
+	// Everything reprocessing rebuilds from the activity file, and the corrections it applied over it.
 	UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDerivedParams) (*Workout, error)
 	UpsertWorkoutSeries(ctx context.Context, arg *UpsertWorkoutSeriesParams) error
 	UpsertWorkoutTrack(ctx context.Context, arg *UpsertWorkoutTrackParams) error

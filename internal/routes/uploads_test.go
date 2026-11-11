@@ -137,6 +137,13 @@ func (c *apiClient) put(path, body string) (int, []byte) {
 	return c.do(req)
 }
 
+func (c *apiClient) postJSON(path, body string) (int, []byte) {
+	req, err := http.NewRequest(http.MethodPost, c.srv.URL+path, strings.NewReader(body))
+	require.NoError(c.t, err)
+	req.Header.Set("Content-Type", "application/json")
+	return c.do(req)
+}
+
 func TestReprocessRoutes(t *testing.T) {
 	srv, m, toker := newAPI(t)
 	alice := newUserClient(t, srv, m, toker, "alice@example.com")
@@ -305,4 +312,47 @@ func TestGoogleFitUploads(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &best))
 	require.Len(t, best, 1, "the mixed session doesn't count")
 	assert.Equal(t, runID, best[0].WorkoutID)
+}
+
+func TestWorkoutCorrections(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	bob := newUserClient(t, srv, m, toker, "bob@example.com")
+	_, workoutID := alice.uploadWorkout(fourKFIT(t))
+	path := fmt.Sprintf("/workouts/%d/corrections", workoutID)
+
+	status, body := alice.put(path, `{"sport": " hiking ", "excluded_reason": "watch left running in the car"}`)
+	require.Equal(t, http.StatusOK, status, string(body))
+	var workout models.Workout
+	require.NoError(t, json.Unmarshal(body, &workout))
+	assert.Equal(t, "hiking", workout.Sport)
+	assert.Equal(t, "hiking", workout.SportOverride)
+	assert.Equal(t, "watch left running in the car", workout.ExcludedReason)
+
+	status, body = alice.post(fmt.Sprintf("/workouts/%d/reprocess", workoutID))
+	require.Equal(t, http.StatusOK, status, string(body))
+	require.NoError(t, json.Unmarshal(body, &workout))
+	assert.Equal(t, "hiking", workout.Sport, "corrections survive reprocessing")
+
+	status, body = alice.put(path, `{}`)
+	require.Equal(t, http.StatusOK, status, string(body))
+	require.NoError(t, json.Unmarshal(body, &workout))
+	assert.Equal(t, "running", workout.Sport)
+	assert.Empty(t, workout.ExcludedReason)
+
+	status, body = alice.put(path, `{"sport": "jogging"}`)
+	assert.Equal(t, http.StatusBadRequest, status)
+	assert.Contains(t, string(body), "jogging")
+	status, _ = alice.put(path, fmt.Sprintf(`{"excluded_reason": %q}`, strings.Repeat("x", 65)))
+	assert.Equal(t, http.StatusBadRequest, status)
+	status, _ = alice.put(path, `{"distance_miles": 3}`)
+	assert.Equal(t, http.StatusBadRequest, status)
+	status, _ = bob.put(path, `{"sport": "walking"}`)
+	assert.Equal(t, http.StatusNotFound, status)
+
+	status, body = alice.postJSON("/workouts", `{"distance_miles": 3}`)
+	require.Equal(t, http.StatusCreated, status, string(body))
+	require.NoError(t, json.Unmarshal(body, &workout))
+	status, _ = alice.put(fmt.Sprintf("/workouts/%d/corrections", workout.ID), `{"sport": "walking"}`)
+	assert.Equal(t, http.StatusUnprocessableEntity, status, "a hand-entered workout is edited directly")
 }

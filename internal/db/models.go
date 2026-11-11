@@ -58,22 +58,24 @@ type User struct {
 }
 
 type Workout struct {
-	ID               int32              `json:"id"`
-	DistanceMiles    *float64           `json:"distance_miles"`
-	TimeSeconds      *float64           `json:"time_seconds"`
-	SpeedMph         *float64           `json:"speed_mph"`
-	PaceMinPerMile   *float64           `json:"pace_min_per_mile"`
-	StartTime        pgtype.Timestamptz `json:"start_time"`
-	EndTime          pgtype.Timestamptz `json:"end_time"`
-	ActivityFileID   *int32             `json:"activity_file_id"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-	UserID           int32              `json:"user_id"`
-	ProcessorVersion string             `json:"processor_version"`
-	Sport            string             `json:"sport"`
-	SubSport         string             `json:"sub_sport"`
-	ExcludedReason   string             `json:"excluded_reason"`
-	Source           string             `json:"source"`
+	ID                 int32              `json:"id"`
+	DistanceMiles      *float64           `json:"distance_miles"`
+	TimeSeconds        *float64           `json:"time_seconds"`
+	SpeedMph           *float64           `json:"speed_mph"`
+	PaceMinPerMile     *float64           `json:"pace_min_per_mile"`
+	StartTime          pgtype.Timestamptz `json:"start_time"`
+	EndTime            pgtype.Timestamptz `json:"end_time"`
+	ActivityFileID     *int32             `json:"activity_file_id"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	UserID             int32              `json:"user_id"`
+	ProcessorVersion   string             `json:"processor_version"`
+	Sport              string             `json:"sport"`
+	SubSport           string             `json:"sub_sport"`
+	ExcludedReason     string             `json:"excluded_reason"`
+	Source             string             `json:"source"`
+	SportOverride      string             `json:"sport_override"`
+	UserExcludedReason string             `json:"user_excluded_reason"`
 }
 
 type WorkoutRoute struct {
