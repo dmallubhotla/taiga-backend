@@ -158,8 +158,15 @@ func TestReprocessRoutes(t *testing.T) {
 
 	status, body = alice.get("/jobs?state=queued")
 	require.Equal(t, http.StatusOK, status, string(body))
+	var all []models.Job
+	require.NoError(t, json.Unmarshal(body, &all))
 	var queued []models.Job
-	require.NoError(t, json.Unmarshal(body, &queued))
+	for _, j := range all {
+		// Uploading and reprocessing also queued route detection.
+		if j.Kind == models.JobProcessWorkout {
+			queued = append(queued, j)
+		}
+	}
 	require.Len(t, queued, 1)
 	assert.Equal(t, workoutID, *queued[0].WorkoutID)
 

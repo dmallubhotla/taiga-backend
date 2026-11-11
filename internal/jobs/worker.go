@@ -114,8 +114,13 @@ func (w *Worker) run(ctx context.Context, job *models.Job) error {
 		if job.WorkoutID == nil {
 			return fmt.Errorf("%w: %s job without a workout", errUnknownKind, job.Kind)
 		}
-		_, err := w.m.ReprocessWorkout(ctx, *job.WorkoutID, user, w.fileRepo)
-		return err
+		if _, err := w.m.ReprocessWorkout(ctx, *job.WorkoutID, user, w.fileRepo); err != nil {
+			return err
+		}
+		// Queued behind any reprocessing still due, so a bulk reprocess regroups routes once at the end.
+		return w.m.EnqueueDetectRoutes(ctx, w.Now(), user)
+	case models.JobDetectRoutes:
+		return w.m.DetectRoutes(ctx, user)
 	default:
 		return fmt.Errorf("%w: %q", errUnknownKind, job.Kind)
 	}

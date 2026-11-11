@@ -40,7 +40,7 @@ func (m *storeModel) WorkoutSegments(ctx context.Context, workoutID int32, userT
 	return segments, nil
 }
 
-func (m *storeModel) BestSegments(ctx context.Context, name string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error) {
+func (m *storeModel) BestSegments(ctx context.Context, name, sport string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error) {
 	querier, err := m.store.GetQuerier()
 	if err != nil {
 		log.Printf("could not get a querier: %v", err)
@@ -50,6 +50,7 @@ func (m *storeModel) BestSegments(ctx context.Context, name string, limit int32,
 		UserID: userToken.ID,
 		Name:   name,
 		Limit:  limit,
+		Sport:  sport,
 	})
 	if err != nil {
 		log.Printf("Could not list best %s segments: %v", name, err)

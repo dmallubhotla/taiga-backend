@@ -32,7 +32,7 @@ ORDER BY
   END;
 
 -- name: ListBestSegmentsByName :many
--- A distance segment ranks by time, a duration segment by distance covered.
+-- A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport compete.
 SELECT
   workout_segments.*,
   workouts.start_time AS workout_start_time
@@ -42,6 +42,7 @@ FROM
 WHERE
   workout_segments.user_id = $1
   AND workout_segments.name = $2
+  AND workouts.sport = $4
 ORDER BY
   CASE
     WHEN workout_segments.kind = 'duration' THEN - workout_segments.distance_meters

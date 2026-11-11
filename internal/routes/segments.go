@@ -97,7 +97,16 @@ func getBestSegmentsFunc(m models.Model) http.HandlerFunc {
 			}
 		}
 
-		efforts, err := m.BestSegments(ctx, name, int32(limit), userToken)
+		sport := r.URL.Query().Get("sport")
+		if sport == "" {
+			sport = workouts.SportRunning
+		}
+		if !workouts.Scored(sport) {
+			badRequestError(w, fmt.Errorf("sport must be one of %s", strings.Join(workouts.ScoredSports, ", ")))
+			return
+		}
+
+		efforts, err := m.BestSegments(ctx, name, sport, int32(limit), userToken)
 		if err != nil {
 			serverError(w, err)
 			return

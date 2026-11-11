@@ -65,6 +65,8 @@ func (m *storeModel) AddWorkout(ctx context.Context, workout *Workout, userToken
 		EndTime:        workout.EndTime,
 		ActivityFileID: workout.ActivityFileID,
 		UserID:         userToken.ID,
+		Sport:          workout.Sport,
+		SubSport:       workout.SubSport,
 	}
 	log.Printf("Adding workout %v", createWorkoutParams)
 	returnWorkout, err := querier.CreateWorkout(ctx, createWorkoutParams)
@@ -110,6 +112,15 @@ func (m *storeModel) DeleteWorkout(ctx context.Context, id int32, userToken *tok
 			return err
 		}
 		if err := q.DeleteWorkoutSeries(ctx, &db.DeleteWorkoutSeriesParams{WorkoutID: id, UserID: userToken.ID}); err != nil {
+			return err
+		}
+		if err := q.DeleteWorkoutTrack(ctx, &db.DeleteWorkoutTrackParams{WorkoutID: id, UserID: userToken.ID}); err != nil {
+			return err
+		}
+		if err := q.DeleteWorkoutRoute(ctx, &db.DeleteWorkoutRouteParams{WorkoutID: id, UserID: userToken.ID}); err != nil {
+			return err
+		}
+		if err := q.ClearRouteRepresentative(ctx, &db.ClearRouteRepresentativeParams{RepresentativeWorkoutID: &id, UserID: userToken.ID}); err != nil {
 			return err
 		}
 		if err := q.DeleteJobsByWorkout(ctx, &db.DeleteJobsByWorkoutParams{WorkoutID: &id, UserID: userToken.ID}); err != nil {

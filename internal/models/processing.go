@@ -59,6 +59,8 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 			ActivityFileID:   &activityFileID,
 			UserID:           userToken.ID,
 			ProcessorVersion: workouts.ProcessorVersion,
+			Sport:            s.Sport,
+			SubSport:         s.SubSport,
 		})
 		if err != nil {
 			return err
@@ -99,6 +101,8 @@ func (m *storeModel) ReprocessWorkout(ctx context.Context, workoutID int32, user
 			StartTime:        pgtype.Timestamptz{Time: s.StartTime, Valid: true},
 			EndTime:          pgtype.Timestamptz{Time: s.EndTime, Valid: true},
 			ProcessorVersion: workouts.ProcessorVersion,
+			Sport:            s.Sport,
+			SubSport:         s.SubSport,
 		})
 		if err != nil {
 			return err
@@ -112,7 +116,7 @@ func (m *storeModel) ReprocessWorkout(ctx context.Context, workoutID int32, user
 	return updated, nil
 }
 
-// storeDerived replaces everything computed from the run's records; replacing the whole segment set drops distances and durations no longer standard.
+// storeDerived replaces everything computed from the run's records (segments, series, track); replacing the whole segment set drops distances and durations no longer standard.
 func storeDerived(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
 	if err := q.DeleteSegmentsByWorkout(ctx, &db.DeleteSegmentsByWorkoutParams{WorkoutID: workoutID, UserID: userToken.ID}); err != nil {
 		return err
@@ -124,7 +128,10 @@ func storeDerived(ctx context.Context, q db.Querier, workoutID int32, run *worko
 	if err != nil {
 		return fmt.Errorf("encoding series for workout %d: %w", workoutID, err)
 	}
-	return q.UpsertWorkoutSeries(ctx, &db.UpsertWorkoutSeriesParams{WorkoutID: workoutID, UserID: userToken.ID, Series: series})
+	if err := q.UpsertWorkoutSeries(ctx, &db.UpsertWorkoutSeriesParams{WorkoutID: workoutID, UserID: userToken.ID, Series: series}); err != nil {
+		return err
+	}
+	return storeTrack(ctx, q, workoutID, run, userToken)
 }
 
 // WorkoutSeries returns the stored series JSON; ErrNoSeries for a workout with nothing recorded (hand-entered, or not yet reprocessed).
@@ -143,7 +150,11 @@ func (m *storeModel) WorkoutSeries(ctx context.Context, workoutID int32, userTok
 	return series, err
 }
 
+// addSegments stores best efforts for runs and walks; other sports keep none, so a ride never tops a running leaderboard.
 func addSegments(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
+	if !workouts.Scored(run.Summary.Sport) {
+		return nil
+	}
 	segments := append(workouts.FastestSegments(run, workouts.StandardDistances), workouts.FarthestEfforts(run, workouts.StandardDurations)...)
 	for _, seg := range segments {
 		_, err := q.CreateWorkoutSegment(ctx, &db.CreateWorkoutSegmentParams{

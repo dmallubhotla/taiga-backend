@@ -80,15 +80,27 @@ func TestStaleWorkoutsAreReprocessed(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 
-	job := onlyJob(t, m, alice)
+	all, err := m.Jobs(ctx, "", 10, alice)
+	require.NoError(t, err)
+	require.Len(t, all, 2, "the reprocess, and route detection queued after it")
+	detect, job := all[0], all[1]
 	assert.Equal(t, models.JobDone, job.State)
 	assert.Equal(t, stale.ID, *job.WorkoutID)
+	assert.Equal(t, models.JobDetectRoutes, detect.Kind)
+	assert.Equal(t, models.JobQueued, detect.State)
 	got, err := m.Workout(ctx, stale.ID, alice)
 	require.NoError(t, err)
 	assert.Equal(t, workouts.ProcessorVersion, got.ProcessorVersion)
 	segments, err := m.WorkoutSegments(ctx, stale.ID, alice)
 	require.NoError(t, err)
 	assert.NotEmpty(t, segments)
+
+	found, err = w.RunOnce(ctx)
+	require.NoError(t, err)
+	require.True(t, found)
+	detect, err = m.Job(ctx, detect.ID, alice)
+	require.NoError(t, err)
+	assert.Equal(t, models.JobDone, detect.State, "%v", detect.LastError)
 
 	found, err = w.RunOnce(ctx)
 	require.NoError(t, err)

@@ -94,6 +94,7 @@ FROM
 WHERE
   workout_segments.user_id = $1
   AND workout_segments.name = $2
+  AND workouts.sport = $4
 ORDER BY
   CASE
     WHEN workout_segments.kind = 'duration' THEN - workout_segments.distance_meters
@@ -107,6 +108,7 @@ type ListBestSegmentsByNameParams struct {
 	UserID int32  `json:"user_id"`
 	Name   string `json:"name"`
 	Limit  int32  `json:"limit"`
+	Sport  string `json:"sport"`
 }
 
 type ListBestSegmentsByNameRow struct {
@@ -123,9 +125,14 @@ type ListBestSegmentsByNameRow struct {
 	WorkoutStartTime   pgtype.Timestamptz `json:"workout_start_time"`
 }
 
-// A distance segment ranks by time, a duration segment by distance covered.
+// A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport compete.
 func (q *Queries) ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error) {
-	rows, err := q.db.Query(ctx, listBestSegmentsByName, arg.UserID, arg.Name, arg.Limit)
+	rows, err := q.db.Query(ctx, listBestSegmentsByName,
+		arg.UserID,
+		arg.Name,
+		arg.Limit,
+		arg.Sport,
+	)
 	if err != nil {
 		return nil, err
 	}

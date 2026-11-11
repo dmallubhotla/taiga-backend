@@ -148,7 +148,7 @@ go run cmd/useradd/main.go -email you@example.com  # Create an account while reg
    SELECT * FROM users WHERE id = $1;
    ```
 
-   Name parameters with `sqlc.arg(name)`, not `@name`: `just fmt` rewrites `@name` to `@ name`, which sqlc can't parse.
+   `.sql-formatter.json` tells `just fmt` (sql-formatter, via treefmt) to leave `@name` and `sqlc.arg(...)`/`sqlc.embed(...)` alone; without it they become `@ name` and `sqlc.embed (t)`, which sqlc can't parse.
 
 2. **Generate Go code**:
    ```bash
@@ -285,7 +285,13 @@ file_repo:
 - `POST /workouts/reprocess` - Queue reprocessing of all the user's file-backed workouts; `202` with `{enqueued}`, progress under `/jobs`
 - `GET /workouts/compare?ids=1,2` - Up to 10 workouts with segments keyed by name, plus `distances` (the segment names any of them have, durations last)
 - `GET /segments` - The standard segments: distances (`1k`, `1mi`, `3k`, `2mi`, `5k`, `5mi`, `10k`, `half`, `marathon`) with `meters`, then durations (`30min`, `1h`) with `seconds`, each with its `kind`
-- `GET /segments/{name}/best?limit=N` - The user's best efforts at that segment across workouts (default 10, max 100): fastest for a distance, farthest for a duration
+- `GET /segments/{name}/best?sport=running|walking&limit=N` - The user's best efforts at that segment across workouts of one sport (default `running`; default 10, max 100): fastest for a distance, farthest for a duration
+
+### Routes API (requires JWT token)
+- `GET /routes` - The user's routes, most recently run first: `{id, name, sport, representative_workout_id, run_count, distance_miles, best_time_seconds, best_workout_id, latest_start_time}`
+- `GET /routes/{id}` - A route with its `workouts` (newest first) and `track`, the representative run's resampled `[lat, lon]` points
+- `PUT /routes/{id}` - Rename with `{"name": "..."}` (trimmed, at most 100 characters); an empty or null name clears it
+- `GET /workouts/{id}/route` - The route a workout is on; `404` when it has none (no GPS, or nothing else matches it yet)
 
 ### Jobs API (requires JWT token)
 - `GET /jobs?state=queued|running|done|dead` - The user's 100 newest jobs, optionally in one state; done jobs are pruned after a week
@@ -390,6 +396,10 @@ The application provides a comprehensive API for managing activity files (primar
 - The FIT file is the source of truth; a workout's summary, segments and series (`workout_series`, one JSON document per workout) are derived from it and stamped with `workouts.ProcessorVersion`
 - The series keeps every Nth record (at most `MaxSeriesPoints`, rounded per column) and is the only copy of per-record data in the database; segments and totals use every record from the file. ROADMAP M6 lists better sampling methods and when each would be needed
 - `ProcessorVersion` combines `extractorVersion` (bump it in `internal/workouts/processor.go` whenever extraction changes) with a hash of `StandardDistances` and `StandardDurations`, so adding or removing one reprocesses old workouts on its own
+- Each workout keeps the FIT session's `sport` and `sub_sport` (e.g. `running` / `indoor_running`). Only runs and walks (`workouts.ScoredSports`) get segments and tracks, and each sport is ranked and grouped on its own; rides and generic sessions are stored and listed but never scored
+- Processing also stores the run's GPS track resampled every 20m by distance (`workout_tracks`, `workouts.BuildTrack`); a run without GPS gets none
+- Routes (`routes`, `workout_routes`) group a user's runs on the same route, never across users. Two runs match when starts and ends are within 150m, lengths within 10%, and the discrete Fréchet distance between tracks is under 75m (`workouts.SameRoute`). Fréchet follows the points in order, so a loop run the other way round is a separate route
+- Routes are derived across workouts, so they aren't part of per-workout reprocessing: a new, reprocessed or deleted workout queues one `detect_routes` job per user, which regroups every tracked run of each sport from scratch (`workouts.GroupRoutes`: oldest first against each route's first run, then merging routes whose representatives match) and keeps the id and name of the old route each group overlaps most. A run matching nothing isn't a route until a second run matches it
 - `internal/jobs` runs a worker goroutine in the server: on boot it queues a `process_workout` job for every workout whose version isn't current, then polls the `jobs` table
 - The claim query runs unchanged on both databases (no `SKIP LOCKED`); a claimed job holds a 5-minute lease, so a crashed worker's job is picked up again
 - Failures retry with exponential backoff from 30s, up to 5 attempts; errors that can't succeed on retry (unreadable file, missing workout) go straight to `dead`

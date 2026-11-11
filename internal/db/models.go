@@ -40,6 +40,14 @@ type Job struct {
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Route struct {
+	ID                      int32              `json:"id"`
+	UserID                  int32              `json:"user_id"`
+	Name                    *string            `json:"name"`
+	RepresentativeWorkoutID *int32             `json:"representative_workout_id"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+}
+
 type User struct {
 	ID          int32              `json:"id"`
 	Email       string             `json:"email"`
@@ -62,6 +70,14 @@ type Workout struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	UserID           int32              `json:"user_id"`
 	ProcessorVersion string             `json:"processor_version"`
+	Sport            string             `json:"sport"`
+	SubSport         string             `json:"sub_sport"`
+}
+
+type WorkoutRoute struct {
+	WorkoutID int32 `json:"workout_id"`
+	RouteID   int32 `json:"route_id"`
+	UserID    int32 `json:"user_id"`
 }
 
 type WorkoutSegment struct {
@@ -82,4 +98,10 @@ type WorkoutSeries struct {
 	UserID    int32              `json:"user_id"`
 	Series    []byte             `json:"series"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type WorkoutTrack struct {
+	WorkoutID int32  `json:"workout_id"`
+	UserID    int32  `json:"user_id"`
+	Track     []byte `json:"track"`
 }
