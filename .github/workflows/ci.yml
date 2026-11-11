@@ -3,6 +3,12 @@ on:
   push:
     branches: ['**']
     tags: ['v*']
+    # Docs-only pushes skip CI; path filters don't apply to tag pushes, so a release still builds.
+    # Anything else can skip with [skip ci] in the head commit (for a PR, in the merge commit).
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE*'
 permissions:
   contents: read
 concurrency:

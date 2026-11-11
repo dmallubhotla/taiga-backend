@@ -168,8 +168,9 @@
 
             pkgs.awscli2
 
-            # Release tooling — `just release` invokes `hanko seal`.
+            # Release tooling — `just release` invokes `hanko seal`, whose pre-commit hook runs git-cliff.
             hanko.packages.${pkgs.stdenv.hostPlatform.system}.default
+            pkgs.git-cliff
           ];
         };
       });

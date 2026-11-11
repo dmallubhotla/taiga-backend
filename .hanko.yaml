@@ -3,12 +3,18 @@
 # The seal pipeline:
 #   1. Pre-flight (refuses dirty worktree / pre-release)
 #   2. Apply stamp-targets to the computed version
-#   3. Single release commit
-#   4. Annotated tag
-#   5. git push --atomic for commit + tag
+#   3. Run seal.pre-commit hooks (regenerate CHANGELOG.md with git-cliff, see cliff.toml)
+#   4. Single release commit
+#   5. Annotated tag
+#   6. git push --atomic for commit + tag
+#
+# The bump comes from conventional commit subjects since the last tag (hanko's default bump-strategy): feat → minor, `!` or BREAKING CHANGE → major, anything else → patch.
 #
 # Preview with `just release-plan` before running for real.
 stamp-targets:
   - path: flake.nix
     format: nix
     key: version
+seal:
+  pre-commit:
+    - git-cliff --tag v{semver} --output CHANGELOG.md

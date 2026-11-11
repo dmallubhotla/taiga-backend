@@ -89,14 +89,21 @@ just fmt                 # Format code using nix
 just update              # nix flake update
 ```
 
+### Commits and the changelog
+Every commit subject is a [conventional commit](https://www.conventionalcommits.org): `<type>[(scope)][!]: <description>`, type one of `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `style`, `revert` (e.g. `feat(routes): rename a route`, `docs(roadmap): ...`, `fix!: ...` for a breaking change).
+hanko reads them for the bump (`feat` → minor, `!`/`BREAKING CHANGE` → major, else patch) and git-cliff (`cliff.toml`) groups them into `CHANGELOG.md`; commits from before the switch land under "Other".
+Merge commits are exempt.
+`scripts/check-commits.sh` checks them: the `commits` workflow runs it on every PR's commits and title (a squash merge takes the title), and `just install-hooks` makes it the local `commit-msg` hook.
+
 ### Releasing (hanko)
 The project uses [hanko](https://github.com/dmallubhotla/hanko) `seal` to bump
-the version stamped in `flake.nix`, create the release commit, tag, and push.
+the version stamped in `flake.nix`, regenerate `CHANGELOG.md` (git-cliff, a `seal.pre-commit` hook), create the release commit, tag, and push.
 Configuration lives in `.hanko.yaml`.
 
 ```bash
 just release-plan        # Preview what `just release` would do (dry run)
-just release             # Stamp version, commit, tag, push
+just release             # Stamp version, write the changelog, commit, tag, push
+just changelog           # Regenerate CHANGELOG.md with unreleased commits under [Unreleased]
 ```
 
 A `seal` GitHub workflow (`.github/workflows/seal.yml`) does the same thing on
@@ -365,6 +372,8 @@ Switch by updating `config.yaml` or setting `TAIGA_DB_DRIVER` environment variab
   Auth uses the workflow's `GITHUB_TOKEN` with `packages: write`. Images are
   pushed directly from the Nix-built `docker-archive` via `skopeo copy` — no
   Docker daemon needed in CI.
+- `ci.yml` skips pushes that only touch Markdown, `docs/` or `LICENSE*` (tag pushes always run); `[skip ci]` in the head commit skips any push.
+- `commits.yml` checks PR commit subjects and titles are conventional commits.
 - `seal.yml` is a manually-triggered hanko release workflow.
 
 ### Docker Deployment
