@@ -14,6 +14,7 @@ import (
 
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/testsupport"
+	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	"gitea.deepak.science/deepak/taiga/internal/workouts"
 )
 
@@ -196,4 +197,41 @@ func idsOf(files []models.ActivityFile) []int32 {
 		ids = append(ids, f.ID)
 	}
 	return ids
+}
+
+func TestWorkoutSeries(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	bob := newUserClient(t, srv, m, toker, "bob@example.com")
+	_, workoutID := alice.uploadWorkout(fourKFIT(t))
+
+	status, body := alice.get(fmt.Sprintf("/workouts/%d/series", workoutID))
+	require.Equal(t, http.StatusOK, status, string(body))
+	var series struct {
+		TimeSeconds    []float64  `json:"time_s"`
+		DistanceMeters []float64  `json:"distance_m"`
+		HeartRate      []float64  `json:"heart_rate"`
+		AltitudeMeters []float64  `json:"altitude_m"`
+		Latitude       []*float64 `json:"lat"`
+		Longitude      []*float64 `json:"lon"`
+		SpeedMPS       []*float64 `json:"speed_mps"`
+	}
+	require.NoError(t, json.Unmarshal(body, &series))
+	require.Len(t, series.TimeSeconds, 401, "a record every 10m over 4km, plus the start")
+	assert.Equal(t, 4000.0, series.DistanceMeters[400])
+	assert.Equal(t, 1100.0, series.TimeSeconds[400])
+	assert.Equal(t, float64(testsupport.RecordHeartRate), series.HeartRate[200])
+	assert.InDelta(t, testsupport.RecordAltitude(4000), series.AltitudeMeters[400], 0.2)
+	require.NotNil(t, series.Latitude[0])
+	assert.InDelta(t, testsupport.StartLatitude, *series.Latitude[0], 1e-5)
+	assert.Nil(t, series.SpeedMPS, "the synthetic file records no speed, so the column is omitted")
+
+	status, _ = bob.get(fmt.Sprintf("/workouts/%d/series", workoutID))
+	assert.Equal(t, http.StatusNotFound, status)
+
+	manual, err := m.AddWorkout(t.Context(), &models.Workout{}, &tokens.UserToken{ID: 1})
+	require.NoError(t, err)
+	status, body = alice.get(fmt.Sprintf("/workouts/%d/series", manual.ID))
+	assert.Equal(t, http.StatusNotFound, status)
+	assert.Contains(t, string(body), "entered by hand")
 }

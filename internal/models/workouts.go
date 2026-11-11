@@ -109,6 +109,9 @@ func (m *storeModel) DeleteWorkout(ctx context.Context, id int32, userToken *tok
 		if err := q.DeleteSegmentsByWorkout(ctx, &db.DeleteSegmentsByWorkoutParams{WorkoutID: id, UserID: userToken.ID}); err != nil {
 			return err
 		}
+		if err := q.DeleteWorkoutSeries(ctx, &db.DeleteWorkoutSeriesParams{WorkoutID: id, UserID: userToken.ID}); err != nil {
+			return err
+		}
 		if err := q.DeleteJobsByWorkout(ctx, &db.DeleteJobsByWorkoutParams{WorkoutID: &id, UserID: userToken.ID}); err != nil {
 			return err
 		}

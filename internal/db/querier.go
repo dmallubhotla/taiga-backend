@@ -36,6 +36,7 @@ type Querier interface {
 	DeleteJobsByWorkout(ctx context.Context, arg *DeleteJobsByWorkoutParams) error
 	DeleteSegmentsByWorkout(ctx context.Context, arg *DeleteSegmentsByWorkoutParams) error
 	DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) error
+	DeleteWorkoutSeries(ctx context.Context, arg *DeleteWorkoutSeriesParams) error
 	// Every user's file-backed workouts not built by the current processor; one already queued is skipped by idx_jobs_pending.
 	EnqueueStaleWorkouts(ctx context.Context, arg *EnqueueStaleWorkoutsParams) (int64, error)
 	EnqueueUserWorkouts(ctx context.Context, arg *EnqueueUserWorkoutsParams) (int64, error)
@@ -46,6 +47,7 @@ type Querier interface {
 	GetJob(ctx context.Context, arg *GetJobParams) (*Job, error)
 	GetUser(ctx context.Context, id int32) (*GetUserRow, error)
 	GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Workout, error)
+	GetWorkoutSeries(ctx context.Context, arg *GetWorkoutSeriesParams) ([]byte, error)
 	GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkoutsByActivityFileParams) ([]*Workout, error)
 	KillJob(ctx context.Context, arg *KillJobParams) error
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
@@ -66,6 +68,7 @@ type Querier interface {
 	UpdateWorkout(ctx context.Context, arg *UpdateWorkoutParams) (*Workout, error)
 	// Everything reprocessing rebuilds from the activity file.
 	UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDerivedParams) (*Workout, error)
+	UpsertWorkoutSeries(ctx context.Context, arg *UpsertWorkoutSeriesParams) error
 }
 
 var _ Querier = (*Queries)(nil)

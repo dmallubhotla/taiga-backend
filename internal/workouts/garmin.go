@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/muktihari/fit/decoder"
+	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/mesgdef"
 )
@@ -43,16 +44,30 @@ func summarise(sesh *mesgdef.Session) *RunSummary {
 }
 
 func summariseRecord(rec *mesgdef.Record) *RecordData {
-
-	distance := &Distance{
-		Meters: rec.DistanceScaled(),
-	}
-
 	return &RecordData{
-		Distance:         distance,
+		Distance:         &Distance{Meters: rec.DistanceScaled()},
 		Timestamp:        rec.Timestamp,
-		SpeedMeterPerSec: rec.SpeedScaled(),
+		SpeedMeterPerSec: firstValid(rec.EnhancedSpeedScaled(), rec.SpeedScaled()),
+		AltitudeMeters:   firstValid(rec.EnhancedAltitudeScaled(), rec.AltitudeScaled()),
+		HeartRate:        validUint8(rec.HeartRate),
+		Latitude:         rec.PositionLatDegrees(),
+		Longitude:        rec.PositionLongDegrees(),
 	}
+}
+
+// firstValid prefers the enhanced (wider) field, falling back to the legacy one older devices write.
+func firstValid(preferred, fallback float64) float64 {
+	if !math.IsNaN(preferred) {
+		return preferred
+	}
+	return fallback
+}
+
+func validUint8(v uint8) float64 {
+	if v == basetype.Uint8Invalid {
+		return math.NaN()
+	}
+	return float64(v)
 }
 
 func ReadActivity(activity *filedef.Activity) (*Run, error) {

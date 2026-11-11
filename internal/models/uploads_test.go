@@ -159,6 +159,8 @@ func TestReprocessWorkout(t *testing.T) {
 	require.NoError(t, err)
 	legacy := addWorkout(t, m, alice, &af.ID)
 	assert.Empty(t, legacy.ProcessorVersion)
+	_, err = m.WorkoutSeries(ctx, legacy.ID, alice)
+	assert.ErrorIs(t, err, models.ErrNoSeries)
 
 	reprocessed, err := m.ReprocessWorkout(ctx, legacy.ID, alice, repo)
 	require.NoError(t, err)
@@ -171,6 +173,9 @@ func TestReprocessWorkout(t *testing.T) {
 	assert.Len(t, byName, 4, "1k, 1mi, 3k and 2mi fit in 4km")
 	require.Contains(t, byName, "1k")
 	assert.InDelta(t, 200, byName["1k"].DurationSeconds, 1)
+	series, err := m.WorkoutSeries(ctx, legacy.ID, alice)
+	require.NoError(t, err)
+	assert.Contains(t, string(series), `"heart_rate":[150,`)
 
 	// Reprocessing again replaces the segments rather than adding to them.
 	_, err = m.ReprocessWorkout(ctx, legacy.ID, alice, repo)

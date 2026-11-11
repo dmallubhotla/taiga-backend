@@ -31,12 +31,15 @@ type RunSummary struct {
 	EndTime        time.Time `json:"end_time"`
 }
 
-// eventually this will get stuff like lat long points
-// really we're just 'paraphrasing their struct format
+// RecordData is one FIT record; fields the device didn't record are NaN.
 type RecordData struct {
 	Distance          *Distance     `json:"distance"`
 	Timestamp         time.Time     `json:"timestamp"`
 	SpeedMeterPerSec  float64       `json:"-"`
+	AltitudeMeters    float64       `json:"-"`
+	HeartRate         float64       `json:"-"`
+	Latitude          float64       `json:"-"`
+	Longitude         float64       `json:"-"`
 	DurationFromStart time.Duration `json:"duration_from_start"`
 }
 

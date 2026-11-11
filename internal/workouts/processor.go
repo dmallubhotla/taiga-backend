@@ -6,7 +6,7 @@ import (
 )
 
 // extractorVersion is bumped whenever what's extracted from a FIT file changes: new fields, or a fix to summaries or segments.
-const extractorVersion = 1
+const extractorVersion = 2
 
 // ProcessorVersion identifies the code that built a workout's derived data; workouts stamped with any other value get reprocessed.
 // It covers StandardDistances too, so editing that list reprocesses old workouts without a manual bump.
