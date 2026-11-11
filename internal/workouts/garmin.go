@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	// ErrUnreadableFile means the bytes aren't a FIT file or Endomondo JSON we can decode.
-	ErrUnreadableFile = errors.New("not a readable activity file (FIT or Endomondo JSON)")
+	// ErrUnreadableFile means the bytes aren't a FIT, Endomondo JSON or TCX file we can decode.
+	ErrUnreadableFile = errors.New("not a readable activity file (FIT, TCX or Endomondo JSON)")
 	// ErrUnsupportedActivity means the file decodes but isn't a single-session activity.
 	ErrUnsupportedActivity = errors.New("unsupported activity")
 )

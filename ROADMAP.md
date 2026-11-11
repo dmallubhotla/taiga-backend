@@ -182,8 +182,12 @@ The goal is new runs showing up on their own. Each option still needs checking a
   - [ ] Notes (`message`) aren't kept; workouts have nowhere to put them yet.
   - [ ] Content dedupe won't catch a run that's also in a FIT export; match on start time and sport. Not needed for this archive, which ends before the COROS history starts.
 - [x] **Each workout's source** (`source`): what recorded it, from the FIT `file_id` (its product name, e.g. `COROS PACE 3`, else the manufacturer and Garmin product), or `Endomondo`. Reprocessing fills it in for old workouts.
-- [ ] **Google Fit Takeout import** (2020–2024), which overlaps both Endomondo and COROS.
-  - [ ] Survey the export: per-session TCX and JSON, and whether each session names the app that recorded it.
+- [x] **Google Fit Takeout import.** Surveyed on a 3,427-session export (`Fit/Activities`, 2016–2026, TCX only):
+  - **No app name.** Every file's author is `Google Fit`; Takeout's "All sessions" JSON would name the recording app, but isn't needed to find duplicates.
+  - **One file per session,** made of the stretches Google Fit detected (`Walking`, `Running`, `Biking`, ...), each its own `<Activity>` restarting its distance. 367 files mix walking and running, often with a stray point hours before the start and time running backwards.
+  - **Mostly noise.** 2,380 walks and 264 rides are step- or motion-detected (2021–23 walks average 0.7 mi in 18 min, most with under 20 GPS fixes a mile). Tracked runs have 200+ fixes a mile.
+  - **Duplicates:** 271 sessions copy Endomondo workouts (117 of them over 10% short) and 80 copy COROS ones; 289 of the 351 start within 2 minutes of the original.
+  - **Built:** `workouts.ReadTCXFile`. A scored session that mixes sports, has time running backwards or has under 50 fixes a mile gets an `excluded_reason`. First pass uploaded only the 122 tracked runs that overlap nothing already stored (113 from 2021–2023, between Endomondo and COROS), so no duplicates went in.
   - [ ] **Cross-source duplicates:** a per-user job (like `detect_routes`) pairs workouts of one sport whose starts are minutes apart and whose spans mostly overlap. The richer source wins (watch FIT, then Endomondo, then Google Fit); the other copy stays listed with an `excluded_reason` naming the winner, so deleting the winner brings it back.
 
 ## M9 — Routes
