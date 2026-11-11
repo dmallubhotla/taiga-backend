@@ -161,3 +161,36 @@ func TestSportsAreScoredApart(t *testing.T) {
 	_, err = m.WorkoutRoute(ctx, ride.ID, alice)
 	assert.ErrorIs(t, err, models.ErrNoRoute)
 }
+
+func TestTreadmillRunsAreNotScored(t *testing.T) {
+	ctx := context.Background()
+	m, repo := testsupport.NewModel(t), testsupport.NewFileRepo(t)
+	alice := createUser(t, m, "alice@example.com")
+	upload := func(day int, subSport typedef.SubSport, secondsPerKm float64) *models.Workout {
+		start := time.Date(2026, 11, day, 7, 0, 0, 0, time.UTC)
+		content := testsupport.EncodeFITSubSport(t, start, []testsupport.Split{{Meters: 3000, Seconds: 3 * secondsPerKm}}, typedef.SportRunning, subSport)
+		af, _, err := m.AddActivityFile(ctx, bytes.NewReader(content), start, alice, repo)
+		require.NoError(t, err)
+		w, _, err := m.CreateWorkoutFromActivityFile(ctx, af.ID, alice, repo)
+		require.NoError(t, err)
+		return w
+	}
+	outdoor := upload(1, typedef.SubSportGeneric, 300)
+	treadmill := upload(2, typedef.SubSportTreadmill, 200)
+	upload(3, typedef.SubSportIndoorRunning, 200)
+
+	assert.Equal(t, "treadmill", treadmill.SubSport)
+	segments, err := m.WorkoutSegments(ctx, treadmill.ID, alice)
+	require.NoError(t, err)
+	assert.Empty(t, segments, "a belt's distance isn't a best effort")
+
+	best, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, alice)
+	require.NoError(t, err)
+	require.Len(t, best, 1, "the faster indoor runs don't count")
+	assert.Equal(t, outdoor.ID, best[0].WorkoutID)
+
+	require.NoError(t, m.DetectRoutes(ctx, alice))
+	routes, err := m.Routes(ctx, alice)
+	require.NoError(t, err)
+	assert.Empty(t, routes, "indoor runs have no track to match the outdoor one")
+}
