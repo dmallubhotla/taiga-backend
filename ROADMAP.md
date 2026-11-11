@@ -189,6 +189,15 @@ Builds on the M6 series (positions); everything is per user, never matched acros
 - [ ] **User control beats detection:** naming is done (`PUT /routes/{id}`). Still to do: merge two routes, move a run to another route or detach it, mark "not this route". Those decisions are stored separately and survive re-detection. A route that dissolves (down to one run) loses its name today; overrides would fix that too.
 - [ ] Frontend: a routes list, a route page (map of the representative track, its runs and a time trend), and the route shown on each workout.
 
+## M10 — Corrections
+
+The file is the source of truth, but files are sometimes wrong: a ride saved as a walk, a GPS glitch, a run that shouldn't count. Corrections are stored beside the derived data and survive reprocessing.
+
+- [ ] **Per-sport plausibility cap.** Efforts faster than a sport could manage (a walking mile at 3:38) aren't stored as segments, so a mislabeled activity or a GPS jump can't top a leaderboard. Caps per sport live in code, next to `ScoredSports`.
+- [ ] **Exclude from stats.** A per-workout flag that keeps it listed but out of best efforts, route comparisons and trends (a run with a friend, a watch left running in the car).
+- [ ] **Edit a workout's sport** (and later other fields the file got wrong). An override column wins over the file's value, and changing it reprocesses the workout, so segments and routes follow.
+- [ ] Route changes (rename is done; merge, move, detach, "not this route") are M9's user control.
+
 ## Later
 
 - **Faster CI.** Backend runs take 9–13 minutes on every push: `nix flake check` about 4 (formatting, lint, tests), then a second full build of the binary about 3½, then the image publish about 1; the frontend takes about 2. Ideas, roughly in order of payoff:
