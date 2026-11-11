@@ -149,6 +149,7 @@ go run cmd/useradd/main.go -email you@example.com  # Create an account while reg
    ```
 
    Name parameters with `sqlc.arg(name)`, not `@name`: `just fmt` rewrites `@name` to `@ name`, which sqlc can't parse.
+   `sqlc.embed(table)` breaks the same way (`sqlc.embed (table)`), so fetch the rows separately and join them in Go.
 
 2. **Generate Go code**:
    ```bash
