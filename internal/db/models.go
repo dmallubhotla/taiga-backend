@@ -70,6 +70,8 @@ type Workout struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	UserID           int32              `json:"user_id"`
 	ProcessorVersion string             `json:"processor_version"`
+	Sport            string             `json:"sport"`
+	SubSport         string             `json:"sub_sport"`
 }
 
 type WorkoutRoute struct {

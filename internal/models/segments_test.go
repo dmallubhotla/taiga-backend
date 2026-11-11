@@ -13,6 +13,7 @@ import (
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/testsupport"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/workouts"
 )
 
 func createUser(t *testing.T, m models.Model, email string) *tokens.UserToken {
@@ -83,7 +84,7 @@ func TestBestSegmentsAcrossWorkouts(t *testing.T) {
 	fast := uploadWorkout(t, m, repo, user, day2, fourK)
 	uploadWorkout(t, m, repo, other, day2, []testsupport.Split{{Meters: 1000, Seconds: 100}})
 
-	efforts, err := m.BestSegments(ctx, "1k", 10, user)
+	efforts, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, user)
 	require.NoError(t, err)
 	require.Len(t, efforts, 2, "other users' efforts are excluded")
 	assert.Equal(t, fast.ID, efforts[0].WorkoutID)
@@ -92,7 +93,7 @@ func TestBestSegmentsAcrossWorkouts(t *testing.T) {
 	assert.Equal(t, slow.ID, efforts[1].WorkoutID)
 	assert.Equal(t, 400.0, efforts[1].DurationSeconds)
 
-	limited, err := m.BestSegments(ctx, "1k", 1, user)
+	limited, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 1, user)
 	require.NoError(t, err)
 	assert.Len(t, limited, 1)
 }
@@ -139,7 +140,7 @@ func TestDeleteWorkoutRemovesSegments(t *testing.T) {
 
 	require.NoError(t, m.DeleteWorkout(ctx, drop.ID, user))
 
-	efforts, err := m.BestSegments(ctx, "1k", 10, user)
+	efforts, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, user)
 	require.NoError(t, err)
 	require.Len(t, efforts, 1)
 	assert.Equal(t, keep.ID, efforts[0].WorkoutID)

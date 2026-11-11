@@ -156,3 +156,15 @@ func TestFrechetGivesUpPastLimit(t *testing.T) {
 		t.Errorf("frechet = %v, want 100", d)
 	}
 }
+
+func TestGroupRoutesMergesARouteSplitByAnOffFirstRun(t *testing.T) {
+	// The first run drifted 60m east; later runs scatter around the true loop, each joining whichever first run it's nearer.
+	var tracks []*Track
+	for _, dx := range []float64{60, -30, 20, -10, 25, -5} {
+		tracks = append(tracks, BuildTrack(runAlong(shifted(square, dx, 0), 1)))
+	}
+	groups := GroupRoutes(tracks)
+	if len(groups) != 1 || len(groups[0].Members) != 6 {
+		t.Fatalf("got %+v, want one route of all six runs", groups)
+	}
+}

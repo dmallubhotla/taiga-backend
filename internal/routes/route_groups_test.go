@@ -80,3 +80,18 @@ func TestRouteGroupRoutes(t *testing.T) {
 	status, _ = alice.get("/routes/9999")
 	assert.Equal(t, http.StatusNotFound, status)
 }
+
+func TestBestEffortsBySport(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	alice.uploadWorkout(fourKFIT(t))
+
+	status, body := alice.get("/segments/1k/best")
+	require.Equal(t, http.StatusOK, status, string(body))
+	assert.Contains(t, string(body), `"name":"1k"`, "running is the default")
+	status, body = alice.get("/segments/1k/best?sport=walking")
+	require.Equal(t, http.StatusOK, status, string(body))
+	assert.JSONEq(t, `[]`, string(body))
+	status, _ = alice.get("/segments/1k/best?sport=cycling")
+	assert.Equal(t, http.StatusBadRequest, status, "rides have no best efforts")
+}

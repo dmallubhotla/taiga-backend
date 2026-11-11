@@ -65,7 +65,7 @@ type Querier interface {
 	KillJob(ctx context.Context, arg *KillJobParams) error
 	ListActivityFilesByUser(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	ListActivityFilesWithoutWorkout(ctx context.Context, userID *int32) ([]*ActivityFile, error)
-	// A distance segment ranks by time, a duration segment by distance covered.
+	// A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport compete.
 	ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
 	ListJobsByUser(ctx context.Context, arg *ListJobsByUserParams) ([]*Job, error)
@@ -74,7 +74,7 @@ type Querier interface {
 	// Distance segments shortest first, then duration segments shortest first.
 	ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error)
 	ListWorkoutRoutesByUser(ctx context.Context, userID int32) ([]*WorkoutRoute, error)
-	// Oldest first, the order route detection assigns runs in.
+	// Oldest first, the order route detection assigns runs in; routes only group runs of one sport.
 	ListWorkoutTracksByUser(ctx context.Context, userID int32) ([]*ListWorkoutTracksByUserRow, error)
 	ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Workout, error)
 	RenameRoute(ctx context.Context, arg *RenameRouteParams) (*Route, error)

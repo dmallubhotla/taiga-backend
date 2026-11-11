@@ -28,6 +28,8 @@ type RouteSummary struct {
 	// RepresentativeWorkoutID is the run whose track stands for the route; null briefly after that run is deleted.
 	RepresentativeWorkoutID *int32 `json:"representative_workout_id"`
 	RunCount                int    `json:"run_count"`
+	// Sport is shared by every run on the route.
+	Sport string `json:"sport"`
 	// DistanceMiles is the representative run's.
 	DistanceMiles   *float64           `json:"distance_miles"`
 	BestTimeSeconds *float64           `json:"best_time_seconds"`
@@ -48,6 +50,7 @@ func summarize(route *db.Route, runs []*Workout) *RouteSummary {
 	for _, w := range runs {
 		if s.RepresentativeWorkoutID != nil && w.ID == *s.RepresentativeWorkoutID {
 			s.DistanceMiles = w.DistanceMiles
+			s.Sport = w.Sport
 		}
 		if w.TimeSeconds != nil && (s.BestTimeSeconds == nil || *w.TimeSeconds < *s.BestTimeSeconds) {
 			s.BestTimeSeconds, s.BestWorkoutID = w.TimeSeconds, &w.ID
@@ -206,7 +209,25 @@ func (m *storeModel) DetectRoutes(ctx context.Context, userToken *tokens.UserTok
 			}
 			tracks[i] = &t
 		}
-		groups := workouts.GroupRoutes(tracks)
+		// Routes never mix sports, so each sport is grouped on its own; members stay indices into rows.
+		var groups []workouts.RouteGroup
+		for _, sport := range workouts.ScoredSports {
+			var idx []int
+			var sub []*workouts.Track
+			for i, row := range rows {
+				if row.Sport == sport {
+					idx = append(idx, i)
+					sub = append(sub, tracks[i])
+				}
+			}
+			for _, g := range workouts.GroupRoutes(sub) {
+				members := make([]int, len(g.Members))
+				for k, m := range g.Members {
+					members[k] = idx[m]
+				}
+				groups = append(groups, workouts.RouteGroup{Members: members, Representative: idx[g.Representative]})
+			}
+		}
 
 		old, err := q.ListWorkoutRoutesByUser(ctx, userToken.ID)
 		if err != nil {
@@ -271,9 +292,12 @@ func (m *storeModel) DetectRoutes(ctx context.Context, userToken *tokens.UserTok
 	})
 }
 
-// storeTrack replaces the workout's track, removing it for a run without GPS.
+// storeTrack replaces the workout's track, removing it for a run without GPS or a sport that doesn't get routes.
 func storeTrack(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
-	track := workouts.BuildTrack(run)
+	var track *workouts.Track
+	if workouts.Scored(run.Summary.Sport) {
+		track = workouts.BuildTrack(run)
+	}
 	if track == nil {
 		return q.DeleteWorkoutTrack(ctx, &db.DeleteWorkoutTrackParams{WorkoutID: workoutID, UserID: userToken.ID})
 	}

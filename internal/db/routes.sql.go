@@ -298,7 +298,8 @@ func (q *Queries) ListWorkoutRoutesByUser(ctx context.Context, userID int32) ([]
 const listWorkoutTracksByUser = `-- name: ListWorkoutTracksByUser :many
 SELECT
   workout_tracks.workout_id,
-  workout_tracks.track
+  workout_tracks.track,
+  workouts.sport
 FROM
   workout_tracks
   JOIN workouts ON workouts.id = workout_tracks.workout_id
@@ -312,9 +313,10 @@ ORDER BY
 type ListWorkoutTracksByUserRow struct {
 	WorkoutID int32  `json:"workout_id"`
 	Track     []byte `json:"track"`
+	Sport     string `json:"sport"`
 }
 
-// Oldest first, the order route detection assigns runs in.
+// Oldest first, the order route detection assigns runs in; routes only group runs of one sport.
 func (q *Queries) ListWorkoutTracksByUser(ctx context.Context, userID int32) ([]*ListWorkoutTracksByUserRow, error) {
 	rows, err := q.db.Query(ctx, listWorkoutTracksByUser, userID)
 	if err != nil {
@@ -324,7 +326,7 @@ func (q *Queries) ListWorkoutTracksByUser(ctx context.Context, userID int32) ([]
 	items := []*ListWorkoutTracksByUserRow{}
 	for rows.Next() {
 		var i ListWorkoutTracksByUserRow
-		if err := rows.Scan(&i.WorkoutID, &i.Track); err != nil {
+		if err := rows.Scan(&i.WorkoutID, &i.Track, &i.Sport); err != nil {
 			return nil, err
 		}
 		items = append(items, &i)

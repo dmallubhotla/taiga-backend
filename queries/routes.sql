@@ -14,10 +14,11 @@ WHERE
   AND user_id = $2;
 
 -- name: ListWorkoutTracksByUser :many
--- Oldest first, the order route detection assigns runs in.
+-- Oldest first, the order route detection assigns runs in; routes only group runs of one sport.
 SELECT
   workout_tracks.workout_id,
-  workout_tracks.track
+  workout_tracks.track,
+  workouts.sport
 FROM
   workout_tracks
   JOIN workouts ON workouts.id = workout_tracks.workout_id

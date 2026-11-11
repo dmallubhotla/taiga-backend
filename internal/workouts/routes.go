@@ -1,6 +1,9 @@
 package workouts
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 // Route matching tolerances.
 const (
@@ -9,7 +12,7 @@ const (
 	// RouteLengthRatio is how much longer one run may be than the other, as a fraction of the longer.
 	RouteLengthRatio = 0.10
 	// RouteShapeMeters bounds the discrete Fréchet distance between two tracks.
-	RouteShapeMeters = 50
+	RouteShapeMeters = 75
 )
 
 const (
@@ -155,33 +158,53 @@ type RouteGroup struct {
 }
 
 // GroupRoutes clusters tracks, given oldest first, into routes of at least two runs; a run that matches nothing is left out.
-// Each run joins the group whose first run it matches most closely, so a group never drifts away from where it started.
+// Each run first joins the group whose first run it matches most closely.
+// That first run may be an off day, splitting one route in two, so groups whose representatives match are then merged until none do.
 // The result depends only on the tracks and their order, so rebuilding from scratch gives the same routes.
 func GroupRoutes(tracks []*Track) []RouteGroup {
-	var groups [][]int
+	var groups []RouteGroup
 	for i, t := range tracks {
 		if t == nil {
 			continue
 		}
 		best, bestD := -1, math.Inf(1)
-		for g, members := range groups {
-			if d, ok := SameRoute(tracks[members[0]], t); ok && d < bestD {
+		for g := range groups {
+			if d, ok := SameRoute(tracks[groups[g].Members[0]], t); ok && d < bestD {
 				best, bestD = g, d
 			}
 		}
 		if best < 0 {
-			groups = append(groups, []int{i})
+			groups = append(groups, RouteGroup{Members: []int{i}})
 			continue
 		}
-		groups[best] = append(groups[best], i)
+		groups[best].Members = append(groups[best].Members, i)
+	}
+	for g := range groups {
+		groups[g].Representative = medoid(tracks, groups[g].Members)
+	}
+
+	for merged := true; merged; {
+		merged = false
+		for a := 0; a < len(groups) && !merged; a++ {
+			for b := a + 1; b < len(groups); b++ {
+				if _, ok := SameRoute(tracks[groups[a].Representative], tracks[groups[b].Representative]); !ok {
+					continue
+				}
+				members := append(groups[a].Members, groups[b].Members...)
+				slices.Sort(members)
+				groups[a] = RouteGroup{Members: members, Representative: medoid(tracks, members)}
+				groups = slices.Delete(groups, b, b+1)
+				merged = true
+				break
+			}
+		}
 	}
 
 	var out []RouteGroup
-	for _, members := range groups {
-		if len(members) < 2 {
-			continue
+	for _, g := range groups {
+		if len(g.Members) >= 2 {
+			out = append(out, g)
 		}
-		out = append(out, RouteGroup{Members: members, Representative: medoid(tracks, members)})
 	}
 	return out
 }

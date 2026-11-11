@@ -82,6 +82,14 @@ func EncodeFITHeading(t *testing.T, start time.Time, splits []Split, bearing flo
 	return encode(t, buildActivity(start, splits, bearing))
 }
 
+// EncodeFITSport is EncodeFIT recorded as another sport (EncodeFIT records running).
+func EncodeFITSport(t *testing.T, start time.Time, splits []Split, sport typedef.Sport) []byte {
+	t.Helper()
+	activity := buildActivity(start, splits, 0)
+	activity.Sessions[0].SetSport(sport)
+	return encode(t, activity)
+}
+
 // EncodeMultiSessionFIT is EncodeFIT with the session repeated, the shape of a multi-sport (e.g. triathlon) file.
 func EncodeMultiSessionFIT(t *testing.T, start time.Time, splits []Split, sessions int) []byte {
 	t.Helper()

@@ -65,6 +65,8 @@ func (m *storeModel) AddWorkout(ctx context.Context, workout *Workout, userToken
 		EndTime:        workout.EndTime,
 		ActivityFileID: workout.ActivityFileID,
 		UserID:         userToken.ID,
+		Sport:          workout.Sport,
+		SubSport:       workout.SubSport,
 	}
 	log.Printf("Adding workout %v", createWorkoutParams)
 	returnWorkout, err := querier.CreateWorkout(ctx, createWorkoutParams)

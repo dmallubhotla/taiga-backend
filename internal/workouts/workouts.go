@@ -29,6 +29,9 @@ type RunSummary struct {
 	PaceMinPerMile float64   `json:"pace_min_per_mile"`
 	StartTime      time.Time `json:"start_time"`
 	EndTime        time.Time `json:"end_time"`
+	// Sport and SubSport are the FIT names, e.g. "running" and "indoor_running"; empty when the file doesn't say.
+	Sport    string `json:"sport"`
+	SubSport string `json:"sub_sport"`
 }
 
 // RecordData is one FIT record; fields the device didn't record are NaN.
@@ -50,4 +53,16 @@ type Run struct {
 
 func (r *Run) String() string {
 	return fmt.Sprintf("Run at %v", r.Summary.StartTime)
+}
+
+// Sports that get best efforts and routes, each kept apart from the other; anything else (rides, generic sessions) is stored and listed but not scored.
+const (
+	SportRunning = "running"
+	SportWalking = "walking"
+)
+
+var ScoredSports = []string{SportRunning, SportWalking}
+
+func Scored(sport string) bool {
+	return sport == SportRunning || sport == SportWalking
 }

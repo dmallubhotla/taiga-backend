@@ -30,10 +30,12 @@ INSERT INTO
     end_time,
     activity_file_id,
     user_id,
-    processor_version
+    processor_version,
+    sport,
+    sub_sport
   )
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING
   *;
 
@@ -82,6 +84,8 @@ SET
   start_time = $7,
   end_time = $8,
   processor_version = $9,
+  sport = $10,
+  sub_sport = $11,
   updated_at = CURRENT_TIMESTAMP
 WHERE
   id = $1

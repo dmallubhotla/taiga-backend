@@ -63,7 +63,8 @@ type Model interface {
 	// CreateWorkoutFromActivityFile returns the file's existing workout, with created false, if it already has one.
 	CreateWorkoutFromActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (w *Workout, created bool, err error)
 	WorkoutSegments(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]*WorkoutSegment, error)
-	BestSegments(ctx context.Context, name string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error)
+	// BestSegments ranks only workouts of sport (one of workouts.ScoredSports).
+	BestSegments(ctx context.Context, name, sport string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error)
 	CompareWorkouts(ctx context.Context, workoutIDs []int32, userToken *tokens.UserToken) ([]*WorkoutComparison, error)
 	WorkoutSeries(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]byte, error)
 	// ReprocessWorkout rebuilds the workout's summary, segments and series from its activity file.

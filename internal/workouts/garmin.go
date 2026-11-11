@@ -10,6 +10,7 @@ import (
 	"github.com/muktihari/fit/profile/basetype"
 	"github.com/muktihari/fit/profile/filedef"
 	"github.com/muktihari/fit/profile/mesgdef"
+	"github.com/muktihari/fit/profile/typedef"
 )
 
 var (
@@ -40,7 +41,25 @@ func summarise(sesh *mesgdef.Session) *RunSummary {
 		PaceMinPerMile: paceMinPerMile,
 		EndTime:        sesh.Timestamp,
 		StartTime:      sesh.StartTime,
+		Sport:          sportName(sesh.Sport),
+		SubSport:       subSportName(sesh.SubSport),
 	}
+}
+
+// sportName is the FIT sport as stored, e.g. "running"; empty when the device didn't say.
+func sportName(s typedef.Sport) string {
+	if s == typedef.SportInvalid {
+		return ""
+	}
+	return s.String()
+}
+
+// subSportName is the FIT sub-sport, e.g. "indoor_running"; empty when there's none beyond the sport.
+func subSportName(s typedef.SubSport) string {
+	if s == typedef.SubSportInvalid || s == typedef.SubSportGeneric {
+		return ""
+	}
+	return s.String()
 }
 
 func summariseRecord(rec *mesgdef.Record) *RecordData {

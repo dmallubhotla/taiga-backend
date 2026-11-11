@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/muktihari/fit/profile/typedef"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,6 +14,7 @@ import (
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/testsupport"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
+	"gitea.deepak.science/deepak/taiga/internal/workouts"
 )
 
 const (
@@ -112,4 +114,50 @@ func TestDetectRoutes(t *testing.T) {
 		_, err = m.Route(ctx, r.ID, alice)
 		assert.True(t, models.IsNotFound(err), "one run left is no longer a route: %v", err)
 	})
+}
+
+func TestSportsAreScoredApart(t *testing.T) {
+	ctx := context.Background()
+	m, repo := testsupport.NewModel(t), testsupport.NewFileRepo(t)
+	alice := createUser(t, m, "alice@example.com")
+	upload := func(day int, sport typedef.Sport, secondsPerKm float64) *models.Workout {
+		start := time.Date(2026, 11, day, 7, 0, 0, 0, time.UTC)
+		content := testsupport.EncodeFITSport(t, start, []testsupport.Split{{Meters: 3000, Seconds: 3 * secondsPerKm}}, sport)
+		af, _, err := m.AddActivityFile(ctx, bytes.NewReader(content), start, alice, repo)
+		require.NoError(t, err)
+		w, _, err := m.CreateWorkoutFromActivityFile(ctx, af.ID, alice, repo)
+		require.NoError(t, err)
+		return w
+	}
+	// All on the same path: two runs, two walks, two rides.
+	run := upload(1, typedef.SportRunning, 300)
+	upload(2, typedef.SportRunning, 290)
+	walk := upload(3, typedef.SportWalking, 600)
+	upload(4, typedef.SportWalking, 620)
+	ride := upload(5, typedef.SportCycling, 120)
+	upload(6, typedef.SportCycling, 110)
+
+	assert.Equal(t, "running", run.Sport)
+	assert.Equal(t, "cycling", ride.Sport)
+
+	segments, err := m.WorkoutSegments(ctx, ride.ID, alice)
+	require.NoError(t, err)
+	assert.Empty(t, segments, "rides get no best efforts")
+
+	runs, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, alice)
+	require.NoError(t, err)
+	assert.Len(t, runs, 2, "the rides' faster kilometres don't count")
+	walks, err := m.BestSegments(ctx, "1k", workouts.SportWalking, 10, alice)
+	require.NoError(t, err)
+	require.Len(t, walks, 2)
+	assert.Equal(t, walk.ID, walks[0].WorkoutID)
+
+	require.NoError(t, m.DetectRoutes(ctx, alice))
+	routes, err := m.Routes(ctx, alice)
+	require.NoError(t, err)
+	require.Len(t, routes, 2, "one route each for runs and walks on the same path; rides get none")
+	sports := []string{routes[0].Sport, routes[1].Sport}
+	assert.ElementsMatch(t, []string{"running", "walking"}, sports)
+	_, err = m.WorkoutRoute(ctx, ride.ID, alice)
+	assert.ErrorIs(t, err, models.ErrNoRoute)
 }
