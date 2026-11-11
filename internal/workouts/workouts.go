@@ -34,6 +34,8 @@ type RunSummary struct {
 	SubSport string `json:"sub_sport"`
 	// ExcludedReason keeps a run or walk out of best efforts, routes and stats when its data can't be trusted, e.g. "hand-entered"; empty when it counts.
 	ExcludedReason string `json:"excluded_reason"`
+	// Source is what recorded the workout, e.g. "COROS PACE 3" or "Endomondo"; empty when the file doesn't say.
+	Source string `json:"source"`
 }
 
 // RecordData is one FIT record; fields the device didn't record are NaN.

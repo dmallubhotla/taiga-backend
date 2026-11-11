@@ -73,6 +73,7 @@ type Workout struct {
 	Sport            string             `json:"sport"`
 	SubSport         string             `json:"sub_sport"`
 	ExcludedReason   string             `json:"excluded_reason"`
+	Source           string             `json:"source"`
 }
 
 type WorkoutRoute struct {

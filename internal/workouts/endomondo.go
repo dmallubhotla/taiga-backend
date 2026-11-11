@@ -42,6 +42,9 @@ const (
 	ExcludedNoDistance     = "no distance recorded"
 )
 
+// EndomondoSource is every Endomondo workout's Source; the export doesn't name the phone.
+const EndomondoSource = "Endomondo"
+
 // pointsAgreeWithin is how far the points' last distance may stray from the stated total.
 const pointsAgreeWithin = 0.1
 
@@ -102,6 +105,7 @@ func ReadEndomondoFile(r io.Reader) (*Run, error) {
 		EndTime:        end,
 		Sport:          sport[0],
 		SubSport:       sport[1],
+		Source:         EndomondoSource,
 	}}
 
 	backwards := false

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 
 	"github.com/muktihari/fit/decoder"
 	"github.com/muktihari/fit/profile/basetype"
@@ -62,6 +63,24 @@ func subSportName(s typedef.SubSport) string {
 	return s.String()
 }
 
+// fitSource names the device or app that wrote the file: its product name when it gives one (COROS does), else the manufacturer and, for Garmin, the product.
+func fitSource(id *mesgdef.FileId) string {
+	if name := strings.TrimSpace(id.ProductName); name != "" {
+		return name
+	}
+	if id.Manufacturer == typedef.ManufacturerInvalid || strings.HasPrefix(id.Manufacturer.String(), "ManufacturerInvalid") {
+		return ""
+	}
+	source := strings.ReplaceAll(id.Manufacturer.String(), "_", " ")
+	source = strings.ToUpper(source[:1]) + source[1:]
+	if _, product := id.GetProduct(); product != nil {
+		if p, ok := product.(typedef.GarminProduct); ok && !strings.HasPrefix(p.String(), "GarminProductInvalid") {
+			source += " " + p.String()
+		}
+	}
+	return source
+}
+
 func summariseRecord(rec *mesgdef.Record) *RecordData {
 	return &RecordData{
 		Distance:         &Distance{Meters: rec.DistanceScaled()},
@@ -101,6 +120,7 @@ func ReadActivity(activity *filedef.Activity) (*Run, error) {
 	}
 	onlySession := activity.Sessions[0]
 	summary := summarise(onlySession)
+	summary.Source = fitSource(&activity.FileId)
 	run.Summary = *summary
 
 	for _, rec := range activity.Records {

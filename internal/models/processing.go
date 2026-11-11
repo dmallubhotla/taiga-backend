@@ -62,6 +62,7 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 			Sport:            s.Sport,
 			SubSport:         s.SubSport,
 			ExcludedReason:   s.ExcludedReason,
+			Source:           s.Source,
 		})
 		if err != nil {
 			return err
@@ -105,6 +106,7 @@ func (m *storeModel) ReprocessWorkout(ctx context.Context, workoutID int32, user
 			Sport:            s.Sport,
 			SubSport:         s.SubSport,
 			ExcludedReason:   s.ExcludedReason,
+			Source:           s.Source,
 		})
 		if err != nil {
 			return err
