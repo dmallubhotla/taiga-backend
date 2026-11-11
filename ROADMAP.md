@@ -131,6 +131,11 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
 - [x] Compare view: overlay workouts' pace graphs aligned by distance.
 - [x] Workout page laid out as a desktop dashboard: map top left, splits top right, the graph along the bottom, sized to the screen.
 - [x] **Best efforts by time**: the farthest stretch in 30 minutes and an hour, stored as `kind = duration` segments beside the distance ones and ranked by distance; they show on the workout page, best efforts and compare. More durations (20 minutes, 2 hours) are one line in `StandardDurations`, and reprocessing backfills them.
+- [ ] **Quieter map** (feedback 2026-11-11). The map takes too much of the dashboard and the OSM style competes with the track: highways and landuse are as loud as the route.
+  - Give the map less of the grid, so splits and graphs get more room.
+  - A muted basemap (a light, desaturated style such as CARTO Positron, or a CSS greyscale filter on the OSM tiles as a stopgap), so road colours drop out.
+  - A more distinctive track on top: thicker, a casing (dark outline under the line) so it reads on any background, and stronger start/finish markers. A self-hosted vector style (PMTiles + MapLibre) would allow this fully, and would also keep the map's area away from a tile server.
+- [ ] **Grafana-style graph legend.** Drop the separate colour swatches and checkbox toggles above the graph; the legend under it lists each series with its colour and value at the cursor, and clicking an entry shows or hides that series.
 
 ### Series sampling: today, and upgrades for when they're needed
 
