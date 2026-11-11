@@ -255,6 +255,7 @@ func TestEndomondoUploads(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &walk))
 	assert.Equal(t, "walking", walk.Sport)
 	assert.Empty(t, walk.ExcludedReason)
+	assert.Equal(t, "Endomondo", walk.Source)
 	status, body = alice.get(fmt.Sprintf("/workouts/%d/segments", walkID))
 	require.Equal(t, http.StatusOK, status)
 	assert.Contains(t, string(body), `"name":"1k"`)

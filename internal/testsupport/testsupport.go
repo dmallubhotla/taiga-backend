@@ -97,6 +97,14 @@ func EncodeFITSubSport(t *testing.T, start time.Time, splits []Split, sport type
 	return encode(t, activity)
 }
 
+// EncodeFITDevice is EncodeFIT as written by the given device: productName is free text, product a number that only Garmin (and a few others) define.
+func EncodeFITDevice(t *testing.T, start time.Time, splits []Split, manufacturer typedef.Manufacturer, product uint16, productName string) []byte {
+	t.Helper()
+	activity := buildActivity(start, splits, 0)
+	activity.FileId.SetManufacturer(manufacturer).SetProduct(product).SetProductName(productName)
+	return encode(t, activity)
+}
+
 // EncodeMultiSessionFIT is EncodeFIT with the session repeated, the shape of a multi-sport (e.g. triathlon) file.
 func EncodeMultiSessionFIT(t *testing.T, start time.Time, splits []Split, sessions int) []byte {
 	t.Helper()

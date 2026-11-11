@@ -181,6 +181,10 @@ The goal is new runs showing up on their own. Each option still needs checking a
   - **Built:** upload the `.json` files (`taco upload Workouts/*.json`, or the browser). `workouts.ReadActivityFile` tells FIT from Endomondo JSON by content and reads either into the same `workouts.Run`, so storage, reprocessing, segments and routes work unchanged. Untrustworthy files lean towards not counting: hand-entered, no distance, time running backwards, or points that disagree with the totals keep their stated totals but no points, and an `excluded_reason`. On the export that leaves 198 of 202 runs and 80 of 83 walks counted.
   - [ ] Notes (`message`) aren't kept; workouts have nowhere to put them yet.
   - [ ] Content dedupe won't catch a run that's also in a FIT export; match on start time and sport. Not needed for this archive, which ends before the COROS history starts.
+- [x] **Each workout's source** (`source`): what recorded it, from the FIT `file_id` (its product name, e.g. `COROS PACE 3`, else the manufacturer and Garmin product), or `Endomondo`. Reprocessing fills it in for old workouts.
+- [ ] **Google Fit Takeout import** (2020–2024), which overlaps both Endomondo and COROS.
+  - [ ] Survey the export: per-session TCX and JSON, and whether each session names the app that recorded it.
+  - [ ] **Cross-source duplicates:** a per-user job (like `detect_routes`) pairs workouts of one sport whose starts are minutes apart and whose spans mostly overlap. The richer source wins (watch FIT, then Endomondo, then Google Fit); the other copy stays listed with an `excluded_reason` naming the winner, so deleting the winner brings it back.
 
 ## M9 — Routes
 

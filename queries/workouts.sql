@@ -33,10 +33,25 @@ INSERT INTO
     processor_version,
     sport,
     sub_sport,
-    excluded_reason
+    excluded_reason,
+    source
   )
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+  (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13
+  )
 RETURNING
   *;
 
@@ -88,6 +103,7 @@ SET
   sport = $10,
   sub_sport = $11,
   excluded_reason = $12,
+  source = $13,
   updated_at = CURRENT_TIMESTAMP
 WHERE
   id = $1
