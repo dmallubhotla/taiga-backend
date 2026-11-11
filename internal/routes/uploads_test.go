@@ -279,3 +279,30 @@ func TestEndomondoUploads(t *testing.T) {
 	require.Len(t, best, 1, "the hand-entered walk doesn't count")
 	assert.Equal(t, walkID, best[0].WorkoutID)
 }
+
+func TestGoogleFitUploads(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	splits := []testsupport.Split{{Meters: 2000, Seconds: 600}}
+
+	_, runID := alice.uploadWorkout(testsupport.NewTCX(routeDay, splits, "Running").Encode(t))
+	status, body := alice.get(fmt.Sprintf("/workouts/%d", runID))
+	require.Equal(t, http.StatusOK, status, string(body))
+	var run models.Workout
+	require.NoError(t, json.Unmarshal(body, &run))
+	assert.Equal(t, "running", run.Sport)
+	assert.Equal(t, "Google Fit", run.Source)
+	assert.Empty(t, run.ExcludedReason)
+
+	_, mixedID := alice.uploadWorkout(testsupport.NewTCX(routeDay.AddDate(0, 0, 1), splits, "Walking", "Running").Encode(t))
+	status, body = alice.get(fmt.Sprintf("/workouts/%d", mixedID))
+	require.Equal(t, http.StatusOK, status)
+	assert.Contains(t, string(body), `"excluded_reason":"mixed sports"`)
+
+	status, body = alice.get("/segments/1k/best")
+	require.Equal(t, http.StatusOK, status)
+	var best []models.SegmentEffort
+	require.NoError(t, json.Unmarshal(body, &best))
+	require.Len(t, best, 1, "the mixed session doesn't count")
+	assert.Equal(t, runID, best[0].WorkoutID)
+}

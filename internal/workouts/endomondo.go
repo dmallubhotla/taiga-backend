@@ -34,7 +34,7 @@ var endomondoSports = map[string][2]string{
 // Endomondo writes both forms, sometimes within one export: "2020-07-23 22:20:14.0" and "Thu Jul 23 22:20:14 UTC 2020".
 var endomondoTimeLayouts = []string{"2006-01-02 15:04:05", time.UnixDate}
 
-// Why an Endomondo workout doesn't count (RunSummary.ExcludedReason).
+// Why a workout read from an Endomondo or TCX file doesn't count (RunSummary.ExcludedReason).
 const (
 	ExcludedHandEntered    = "hand-entered"
 	ExcludedTimeBackwards  = "time runs backwards"

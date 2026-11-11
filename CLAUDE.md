@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This is the taiga API: upload FIT files (or Endomondo export JSON), derive workouts, segments and per-record series from them, and serve them to the browser frontend and the `taco` CLI. PostgreSQL in production, SQLite in development, JWT auth. The application follows clean architecture principles with clear separation of concerns.
+This is the taiga API: upload FIT files (or Endomondo export JSON, or TCX such as Google Fit's Takeout), derive workouts, segments and per-record series from them, and serve them to the browser frontend and the `taco` CLI. PostgreSQL in production, SQLite in development, JWT auth. The application follows clean architecture principles with clear separation of concerns.
 
 ### Core Components
 
@@ -51,7 +51,7 @@ This is the taiga API: upload FIT files (or Endomondo export JSON), derive worko
   - Configurable prefix length for directory structure
 
 - **internal/workouts**: Activity file processing
-  - FIT and Endomondo JSON parsing (`ReadActivityFile` tells them apart by content) and workout data extraction
+  - FIT, Endomondo JSON and TCX parsing (`ReadActivityFile` tells them apart by content) and workout data extraction
   - Segment analysis and activity processing
   - `BuildSeries` (per-record columns, thinned to `MaxSeriesPoints`) and `ProcessorVersion`
 
@@ -278,7 +278,7 @@ file_repo:
 
 ### Workouts and Segments API (requires JWT token)
 - `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD. `PUT` only edits hand-entered workouts; one from a file is `422`, since reprocessing owns its summary
-- `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file or Endomondo JSON into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
+- `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT, Endomondo JSON or TCX file into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
 - `GET /workouts/{id}/segments` - Fastest effort at each standard distance the workout covers, shortest distance first, then the farthest effort for each standard duration it lasts (`kind` is `distance` or `duration`)
 - `GET /workouts/{id}/series` - The workout's records as parallel columns (`time_s`, `distance_m`, `speed_mps`, `altitude_m`, `heart_rate`, `lat`, `lon`; null where a sample is missing, a column omitted if never recorded), at most 2000 points, gzipped; `404` for a hand-entered workout
 - `POST /workouts/{id}/reprocess` - Rebuild the workout's summary and segments from its file now and return it; `422` for a hand-entered workout with no file
@@ -387,7 +387,8 @@ The application provides a comprehensive API for managing activity files (primar
 
 ### File Processing
 - FIT files are processed using the `muktihari/fit` library for workout data extraction
-- Endomondo export JSON (`workouts.ReadEndomondoFile`, one file per workout; the export's `.tcx` twins aren't read, since TCX calls walks and treadmill runs `Other`) maps Endomondo's sport names onto FIT's. Its stated totals are the summary. A run or walk whose data can't be trusted (hand-entered, no distance, time running backwards, points that disagree with the totals) keeps those totals but no points, and gets an `excluded_reason`
+- TCX (`workouts.ReadTCXFile`), as Google Fit's Takeout writes it: one file per session, its activities the stretches Google Fit detected, each restarting its distance, laid end to end. The author (`Google Fit`) is the `source`. A run or walk that mixes sports, has time running backwards, or has under 50 GPS fixes a mile was auto-detected rather than tracked, and gets an `excluded_reason`
+- Endomondo export JSON (`workouts.ReadEndomondoFile`, one file per workout; upload the JSON, not the export's `.tcx` twins, since TCX calls walks and treadmill runs `Other`) maps Endomondo's sport names onto FIT's. Its stated totals are the summary. A run or walk whose data can't be trusted (hand-entered, no distance, time running backwards, points that disagree with the totals) keeps those totals but no points, and gets an `excluded_reason`
 - `POST /workouts/from-activity-file/{id}` parses the file once, storing the workout summary and its fastest segments (`workout_segments` table) for each standard distance in `workouts.StandardDistances`, plus the farthest stretch for each duration in `workouts.StandardDurations` (`kind = duration`, same table), in one transaction
 - Segments are measured between recorded points, so a segment can overshoot its distance (or duration) by up to one record interval
 - Download returns the stored bytes untouched
@@ -397,7 +398,7 @@ The application provides a comprehensive API for managing activity files (primar
 - The FIT file is the source of truth; a workout's summary, segments and series (`workout_series`, one JSON document per workout) are derived from it and stamped with `workouts.ProcessorVersion`
 - The series keeps every Nth record (at most `MaxSeriesPoints`, rounded per column) and is the only copy of per-record data in the database; segments and totals use every record from the file. ROADMAP M6 lists better sampling methods and when each would be needed
 - `ProcessorVersion` combines `extractorVersion` (bump it in `internal/workouts/processor.go` whenever extraction changes) with a hash of `StandardDistances` and `StandardDurations`, so adding or removing one reprocesses old workouts on its own
-- Each workout keeps its `source`, what recorded it: the FIT `file_id` product name (`COROS PACE 3`), else the manufacturer plus Garmin product (`Garmin fr965`), or `Endomondo`; empty for hand-entered workouts
+- Each workout keeps its `source`, what recorded it: the FIT `file_id` product name (`COROS PACE 3`), else the manufacturer plus Garmin product (`Garmin fr965`), `Endomondo`, or a TCX file's author (`Google Fit`); empty for hand-entered workouts
 - Each workout keeps the FIT session's `sport` and `sub_sport` (e.g. `running` / `indoor_running`). Only outdoor runs and walks (`workouts.ScoredSports`, less the indoor sub-sports `treadmill`, `indoor_running` and `indoor_walking`; `RunSummary.Scored`) get segments and tracks, and each sport is ranked and grouped on its own; rides, generic sessions and treadmill runs are stored and listed but never scored. A workout with an `excluded_reason` (set by processing, never by hand yet) never counts either: it stays out of best efforts, routes and any stats
 - Processing also stores the run's GPS track resampled every 20m by distance (`workout_tracks`, `workouts.BuildTrack`); a run without GPS gets none
 - Routes (`routes`, `workout_routes`) group a user's runs on the same route, never across users. Two runs match when starts and ends are within 150m, lengths within 10%, and the discrete Fréchet distance between tracks is under 75m (`workouts.SameRoute`). Fréchet follows the points in order, so a loop run the other way round is a separate route
@@ -408,4 +409,4 @@ The application provides a comprehensive API for managing activity files (primar
 - Store writes that must land together go through `store.InTx`; SQLite opens transactions `IMMEDIATE` so concurrent writers wait on `busy_timeout` instead of failing
 
 ### Testing
-- `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, and `EncodeFIT` / `EncodeMultiSessionFIT` for synthetic activity files
+- `internal/testsupport` provides real dependencies for integration tests: a migrated file-backed SQLite model, a local file repo, a throwaway RSA toker, and `EncodeFIT` / `EncodeMultiSessionFIT` / `NewEndomondo` / `NewTCX` for synthetic activity files

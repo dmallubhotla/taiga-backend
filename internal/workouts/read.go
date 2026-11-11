@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// ReadActivityFile reads a FIT file or an Endomondo export's JSON, told apart by content rather than name.
+// ReadActivityFile reads a FIT file, an Endomondo export's JSON or a TCX file, told apart by content rather than name.
 func ReadActivityFile(r io.Reader) (*Run, error) {
 	content, err := io.ReadAll(r)
 	if err != nil {
@@ -15,8 +15,13 @@ func ReadActivityFile(r io.Reader) (*Run, error) {
 	if len(content) >= 12 && string(content[8:12]) == ".FIT" {
 		return ReadFitFile(bytes.NewReader(content))
 	}
-	if trimmed := bytes.TrimSpace(content); len(trimmed) > 0 && trimmed[0] == '[' {
-		return ReadEndomondoFile(bytes.NewReader(content))
+	if trimmed := bytes.TrimSpace(content); len(trimmed) > 0 {
+		switch trimmed[0] {
+		case '[':
+			return ReadEndomondoFile(bytes.NewReader(content))
+		case '<':
+			return ReadTCXFile(bytes.NewReader(content))
+		}
 	}
 	return ReadFitFile(bytes.NewReader(content))
 }
