@@ -32,6 +32,8 @@ type RunSummary struct {
 	// Sport and SubSport are the FIT names, e.g. "running" and "indoor_running"; empty when the file doesn't say.
 	Sport    string `json:"sport"`
 	SubSport string `json:"sub_sport"`
+	// ExcludedReason keeps a run or walk out of best efforts, routes and stats when its data can't be trusted, e.g. "hand-entered"; empty when it counts.
+	ExcludedReason string `json:"excluded_reason"`
 }
 
 // RecordData is one FIT record; fields the device didn't record are NaN.
@@ -70,7 +72,7 @@ func Scored(sport string) bool {
 // Indoor sub-sports measure distance with a foot pod or the belt, not GPS, so they never count towards best efforts or routes.
 var indoorSubSports = map[string]bool{"treadmill": true, "indoor_running": true, "indoor_walking": true}
 
-// Scored reports whether this session gets best efforts and a route: a run or walk, outdoors.
+// Scored reports whether this session gets best efforts and a route: a run or walk, outdoors, with data that can be trusted.
 func (s *RunSummary) Scored() bool {
-	return Scored(s.Sport) && !indoorSubSports[s.SubSport]
+	return Scored(s.Sport) && !indoorSubSports[s.SubSport] && s.ExcludedReason == ""
 }

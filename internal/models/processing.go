@@ -23,9 +23,9 @@ func (m *storeModel) readRun(ctx context.Context, activityFileID int32, userToke
 	}
 	defer func() { _ = content.Close() }()
 
-	run, err := workouts.ReadFitFile(content)
+	run, err := workouts.ReadActivityFile(content)
 	if err != nil {
-		log.Printf("Could not parse FIT file: %v", err)
+		log.Printf("Could not parse activity file: %v", err)
 		return nil, err
 	}
 	return run, nil
@@ -61,6 +61,7 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 			ProcessorVersion: workouts.ProcessorVersion,
 			Sport:            s.Sport,
 			SubSport:         s.SubSport,
+			ExcludedReason:   s.ExcludedReason,
 		})
 		if err != nil {
 			return err
@@ -103,6 +104,7 @@ func (m *storeModel) ReprocessWorkout(ctx context.Context, workoutID int32, user
 			ProcessorVersion: workouts.ProcessorVersion,
 			Sport:            s.Sport,
 			SubSport:         s.SubSport,
+			ExcludedReason:   s.ExcludedReason,
 		})
 		if err != nil {
 			return err

@@ -24,12 +24,13 @@ INSERT INTO
     user_id,
     processor_version,
     sport,
-    sub_sport
+    sub_sport,
+    excluded_reason
   )
 VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason
 `
 
 type CreateWorkoutParams struct {
@@ -44,6 +45,7 @@ type CreateWorkoutParams struct {
 	ProcessorVersion string             `json:"processor_version"`
 	Sport            string             `json:"sport"`
 	SubSport         string             `json:"sub_sport"`
+	ExcludedReason   string             `json:"excluded_reason"`
 }
 
 func (q *Queries) CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (*Workout, error) {
@@ -59,6 +61,7 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (
 		arg.ProcessorVersion,
 		arg.Sport,
 		arg.SubSport,
+		arg.ExcludedReason,
 	)
 	var i Workout
 	err := row.Scan(
@@ -76,6 +79,7 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg *CreateWorkoutParams) (
 		&i.ProcessorVersion,
 		&i.Sport,
 		&i.SubSport,
+		&i.ExcludedReason,
 	)
 	return &i, err
 }
@@ -99,7 +103,7 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) e
 
 const getWorkout = `-- name: GetWorkout :one
 SELECT
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason
 FROM
   workouts
 WHERE
@@ -132,13 +136,14 @@ func (q *Queries) GetWorkout(ctx context.Context, arg *GetWorkoutParams) (*Worko
 		&i.ProcessorVersion,
 		&i.Sport,
 		&i.SubSport,
+		&i.ExcludedReason,
 	)
 	return &i, err
 }
 
 const getWorkoutsByActivityFile = `-- name: GetWorkoutsByActivityFile :many
 SELECT
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason
 FROM
   workouts
 WHERE
@@ -177,6 +182,7 @@ func (q *Queries) GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkout
 			&i.ProcessorVersion,
 			&i.Sport,
 			&i.SubSport,
+			&i.ExcludedReason,
 		); err != nil {
 			return nil, err
 		}
@@ -190,7 +196,7 @@ func (q *Queries) GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkout
 
 const listWorkoutsByUser = `-- name: ListWorkoutsByUser :many
 SELECT
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason
 FROM
   workouts
 WHERE
@@ -223,6 +229,7 @@ func (q *Queries) ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Work
 			&i.ProcessorVersion,
 			&i.Sport,
 			&i.SubSport,
+			&i.ExcludedReason,
 		); err != nil {
 			return nil, err
 		}
@@ -249,7 +256,7 @@ WHERE
   id = $1
   AND user_id = $2
 RETURNING
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason
 `
 
 type UpdateWorkoutParams struct {
@@ -292,6 +299,7 @@ func (q *Queries) UpdateWorkout(ctx context.Context, arg *UpdateWorkoutParams) (
 		&i.ProcessorVersion,
 		&i.Sport,
 		&i.SubSport,
+		&i.ExcludedReason,
 	)
 	return &i, err
 }
@@ -308,12 +316,13 @@ SET
   processor_version = $9,
   sport = $10,
   sub_sport = $11,
+  excluded_reason = $12,
   updated_at = CURRENT_TIMESTAMP
 WHERE
   id = $1
   AND user_id = $2
 RETURNING
-  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason
 `
 
 type UpdateWorkoutDerivedParams struct {
@@ -328,6 +337,7 @@ type UpdateWorkoutDerivedParams struct {
 	ProcessorVersion string             `json:"processor_version"`
 	Sport            string             `json:"sport"`
 	SubSport         string             `json:"sub_sport"`
+	ExcludedReason   string             `json:"excluded_reason"`
 }
 
 // Everything reprocessing rebuilds from the activity file.
@@ -344,6 +354,7 @@ func (q *Queries) UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDe
 		arg.ProcessorVersion,
 		arg.Sport,
 		arg.SubSport,
+		arg.ExcludedReason,
 	)
 	var i Workout
 	err := row.Scan(
@@ -361,6 +372,7 @@ func (q *Queries) UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDe
 		&i.ProcessorVersion,
 		&i.Sport,
 		&i.SubSport,
+		&i.ExcludedReason,
 	)
 	return &i, err
 }
