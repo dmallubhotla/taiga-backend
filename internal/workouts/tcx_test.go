@@ -33,14 +33,14 @@ func TestReadTCXRun(t *testing.T) {
 	assert.Equal(t, "Google Fit", s.Source)
 	assert.Equal(t, tcxStart, s.StartTime)
 	assert.InDelta(t, 960, s.TimeSeconds, 1e-6)
-	assert.InDelta(t, 3000/1609.344, s.DistanceMiles, 1e-6)
+	assert.InEpsilon(t, 3000/1609.344, s.DistanceMiles, 0.005)
 
 	require.Len(t, run.Records, 301)
-	assert.InDelta(t, 3000, run.Records[300].Distance.Meters, 1e-6)
+	assert.InEpsilon(t, 3000, run.Records[300].Distance.Meters, 0.005)
 	assert.InDelta(t, testsupport.StartLatitude, run.Records[0].Latitude, 1e-9)
 	segments := workouts.FastestSegments(run, workouts.StandardDistances)
 	require.NotEmpty(t, segments)
-	assert.InDelta(t, 300, segments[0].Duration.Seconds(), 1e-6)
+	assert.InDelta(t, 300, segments[0].Duration.Seconds(), 5)
 	assert.NotNil(t, workouts.BuildTrack(run))
 }
 
@@ -49,13 +49,34 @@ func TestReadTCXLaysActivitiesEndToEnd(t *testing.T) {
 	splits := []testsupport.Split{{Meters: 3000, Seconds: 900}}
 	run := readTCX(t, testsupport.NewTCX(tcxStart, splits, "Running", "Running", "Running"))
 	assert.Empty(t, run.Summary.ExcludedReason)
-	assert.InDelta(t, 3000/1609.344, run.Summary.DistanceMiles, 1e-6)
+	assert.InEpsilon(t, 3000/1609.344, run.Summary.DistanceMiles, 0.005)
 	last := 0.0
 	for _, rec := range run.Records {
 		assert.GreaterOrEqual(t, rec.Distance.Meters, last)
 		last = rec.Distance.Meters
 	}
-	assert.InDelta(t, 3000, last, 1e-6)
+	assert.InEpsilon(t, 3000, last, 0.005)
+}
+
+// Google Fit pads a session out to the hour with fixless points, and its distances may sit at the total from the second point on.
+func TestReadTCXMeasuresFromFixes(t *testing.T) {
+	x := testsupport.NewTCX(tcxStart, []testsupport.Split{{Meters: 3000, Seconds: 960}}, "Running")
+	for i := range x.Points[1:] {
+		x.Points[i+1].Meters = 3000
+	}
+	hour := tcxStart.Truncate(time.Hour)
+	x.Points = append([]testsupport.TCXPoint{{Time: hour.Add(-30 * time.Minute), NoPosition: true}}, x.Points...)
+	x.Points = append(x.Points, testsupport.TCXPoint{Time: hour.Add(time.Hour - time.Millisecond), Meters: 3000, NoPosition: true})
+
+	run := readTCX(t, x)
+	s := run.Summary
+	assert.Empty(t, s.ExcludedReason)
+	assert.Equal(t, tcxStart, s.StartTime)
+	assert.InDelta(t, 960, s.TimeSeconds, 1e-6)
+	assert.InEpsilon(t, 3000/1609.344, s.DistanceMiles, 0.005)
+	segments := workouts.FastestSegments(run, workouts.StandardDistances)
+	require.NotEmpty(t, segments)
+	assert.InDelta(t, 320, segments[0].Duration.Seconds(), 5, "an even pace, not the whole distance in one step")
 }
 
 func TestReadTCXSports(t *testing.T) {
@@ -90,6 +111,15 @@ func TestReadTCXExcludesAutoDetectedSessions(t *testing.T) {
 			}
 			return x
 		}, workouts.ExcludedSparseGPS},
+		"track strays from the total": {func() *testsupport.TCX {
+			x := testsupport.NewTCX(tcxStart, splits, "Running")
+			// Google Fit says 3km, but the fixes only cover two thirds of it.
+			for i := range x.Points {
+				x.Points[i].Meters *= 1.5
+				x.Points[i].Lat = testsupport.StartLatitude + (x.Points[i].Lat-testsupport.StartLatitude)*2/3
+			}
+			return x
+		}, workouts.ExcludedPointsDisagree},
 		"time runs backwards": {func() *testsupport.TCX {
 			x := testsupport.NewTCX(tcxStart, splits, "Running")
 			x.Points[5].Time = x.Points[5].Time.Add(-time.Hour)
@@ -97,11 +127,13 @@ func TestReadTCXExcludesAutoDetectedSessions(t *testing.T) {
 		}, workouts.ExcludedTimeBackwards},
 	} {
 		t.Run(name, func(t *testing.T) {
-			run := readTCX(t, tc.session())
+			x := tc.session()
+			stated := x.Points[len(x.Points)-1].Meters - x.Points[0].Meters
+			run := readTCX(t, x)
 			assert.Equal(t, tc.reason, run.Summary.ExcludedReason)
 			assert.False(t, run.Summary.Scored())
 			assert.Empty(t, run.Records)
-			assert.InDelta(t, 3000/1609.344, run.Summary.DistanceMiles, 1e-6, "the totals stay")
+			assert.InDelta(t, stated/1609.344, run.Summary.DistanceMiles, 1e-6, "the stated total stays")
 		})
 	}
 }
