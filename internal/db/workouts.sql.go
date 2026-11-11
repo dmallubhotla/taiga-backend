@@ -526,8 +526,12 @@ const workoutTotalsByUser = `-- name: WorkoutTotalsByUser :many
 SELECT
   sport,
   COUNT(*) AS workouts,
-  CAST(COALESCE(SUM(distance_miles), 0) AS DOUBLE PRECISION) AS distance_miles,
-  CAST(COALESCE(SUM(time_seconds), 0) AS DOUBLE PRECISION) AS time_seconds
+  CAST(
+    COALESCE(SUM(distance_miles), 0) AS DOUBLE PRECISION
+  ) AS distance_miles,
+  CAST(
+    COALESCE(SUM(time_seconds), 0) AS DOUBLE PRECISION
+  ) AS time_seconds
 FROM
   workouts
 WHERE
