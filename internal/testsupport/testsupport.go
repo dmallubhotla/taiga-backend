@@ -85,6 +85,17 @@ func EncodeMultiSessionFIT(t *testing.T, start time.Time, splits []Split, sessio
 	return encode(t, activity)
 }
 
+// What EncodeFIT records alongside distance: a steady heart rate, a gentle climb, and a track due north from the start.
+const (
+	RecordHeartRate = 150
+	StartLatitude   = 45.0
+	StartLongitude  = -93.0
+	metersPerDegree = 111_320.0
+)
+
+// RecordAltitude climbs 1m per 100m covered.
+func RecordAltitude(meters float64) float64 { return 100 + meters/100 }
+
 func buildActivity(start time.Time, splits []Split) *filedef.Activity {
 	const step = 10.0
 
@@ -95,7 +106,11 @@ func buildActivity(start time.Time, splits []Split) *filedef.Activity {
 	addRecord := func() {
 		activity.Records = append(activity.Records, mesgdef.NewRecord(nil).
 			SetTimestamp(start.Add(time.Duration(seconds*float64(time.Second)))).
-			SetDistanceScaled(meters))
+			SetDistanceScaled(meters).
+			SetHeartRate(RecordHeartRate).
+			SetEnhancedAltitudeScaled(RecordAltitude(meters)).
+			SetPositionLatDegrees(StartLatitude+meters/metersPerDegree).
+			SetPositionLongDegrees(StartLongitude))
 	}
 	addRecord()
 	for _, split := range splits {

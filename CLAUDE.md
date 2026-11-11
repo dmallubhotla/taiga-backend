@@ -267,6 +267,7 @@ file_repo:
 - `GET /workouts` - List workouts (newest first); `GET /workouts/{id}`, `POST`, `PUT /workouts/{id}`, `DELETE /workouts/{id}` for CRUD. `PUT` only edits hand-entered workouts; one from a file is `422`, since reprocessing owns its summary
 - `POST /workouts/from-activity-file/{id}` - Parse an uploaded FIT file into a workout and store its segments; `201` when new, `200` with the existing workout if the file already has one, `404` for an unknown file, `422` with the reason for an unreadable or multi-session file
 - `GET /workouts/{id}/segments` - Fastest effort at each standard distance the workout covers, shortest distance first
+- `GET /workouts/{id}/series` - The workout's records as parallel columns (`time_s`, `distance_m`, `speed_mps`, `altitude_m`, `heart_rate`, `lat`, `lon`; null where a sample is missing, a column omitted if never recorded), at most 2000 points, gzipped; `404` for a hand-entered workout
 - `POST /workouts/{id}/reprocess` - Rebuild the workout's summary and segments from its file now and return it; `422` for a hand-entered workout with no file
 - `POST /workouts/reprocess` - Queue reprocessing of all the user's file-backed workouts; `202` with `{enqueued}`, progress under `/jobs`
 - `GET /workouts/compare?ids=1,2` - Up to 10 workouts with segments keyed by distance name, plus `distances` (the names any of them cover)
@@ -373,7 +374,7 @@ The application provides a comprehensive API for managing activity files (primar
 - File content is immutable once stored, ensuring data integrity
 
 ### Reprocessing and the job queue
-- The FIT file is the source of truth; a workout's summary and segments are derived from it and stamped with `workouts.ProcessorVersion`
+- The FIT file is the source of truth; a workout's summary, segments and series (`workout_series`, one JSON document per workout) are derived from it and stamped with `workouts.ProcessorVersion`
 - `ProcessorVersion` combines `extractorVersion` (bump it in `internal/workouts/processor.go` whenever extraction changes) with a hash of `StandardDistances`, so adding or removing a distance reprocesses old workouts on its own
 - `internal/jobs` runs a worker goroutine in the server: on boot it queues a `process_workout` job for every workout whose version isn't current, then polls the `jobs` table
 - The claim query runs unchanged on both databases (no `SKIP LOCKED`); a claimed job holds a 5-minute lease, so a crashed worker's job is picked up again

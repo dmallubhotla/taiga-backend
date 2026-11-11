@@ -75,3 +75,10 @@ type WorkoutSegment struct {
 	EndOffsetSeconds   float64            `json:"end_offset_seconds"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 }
+
+type WorkoutSeries struct {
+	WorkoutID int32              `json:"workout_id"`
+	UserID    int32              `json:"user_id"`
+	Series    []byte             `json:"series"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}

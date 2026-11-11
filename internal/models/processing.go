@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 
@@ -61,7 +63,7 @@ func (m *storeModel) CreateWorkoutFromActivityFile(ctx context.Context, activity
 		if err != nil {
 			return err
 		}
-		return addSegments(ctx, q, saved.ID, run, userToken)
+		return storeDerived(ctx, q, saved.ID, run, userToken)
 	})
 	if err != nil {
 		log.Printf("Could not create workout from activity file %d: %v", activityFileID, err)
@@ -101,17 +103,44 @@ func (m *storeModel) ReprocessWorkout(ctx context.Context, workoutID int32, user
 		if err != nil {
 			return err
 		}
-		// Replacing the whole set drops segments for distances no longer in StandardDistances.
-		if err := q.DeleteSegmentsByWorkout(ctx, &db.DeleteSegmentsByWorkoutParams{WorkoutID: workoutID, UserID: userToken.ID}); err != nil {
-			return err
-		}
-		return addSegments(ctx, q, workoutID, run, userToken)
+		return storeDerived(ctx, q, workoutID, run, userToken)
 	})
 	if err != nil {
 		log.Printf("Could not reprocess workout %d: %v", workoutID, err)
 		return nil, err
 	}
 	return updated, nil
+}
+
+// storeDerived replaces everything computed from the run's records; replacing the whole segment set drops distances no longer in StandardDistances.
+func storeDerived(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {
+	if err := q.DeleteSegmentsByWorkout(ctx, &db.DeleteSegmentsByWorkoutParams{WorkoutID: workoutID, UserID: userToken.ID}); err != nil {
+		return err
+	}
+	if err := addSegments(ctx, q, workoutID, run, userToken); err != nil {
+		return err
+	}
+	series, err := json.Marshal(workouts.BuildSeries(run, workouts.MaxSeriesPoints))
+	if err != nil {
+		return fmt.Errorf("encoding series for workout %d: %w", workoutID, err)
+	}
+	return q.UpsertWorkoutSeries(ctx, &db.UpsertWorkoutSeriesParams{WorkoutID: workoutID, UserID: userToken.ID, Series: series})
+}
+
+// WorkoutSeries returns the stored series JSON; ErrNoSeries for a workout with nothing recorded (hand-entered, or not yet reprocessed).
+func (m *storeModel) WorkoutSeries(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]byte, error) {
+	if _, err := m.Workout(ctx, workoutID, userToken); err != nil {
+		return nil, err
+	}
+	querier, err := m.store.GetQuerier()
+	if err != nil {
+		return nil, err
+	}
+	series, err := querier.GetWorkoutSeries(ctx, &db.GetWorkoutSeriesParams{WorkoutID: workoutID, UserID: userToken.ID})
+	if IsNotFound(err) {
+		return nil, ErrNoSeries
+	}
+	return series, err
 }
 
 func addSegments(ctx context.Context, q db.Querier, workoutID int32, run *workouts.Run, userToken *tokens.UserToken) error {

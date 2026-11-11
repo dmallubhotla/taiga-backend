@@ -13,6 +13,7 @@ import (
 	"gitea.deepak.science/deepak/taiga/internal/models"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -22,6 +23,7 @@ func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router.Get("/compare", compareWorkoutsFunc(m))
 	router.Get("/{workoutid}", getWorkoutFunc(m))
 	router.Get("/{workoutid}/segments", getWorkoutSegmentsFunc(m))
+	router.With(middleware.Compress(5, "application/json")).Get("/{workoutid}/series", getWorkoutSeriesFunc(m))
 	router.Post("/reprocess", reprocessAllFunc(m))
 	router.Post("/{workoutid}/reprocess", reprocessWorkoutFunc(m, fileRepo))
 	router.Post("/", postWorkoutFunc(m))
@@ -323,6 +325,38 @@ func postWorkoutFromActivityFileFunc(m models.Model, fileRepo filerepo.FileRepo)
 		}
 		if err := json.NewEncoder(w).Encode(workout); err != nil {
 			serverError(w, err)
+		}
+	}
+}
+
+func getWorkoutSeriesFunc(m models.Model) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		userToken, err := tokens.UserTokenFromContext(ctx)
+		if err != nil {
+			unauthorizedHandler(w, r)
+			return
+		}
+
+		workoutID64, err := strconv.ParseInt(chi.URLParam(r, "workoutid"), 10, 32)
+		if err != nil {
+			notFoundHandler(w, r)
+			return
+		}
+
+		series, err := m.WorkoutSeries(ctx, int32(workoutID64), userToken)
+		switch {
+		case models.IsNotFound(err):
+			notFoundHandler(w, r)
+		case errors.Is(err, models.ErrNoSeries):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		case err != nil:
+			serverError(w, err)
+		default:
+			// Stored already encoded, so serve the bytes as they are.
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(series)
 		}
 	}
 }

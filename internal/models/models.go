@@ -27,6 +27,9 @@ var ErrNoActivityFile = errors.New("workout has no activity file")
 // ErrDerivedWorkout means an edit would change fields that reprocessing owns.
 var ErrDerivedWorkout = errors.New("workout comes from an activity file, so its summary is rebuilt from the file; reprocess it instead of editing")
 
+// ErrNoSeries means the workout has no stored records to graph or map.
+var ErrNoSeries = errors.New("workout has no recorded series: it was entered by hand, or is waiting to be reprocessed")
+
 // ErrJobNotDead means only a dead job can be retried.
 var ErrJobNotDead = errors.New("only dead jobs can be retried")
 
@@ -62,7 +65,8 @@ type Model interface {
 	WorkoutSegments(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]*WorkoutSegment, error)
 	BestSegments(ctx context.Context, name string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error)
 	CompareWorkouts(ctx context.Context, workoutIDs []int32, userToken *tokens.UserToken) ([]*WorkoutComparison, error)
-	// ReprocessWorkout rebuilds the workout's summary and segments from its activity file.
+	WorkoutSeries(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]byte, error)
+	// ReprocessWorkout rebuilds the workout's summary, segments and series from its activity file.
 	ReprocessWorkout(ctx context.Context, workoutID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
 	EnqueueReprocessAll(ctx context.Context, now time.Time, userToken *tokens.UserToken) (int64, error)
 	Jobs(ctx context.Context, state string, limit int32, userToken *tokens.UserToken) ([]*Job, error)

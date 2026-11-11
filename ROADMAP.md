@@ -58,7 +58,7 @@ Multiple accounts exist only so more than one person can use the same deployment
 ### Tasks
 
 - [ ] Config: `auth.*` section, provider list, secrets read from files; refuse to start if a provider's discovery fails at boot (log which).
-- [ ] Migration `000005_user_identities` (postgres + sqlite) and sqlc queries.
+- [ ] Migration `user_identities` (next free number) (postgres + sqlite) and sqlc queries.
 - [ ] `internal/oidc`: provider registry from config, login redirect, callback handling, state/nonce/PKCE cookie.
 - [ ] Routes: `/auth/providers`, `/auth/oidc/{provider}/{login,callback}`, `/auth/identities` (list, link, unlink).
 - [ ] Tests against an in-process fake provider (e.g. `github.com/oauth2-proxy/mockoidc`): happy path, bad `state`, bad `nonce`, wrong audience, expired token, signup disabled, email auto-link on and off, `email_verified: false`.
@@ -113,7 +113,7 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
   - Leases (5 min) so a crashed worker's job is claimed again; exponential backoff from 30s; dead after 5 attempts, or at once for errors a retry can't fix.
   - On boot the worker queues `process_workout` for every stale workout. `POST /workouts/reprocess` queues all of a user's; `GET /jobs`, `POST /jobs/{id}/retry` to watch and retry.
 - [x] Standard distances gained `3k` and `2mi`; existing workouts pick them up through the above.
-- [ ] Frontend and `taco`: a reprocess action, and dead jobs surfaced somewhere visible.
+- [ ] Client side: a reprocess action and dead jobs, as part of the admin panel (see Later).
 
 **Deferred:**
 - **Async uploads.** Parsing takes milliseconds, so `202` plus polling in both clients isn't worth it yet. Uploads that genuinely run in the background arrive with M8's `sync_source` jobs.
@@ -121,10 +121,12 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
 
 ## M6 — Visualisations
 
-- [ ] **Per-record series.** Store a downsampled series per workout at processing time (time, distance, pace, elevation, heart rate, lat/long), as a derived table or one compact blob per workout, rebuilt by M5.
-  Serve it from `GET /workouts/{id}/series`. Don't re-parse the FIT file on every page view.
+- [x] **Per-record series.** Built at processing time and stored as one JSON document per workout (`workout_series`), rebuilt by M5 reprocessing (`extractorVersion` 2 backfills old workouts).
+  Columns: time, distance, speed, altitude, heart rate, lat/long, sampled evenly to at most 2000 points; a column the device never recorded is omitted.
+  Served gzipped from `GET /workouts/{id}/series`, so pages never re-parse the FIT file.
+- [ ] **Mile splits** on the workout page: time, pace, elevation change and average HR per mile (or km), computed in the frontend from the series by interpolating where each mile falls, so nothing new is stored.
 - [ ] **Graphs** in the frontend: pace, elevation and heart rate over distance or time for one workout; the best segments from `workout_segments` highlighted on the pace graph; a distance's best-effort trend over time.
-- [ ] **Maps.** The GPS track from the series (FIT stores positions in semicircles; convert at processing time), drawn with Leaflet on OpenStreetMap tiles, with segments highlighted.
+- [ ] **Maps.** The GPS track from the series drawn with Leaflet on OpenStreetMap tiles, with segments highlighted. Tiles come from openstreetmap.org, so the map's area is visible to the tile server.
 - [ ] Compare view: overlay two workouts' pace graphs aligned by distance.
 
 ## M7 — Heart rate (lower priority)
@@ -147,6 +149,25 @@ The goal is new runs showing up on their own. Each option still needs checking a
   Content-hash dedupe already makes re-fetching harmless. Also store the source's activity ID, to skip downloads that would only dedupe.
 - [ ] Credentials stored encrypted at rest, revocable per connection, and never logged.
 
+## M9 — Routes (exploration)
+
+Most runs repeat a handful of routes. The goal: group runs on the same route automatically, so a route's runs can be compared on total time and its history shown as a trend.
+Builds on the M6 series (positions); everything is per user, never matched across users.
+
+- [ ] **Detecting a route match**, cheap filters first:
+  - Pre-filter: start and end within ~150m of the other run's, and total distance within ~10%. Most pairs fail here.
+  - Shape: resample both tracks to ~100 points evenly by distance, then a discrete Fréchet distance (or mean point-to-track distance) under a tolerance of ~50m. Fréchet respects order, so an out-and-back run backwards is detected as the reversed route rather than missed.
+  - A coarse index (the set of ~150m grid cells a track passes through, compared by overlap) to find candidate routes without comparing against every past run.
+- [ ] **Clusters.** A route is a cluster of runs with a representative track (the medoid). A new run joins the route it matches best, or starts a candidate that becomes a route once a second run matches it.
+- [ ] **Variations.**
+  - Small detours (a block around construction, GPS drift) fall inside the tolerance and still match.
+  - Extensions (the usual loop plus an extra mile) cover most of the route but add length: match them as a variant of the route, flagged, and keep them out of the route's total-time comparison.
+  - Truly different runs become their own route. Partial overlap between routes is what sub-route segments (Strava-style, user-drawn or detected from shared stretches) would handle; that's a later step.
+- [ ] **User control beats detection:** name a route, merge two routes, move a run to another route or detach it, mark "not this route". Those decisions are stored separately and survive re-detection.
+- [ ] **As derived data:** route assignment spans workouts, so it runs as a per-user `detect_routes` job on the M5 queue after a workout is processed, not as part of per-workout reprocessing. Clusters can be rebuilt from scratch at any time; only the user's overrides are permanent.
+- [ ] Frontend: a routes list, a route page (map of the representative track, its runs and a time trend), and the route shown on each workout.
+
 ## Later
 
 - `taco compare` / `taco best <distance>` in the CLI.
+- **Admin panel** in the frontend, for running the deployment rather than looking at runs: the job queue (queued, running, dead jobs with their last error, retry), reprocess one or all workouts, files that failed to parse, and eventually account management in place of `kubectl exec … useradd`. Needs a notion of an admin user first.
