@@ -67,6 +67,14 @@ release:
 release-plan:
     nix develop --command hanko seal --dry-run
 
+# changelog: regenerate CHANGELOG.md, unreleased commits under [Unreleased] (`just release` does this for the new tag).
+changelog:
+    nix develop --command git-cliff --output CHANGELOG.md
+
+# install-hooks: check each commit message is a conventional commit.
+install-hooks:
+    git config core.hooksPath .githooks
+
 # Serve using go run
 serve:
     #!/usr/bin/env bash

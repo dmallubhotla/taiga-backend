@@ -1,0 +1,27 @@
+name: commits
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: commits-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  conventional:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # hanko reads these subjects for the bump and git-cliff for CHANGELOG.md.
+      - name: Commit subjects
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: scripts/check-commits.sh "$BASE..$HEAD"
+      # A squash merge takes its subject from the title.
+      - name: PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: scripts/check-commits.sh --file <(printf '%s\n' "$TITLE")
