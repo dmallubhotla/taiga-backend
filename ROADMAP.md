@@ -131,6 +131,11 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
 - [x] Compare view: overlay workouts' pace graphs aligned by distance.
 - [x] Workout page laid out as a desktop dashboard: map top left, splits top right, the graph along the bottom, sized to the screen.
 - [x] **Best efforts by time**: the farthest stretch in 30 minutes and an hour, stored as `kind = duration` segments beside the distance ones and ranked by distance; they show on the workout page, best efforts and compare. More durations (20 minutes, 2 hours) are one line in `StandardDurations`, and reprocessing backfills them.
+- [ ] **Quieter map** (feedback 2026-11-11). The map takes too much of the dashboard and the OSM style competes with the track: highways and landuse are as loud as the route.
+  - Give the map less of the grid, so splits and graphs get more room.
+  - A muted basemap (a light, desaturated style such as CARTO Positron, or a CSS greyscale filter on the OSM tiles as a stopgap), so road colours drop out.
+  - A more distinctive track on top: thicker, a casing (dark outline under the line) so it reads on any background, and stronger start/finish markers. A self-hosted vector style (PMTiles + MapLibre) would allow this fully, and would also keep the map's area away from a tile server.
+- [ ] **Grafana-style graph legend.** Drop the separate colour swatches and checkbox toggles above the graph; the legend under it lists each series with its colour and value at the cursor, and clicking an entry shows or hides that series.
 
 ### Series sampling: today, and upgrades for when they're needed
 
@@ -167,6 +172,13 @@ The goal is new runs showing up on their own. Each option still needs checking a
 - [ ] **A source abstraction.** Each user connection (kind, credentials, cursor) gets a periodic `sync_source` job on the M5 queue that fetches new activities and feeds them through the normal upload path.
   Content-hash dedupe already makes re-fetching harmless. Also store the source's activity ID, to skip downloads that would only dedupe.
 - [ ] Credentials stored encrypted at rest, revocable per connection, and never logged.
+- [ ] **Endomondo archive import.** Endomondo shut down in 2020; its export has a `.tcx` and a `.json` per workout. Surveyed on a 405-workout export (2016–2020):
+  - **Sport needs the JSON.** TCX says `Running` for 202 runs, `Biking` for 1 ride and `Other` for everything else, walks (83) and treadmill runs (23) included. The JSON's `sport` (`RUNNING`, `WALKING`, `TREADMILL_RUNNING`, `CYCLING_SPORT`, `SPINNING`, `STAIR_CLIMBING`, `WEIGHT_TRAINING`, …) maps onto FIT names, e.g. `TREADMILL_RUNNING` → running / treadmill.
+  - **Points are in both.** Time, position, cumulative distance and altitude every 1–5s; no heart rate in this export. TCX times are ISO UTC; JSON point timestamps switch between `"Thu Jul 23 22:20:14 UTC 2020"` and `"2020-12-07 20:44:46.0"`.
+  - **GPS:** 280 of 285 runs and walks have a track. Treadmill, spinning, stairs and weights have 1–5 placeholder points, and 14 are hand-entered (`source: INPUT_MANUAL*`): no points, just a distance and duration.
+  - **Broken files exist:** one run has 16 points over 120m against a stated 4.02 km (GPS lost, distance typed in), and its points jump back an hour after the first. Check points against the stated totals; when they disagree, keep the stated totals and skip segments and routes.
+  - 52 workouts carry a note (`message`); photo URLs point at Endomondo's dead servers.
+  - **Shape:** sniff the uploaded content (FIT header, XML, JSON) and read each into the same `workouts.Run`, so storage, reprocessing, segments and routes work unchanged; the `.tcx`/`.json` pair could be uploaded together, or the JSON alone, since it has the points too. Content dedupe won't catch a run that's also in a FIT export; match on start time and sport instead.
 
 ## M9 — Routes
 
@@ -183,6 +195,24 @@ Builds on the M6 series (positions); everything is per user, never matched acros
   - Truly different runs become their own route. Partial overlap between routes is what sub-route segments (Strava-style, user-drawn or detected from shared stretches) would handle; that's a later step.
 - [ ] **User control beats detection:** naming is done (`PUT /routes/{id}`). Still to do: merge two routes, move a run to another route or detach it, mark "not this route". Those decisions are stored separately and survive re-detection. A route that dissolves (down to one run) loses its name today; overrides would fix that too.
 - [ ] Frontend: a routes list, a route page (map of the representative track, its runs and a time trend), and the route shown on each workout.
+
+## M10 — Corrections
+
+The file is the source of truth, but files are sometimes wrong: a ride saved as a walk, a GPS glitch, a run that shouldn't count. Corrections are stored beside the derived data and survive reprocessing.
+
+- [ ] **Per-sport plausibility cap.** Efforts faster than a sport could manage (a walking mile at 3:38) aren't stored as segments, so a mislabeled activity or a GPS jump can't top a leaderboard. Caps per sport live in code, next to `ScoredSports`.
+- [ ] **Exclude from stats.** A per-workout flag that keeps it listed but out of best efforts, route comparisons and trends (a run with a friend, a watch left running in the car).
+- [ ] **Edit a workout's sport** (and later other fields the file got wrong). An override column wins over the file's value, and changing it reprocesses the workout, so segments and routes follow.
+- [x] **Indoor runs aren't scored.** Treadmill, `indoor_running` and `indoor_walking` sessions measure distance with a belt or foot pod, so they get no segments and no track (`RunSummary.Scored`, #65).
+- [ ] Route changes (rename is done; merge, move, detach, "not this route") are M9's user control.
+
+## M11 — Time windows
+
+Years of history (an Endomondo archive goes back to 2016) make an all-time list long and all-time bests stale.
+
+- [ ] **Restrict the workout list by time.** `GET /workouts?from=&to=` (and paging, since the list returns everything today); the frontend picks a year (default: this one, with an "all" option) or a month, keeps it in the URL, and shows the year's totals (count, distance, time) above the list.
+- [ ] **Best efforts per year or window.** The same `from`/`to` on `GET /segments/{name}/best`, so the best page can show a season's bests beside all-time ones: tabs or a picker for years, plus rolling windows such as the last 12 months or 90 days. A per-year table (each standard distance's best in each year) shows progression at a glance.
+- [ ] Route pages and trends take the same window, so a route's best can be this year's.
 
 ## Later
 
