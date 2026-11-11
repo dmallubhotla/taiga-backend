@@ -1,65 +1,26 @@
-# TryGo - go template
+# taiga-backend
 
-template app to use with db + http
+The API behind taiga, for seeing and comparing runs: upload FIT files, and it derives workouts, fastest segments at standard distances, and per-record series (pace, elevation, heart rate, GPS) for the [browser frontend](https://github.com/dmallubhotla/taiga-frontend) and the `taco` CLI.
 
-clone and change as needed, push 
+Go with chi, sqlc and golang-migrate; PostgreSQL in production, SQLite in development.
 
-routing with chi, sqlc for db code gen
-
-## Quick Start
-
-nix dev shell for development,
-run `just chores` to regen sqlc, gomod2nix etc.
-
-The server will start on `http://localhost:8080` using SQLite (`./data.db`).
-
-### Running with PostgreSQL
-
-
-### Using Environment Variables
-
-You can override any config with environment variables:
+## Quick start
 
 ```bash
-export TAIGA_PORT=3000
-export TAIGA_DB_DRIVER=postgres
-export TAIGA_DB_HOST=localhost
-export TAIGA_DB_USER=myuser
-export TAIGA_DB_PASSWORD=mypass
-export TAIGA_DB_NAME=mydb
-go run cmd/server/main.go
+nix develop               # dev shell with Go, sqlc, just
+just generate_keypair     # first time only: RSA keys for JWT signing
+just serve                # http://localhost:8080 on SQLite (./data.db)
 ```
 
-## API Endpoints
+Registration is open in development: `POST /auth/register`, then `POST /auth/tokens` for a token.
+Outside development it's closed by default; create accounts with `go run cmd/useradd/main.go -email you@example.com`.
 
-- `GET /` - Hello World message
-- `GET /ping` - Simple ping/pong
-- `GET /health` - Health check with database status
+## Configuration
 
-Example responses:
+`config.yaml`, overridable by environment variables prefixed `TAIGA_`, e.g. `TAIGA_APP_PORT`, `TAIGA_DB_DRIVER=postgres`, `TAIGA_DB_HOST`, `TAIGA_AUTH_REGISTRATION=open`.
+Every config field is bound, so a deployment can be configured by environment alone.
 
-```bash
-# Hello endpoint
-curl http://localhost:8080/
-{"message":"Hello, World!","service":"taiga-template","status":"success"}
+## More
 
-# Health check
-curl http://localhost:8080/health
-{"database":{"healthy":true,"status":"healthy"},"service":"taiga-template","status":"ok"}
-```
-
-## Project Structure
-
-```
-├── cmd/server/          # Application entrypoint
-├── internal/
-│   ├── config/          # Configuration management
-│   ├── db/              # Generated sqlc code (after running sqlc generate)
-│   ├── handlers/        # HTTP handlers
-│   └── server/          # Server setup and middleware
-├── migrations/          # SQL migrations
-├── queries/             # SQL queries for sqlc
-├── sqlc.yaml           # sqlc configuration
-└── config.yaml         # Application configuration
-```
-
+- [CLAUDE.md](CLAUDE.md): architecture, commands, configuration and the full API.
+- [ROADMAP.md](ROADMAP.md): what's done and what's next.

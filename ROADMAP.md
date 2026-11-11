@@ -98,7 +98,8 @@ The test stack is internal-only (LAN and tailnet). These must land before taiga 
 
 - [ ] Remove the `hats` template code and its table.
 - [ ] Retire or refresh `terraform/` (AWS ECS + RDS): the homelab stack replaces it as the deploy path, and it predates env-only config.
-- [ ] Fix CLAUDE.md drift (it documents `/auth/login`; the endpoint is `/auth/tokens`).
+- [x] Fix CLAUDE.md drift (`/auth/tokens`, config keys, migration directories, package list) and replace the template README.
+- [ ] Rename the `trygo-template` service name that `GET /` and `GET /health` still report.
 - [ ] Tests for `internal/tokens`, `internal/store`, `internal/filerepo`.
 
 ## M5 — Reprocessing and a work queue
@@ -124,14 +125,31 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
 - [x] **Per-record series.** Built at processing time and stored as one JSON document per workout (`workout_series`), rebuilt by M5 reprocessing (`extractorVersion` 2 backfills old workouts).
   Columns: time, distance, speed, altitude, heart rate, lat/long, sampled evenly to at most 2000 points; a column the device never recorded is omitted.
   Served gzipped from `GET /workouts/{id}/series`, so pages never re-parse the FIT file.
-- [ ] **Mile splits** on the workout page: time, pace, elevation change and average HR per mile (or km), computed in the frontend from the series by interpolating where each mile falls, so nothing new is stored.
-- [ ] **Graphs** in the frontend: pace, elevation and heart rate over distance or time for one workout; the best segments from `workout_segments` highlighted on the pace graph; a distance's best-effort trend over time.
-- [ ] **Maps.** The GPS track from the series drawn with Leaflet on OpenStreetMap tiles, with segments highlighted. Tiles come from openstreetmap.org, so the map's area is visible to the tile server.
-- [ ] Compare view: overlay two workouts' pace graphs aligned by distance.
+- [x] **Mile splits** on the workout page: time, pace, elevation change and average HR per mile (or km), computed in the frontend from the series by interpolating where each mile falls, so nothing new is stored.
+- [x] **Graphs** in the frontend: pace, elevation and heart rate overlaid on one graph (an axis each, toggles) over distance or time; a segment or split highlighted on it; a distance's best-effort trend over time.
+- [x] **Maps.** The GPS track from the series drawn with Leaflet on OpenStreetMap tiles, with segments highlighted. Tiles come from openstreetmap.org, so the map's area is visible to the tile server.
+- [x] Compare view: overlay workouts' pace graphs aligned by distance.
+- [x] Workout page laid out as a desktop dashboard: map top left, splits top right, the graph along the bottom, sized to the screen.
+
+### Series sampling: today, and upgrades for when they're needed
+
+**Today.**
+- `BuildSeries` keeps every Nth record (an even stride) so a workout has at most 2000 points, always keeping the last; nothing is averaged. At 1 record/s a one-hour run keeps every 2nd record, a marathon about every 7th.
+- Values are rounded per column (time 0.1s, speed 0.001 m/s, altitude 0.1m, HR whole bpm, lat/long 6 decimals ≈ 10cm).
+- Segments and workout totals use every record in the file; only graphs, the map and splits see the thinned series.
+- The thinned series is stored (`workout_series`); full-resolution records are not, and the FIT file is reread only on reprocessing.
+- The frontend plots the series as is: pace smoothed over a trailing 200m (gaps slower than 30 min/mi), splits interpolated at exact mile/km marks (good to about one stored point, a few seconds on a long run), elevation gain with 1m hysteresis, compare overlays resampled onto a shared distance grid.
+
+**Upgrades, each with what would call for it.** Bumping `extractorVersion` rebuilds every workout from its file, so changing the method is cheap.
+- [ ] **Peak-preserving downsampling** (LTTB, or min/max per bucket) instead of a plain stride, which can drop a short HR spike or sprint and makes the shape depend on where the stride falls. Needed for interval sessions, M7 HR zones and max HR read from the series, or zooming into a short stretch of a long run.
+- [ ] **Shape-aware track simplification** (Douglas–Peucker / Visvalingam) for lat/long, keeping corners sharp with fewer points. M9 route matching resamples evenly by distance anyway, so this is only for drawing.
+- [ ] **Detail on zoom:** keep a full-resolution (or second, denser) series and fetch a time window of it when the graph is zoomed. Only once second-by-second analysis is wanted; it costs storage roughly in proportion to recording rate.
+- [ ] **Splits on the backend** from every record, stored like segments. Needed if splits appear where they must be exact (records pages, comparisons across runs, trends) or very long runs make the stride coarse.
+- [ ] **Better elevation:** smoothing, or correction against a terrain model. This moves gain/loss more than sampling does; worth it when elevation numbers start to matter.
 
 ## M7 — Heart rate (lower priority)
 
-- [ ] Average and max HR per workout from the FIT session (`avg_heart_rate`, `max_heart_rate`), and HR in the M6 series. Old workouts pick these up through M5 reprocessing.
+- [ ] Average and max HR per workout from the FIT session (`avg_heart_rate`, `max_heart_rate`); HR is already in the M6 series. Old workouts pick these up through M5 reprocessing.
 - [ ] A per-user max HR (and optionally resting HR) setting, defaulting to the highest HR seen across the user's workouts.
 - [ ] Time in HR zones per workout, derived from that setting. Changing the setting enqueues stats jobs rather than reprocessing files.
 
@@ -169,5 +187,11 @@ Builds on the M6 series (positions); everything is per user, never matched acros
 
 ## Later
 
+- **Faster CI.** Backend runs take 9–13 minutes on every push: `nix flake check` about 4 (formatting, lint, tests), then a second full build of the binary about 3½, then the image publish about 1; the frontend takes about 2. Ideas, roughly in order of payoff:
+  - Build the binary once and have the checks reuse it, or drop the separate build step when the flake check already compiled the same derivation.
+  - Make sure the Nix cache actually hits for Go modules (a vendored-dependencies derivation that only changes with `go.mod`/`gomod2nix.toml`), so a code change doesn't rebuild dependencies.
+  - Run formatting, lint and tests as parallel jobs, so a formatting failure reports in seconds.
+  - Skip the image build and publish on PRs, or only on `master` and tags; homelab deploys only use `master-<sha>`.
+  - Skip the backend pipeline for docs-only changes (`paths-ignore` for `*.md`).
 - `taco compare` / `taco best <distance>` in the CLI.
 - **Admin panel** in the frontend, for running the deployment rather than looking at runs: the job queue (queued, running, dead jobs with their last error, retry), reprocess one or all workouts, files that failed to parse, and eventually account management in place of `kubectl exec … useradd`. Needs a notion of an admin user first.
