@@ -1,0 +1,6 @@
+{
+  "paramTypes": {
+    "named": ["@"],
+    "custom": [{ "regex": "sqlc\\.[a-z]+\\([a-zA-Z_.]+\\)" }]
+  }
+}

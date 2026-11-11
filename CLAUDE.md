@@ -148,8 +148,7 @@ go run cmd/useradd/main.go -email you@example.com  # Create an account while reg
    SELECT * FROM users WHERE id = $1;
    ```
 
-   Name parameters with `sqlc.arg(name)`, not `@name`: `just fmt` rewrites `@name` to `@ name`, which sqlc can't parse.
-   `sqlc.embed(table)` breaks the same way (`sqlc.embed (table)`), so fetch the rows separately and join them in Go.
+   `.sql-formatter.json` tells `just fmt` (sql-formatter, via treefmt) to leave `@name` and `sqlc.arg(...)`/`sqlc.embed(...)` alone; without it they become `@ name` and `sqlc.embed (t)`, which sqlc can't parse.
 
 2. **Generate Go code**:
    ```bash
