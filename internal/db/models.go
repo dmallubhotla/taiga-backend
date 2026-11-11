@@ -74,6 +74,7 @@ type WorkoutSegment struct {
 	StartOffsetSeconds float64            `json:"start_offset_seconds"`
 	EndOffsetSeconds   float64            `json:"end_offset_seconds"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	Kind               string             `json:"kind"`
 }
 
 type WorkoutSeries struct {
