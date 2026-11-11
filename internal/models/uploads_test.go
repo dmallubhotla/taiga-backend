@@ -38,7 +38,7 @@ func TestReuploadReturnsExistingFileAndWorkout(t *testing.T) {
 	assert.False(t, created)
 	assert.Equal(t, w.ID, wAgain.ID)
 
-	all, err := m.Workouts(ctx, alice)
+	all, err := m.Workouts(ctx, models.WorkoutQuery{}, alice)
 	require.NoError(t, err)
 	assert.Len(t, all, 1)
 
@@ -108,7 +108,7 @@ func TestCreateWorkoutRejectsUnusableFiles(t *testing.T) {
 			assert.Contains(t, activityFileIDs(pending), af.ID, "the failed file stays listed so it can be retried or deleted")
 		})
 	}
-	all, err := m.Workouts(ctx, alice)
+	all, err := m.Workouts(ctx, models.WorkoutQuery{}, alice)
 	require.NoError(t, err)
 	assert.Empty(t, all)
 }

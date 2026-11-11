@@ -27,10 +27,10 @@ func TestCorrectedSportMovesBestEfforts(t *testing.T) {
 	assert.Equal(t, workouts.SportWalking, corrected.Sport)
 	assert.Equal(t, workouts.SportWalking, corrected.SportOverride)
 
-	runs, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, alice)
+	runs, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, models.Window{}, alice)
 	require.NoError(t, err)
 	assert.Empty(t, runs)
-	walks, err := m.BestSegments(ctx, "1k", workouts.SportWalking, 10, alice)
+	walks, err := m.BestSegments(ctx, "1k", workouts.SportWalking, 10, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, walks, 1)
 	assert.Equal(t, w.ID, walks[0].WorkoutID)
@@ -74,7 +74,7 @@ func TestExcludedWorkoutLeavesBestEffortsAndRoutes(t *testing.T) {
 	assert.Equal(t, "ran with a friend", excluded.ExcludedReason)
 	assert.Equal(t, "ran with a friend", excluded.UserExcludedReason)
 
-	efforts, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, alice)
+	efforts, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, efforts, 1)
 	assert.NotEqual(t, first.ID, efforts[0].WorkoutID)
@@ -84,7 +84,7 @@ func TestExcludedWorkoutLeavesBestEffortsAndRoutes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, routes, "one run left is no route")
 
-	listed, err := m.Workouts(ctx, alice)
+	listed, err := m.Workouts(ctx, models.WorkoutQuery{}, alice)
 	require.NoError(t, err)
 	assert.Len(t, listed, 2, "an excluded workout is still listed")
 }

@@ -55,7 +55,9 @@ type Model interface {
 	DeleteActivityFile(ctx context.Context, id int32, userToken *tokens.UserToken) error
 	GetActivityFileContent(ctx context.Context, id int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (io.ReadCloser, error)
 	Workout(ctx context.Context, id int32, userToken *tokens.UserToken) (*Workout, error)
-	Workouts(ctx context.Context, userToken *tokens.UserToken) ([]*Workout, error)
+	Workouts(ctx context.Context, query WorkoutQuery, userToken *tokens.UserToken) ([]*Workout, error)
+	// WorkoutTotals sums each sport's counted workouts starting in the window.
+	WorkoutTotals(ctx context.Context, window Window, userToken *tokens.UserToken) (*WorkoutTotals, error)
 	AddWorkout(ctx context.Context, workout *Workout, userToken *tokens.UserToken) (*Workout, error)
 	UpdateWorkout(ctx context.Context, id int32, workout *Workout, userToken *tokens.UserToken) (*Workout, error)
 	DeleteWorkout(ctx context.Context, id int32, userToken *tokens.UserToken) error
@@ -64,7 +66,7 @@ type Model interface {
 	CreateWorkoutFromActivityFile(ctx context.Context, activityFileID int32, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (w *Workout, created bool, err error)
 	WorkoutSegments(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]*WorkoutSegment, error)
 	// BestSegments ranks only workouts of sport (one of workouts.ScoredSports).
-	BestSegments(ctx context.Context, name, sport string, limit int32, userToken *tokens.UserToken) ([]*SegmentEffort, error)
+	BestSegments(ctx context.Context, name, sport string, limit int32, window Window, userToken *tokens.UserToken) ([]*SegmentEffort, error)
 	CompareWorkouts(ctx context.Context, workoutIDs []int32, userToken *tokens.UserToken) ([]*WorkoutComparison, error)
 	WorkoutSeries(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]byte, error)
 	// ReprocessWorkout rebuilds the workout's summary, segments and series from its activity file.

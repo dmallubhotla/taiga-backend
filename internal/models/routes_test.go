@@ -144,10 +144,10 @@ func TestSportsAreScoredApart(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, segments, "rides get no best efforts")
 
-	runs, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, alice)
+	runs, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, models.Window{}, alice)
 	require.NoError(t, err)
 	assert.Len(t, runs, 2, "the rides' faster kilometres don't count")
-	walks, err := m.BestSegments(ctx, "1k", workouts.SportWalking, 10, alice)
+	walks, err := m.BestSegments(ctx, "1k", workouts.SportWalking, 10, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, walks, 2)
 	assert.Equal(t, walk.ID, walks[0].WorkoutID)
@@ -184,7 +184,7 @@ func TestTreadmillRunsAreNotScored(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, segments, "a belt's distance isn't a best effort")
 
-	best, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, alice)
+	best, err := m.BestSegments(ctx, "1k", workouts.SportRunning, 10, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, best, 1, "the faster indoor runs don't count")
 	assert.Equal(t, outdoor.ID, best[0].WorkoutID)

@@ -121,6 +121,35 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg *DeleteWorkoutParams) e
 	return err
 }
 
+const firstWorkoutStartInWindow = `-- name: FirstWorkoutStartInWindow :one
+SELECT
+  start_time
+FROM
+  workouts
+WHERE
+  user_id = $1
+  AND start_time >= $2
+  AND start_time < $3
+ORDER BY
+  start_time
+LIMIT
+  1
+`
+
+type FirstWorkoutStartInWindowParams struct {
+	UserID     int32              `json:"user_id"`
+	WindowFrom pgtype.Timestamptz `json:"window_from"`
+	WindowTo   pgtype.Timestamptz `json:"window_to"`
+}
+
+// The earliest start in [window_from, window_to), excluded workouts included since they're still listed; no rows when the window is empty.
+func (q *Queries) FirstWorkoutStartInWindow(ctx context.Context, arg *FirstWorkoutStartInWindowParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, firstWorkoutStartInWindow, arg.UserID, arg.WindowFrom, arg.WindowTo)
+	var start_time pgtype.Timestamptz
+	err := row.Scan(&start_time)
+	return start_time, err
+}
+
 const getWorkout = `-- name: GetWorkout :one
 SELECT
   id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason, source, sport_override, user_excluded_reason
@@ -233,6 +262,78 @@ ORDER BY
 
 func (q *Queries) ListWorkoutsByUser(ctx context.Context, userID int32) ([]*Workout, error) {
 	rows, err := q.db.Query(ctx, listWorkoutsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Workout{}
+	for rows.Next() {
+		var i Workout
+		if err := rows.Scan(
+			&i.ID,
+			&i.DistanceMiles,
+			&i.TimeSeconds,
+			&i.SpeedMph,
+			&i.PaceMinPerMile,
+			&i.StartTime,
+			&i.EndTime,
+			&i.ActivityFileID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.ProcessorVersion,
+			&i.Sport,
+			&i.SubSport,
+			&i.ExcludedReason,
+			&i.Source,
+			&i.SportOverride,
+			&i.UserExcludedReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkoutsByUserInWindow = `-- name: ListWorkoutsByUserInWindow :many
+SELECT
+  id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason, source, sport_override, user_excluded_reason
+FROM
+  workouts
+WHERE
+  user_id = $1
+  AND start_time >= $2
+  AND start_time < $3
+ORDER BY
+  start_time DESC,
+  id DESC
+LIMIT
+  $5
+OFFSET
+  $4
+`
+
+type ListWorkoutsByUserInWindowParams struct {
+	UserID     int32              `json:"user_id"`
+	WindowFrom pgtype.Timestamptz `json:"window_from"`
+	WindowTo   pgtype.Timestamptz `json:"window_to"`
+	PageOffset int32              `json:"page_offset"`
+	PageLimit  int32              `json:"page_limit"`
+}
+
+// Starting in [window_from, window_to); callers pass far-off bounds for an open end, so the same SQL runs on SQLite.
+func (q *Queries) ListWorkoutsByUserInWindow(ctx context.Context, arg *ListWorkoutsByUserInWindowParams) ([]*Workout, error) {
+	rows, err := q.db.Query(ctx, listWorkoutsByUserInWindow,
+		arg.UserID,
+		arg.WindowFrom,
+		arg.WindowTo,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -419,4 +520,63 @@ func (q *Queries) UpdateWorkoutDerived(ctx context.Context, arg *UpdateWorkoutDe
 		&i.UserExcludedReason,
 	)
 	return &i, err
+}
+
+const workoutTotalsByUser = `-- name: WorkoutTotalsByUser :many
+SELECT
+  sport,
+  COUNT(*) AS workouts,
+  CAST(COALESCE(SUM(distance_miles), 0) AS DOUBLE PRECISION) AS distance_miles,
+  CAST(COALESCE(SUM(time_seconds), 0) AS DOUBLE PRECISION) AS time_seconds
+FROM
+  workouts
+WHERE
+  user_id = $1
+  AND excluded_reason = ''
+  AND start_time >= $2
+  AND start_time < $3
+GROUP BY
+  sport
+ORDER BY
+  workouts DESC,
+  sport
+`
+
+type WorkoutTotalsByUserParams struct {
+	UserID     int32              `json:"user_id"`
+	WindowFrom pgtype.Timestamptz `json:"window_from"`
+	WindowTo   pgtype.Timestamptz `json:"window_to"`
+}
+
+type WorkoutTotalsByUserRow struct {
+	Sport         string  `json:"sport"`
+	Workouts      int64   `json:"workouts"`
+	DistanceMiles float64 `json:"distance_miles"`
+	TimeSeconds   float64 `json:"time_seconds"`
+}
+
+// Per sport, for workouts starting in [window_from, window_to) that count; an excluded workout stays out of stats.
+func (q *Queries) WorkoutTotalsByUser(ctx context.Context, arg *WorkoutTotalsByUserParams) ([]*WorkoutTotalsByUserRow, error) {
+	rows, err := q.db.Query(ctx, workoutTotalsByUser, arg.UserID, arg.WindowFrom, arg.WindowTo)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*WorkoutTotalsByUserRow{}
+	for rows.Next() {
+		var i WorkoutTotalsByUserRow
+		if err := rows.Scan(
+			&i.Sport,
+			&i.Workouts,
+			&i.DistanceMiles,
+			&i.TimeSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

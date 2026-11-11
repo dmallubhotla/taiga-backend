@@ -29,26 +29,6 @@ func (m *storeModel) Workout(ctx context.Context, id int32, userToken *tokens.Us
 	return (*Workout)(workout), nil
 }
 
-func (m *storeModel) Workouts(ctx context.Context, userToken *tokens.UserToken) ([]*Workout, error) {
-	querier, err := m.store.GetQuerier()
-	if err != nil {
-		log.Printf("could not get a querier: %v", err)
-		return nil, err
-	}
-	workouts, err := querier.ListWorkoutsByUser(ctx, userToken.ID)
-	if err != nil {
-		log.Printf("Could not get workouts: %v", err)
-		return nil, err
-	}
-	log.Printf("Got %d workouts", len(workouts))
-	var retWorkouts []*Workout
-	for _, w := range workouts {
-		retWorkouts = append(retWorkouts, (*Workout)(w))
-	}
-
-	return retWorkouts, nil
-}
-
 func (m *storeModel) AddWorkout(ctx context.Context, workout *Workout, userToken *tokens.UserToken) (*Workout, error) {
 	querier, err := m.store.GetQuerier()
 	if err != nil {

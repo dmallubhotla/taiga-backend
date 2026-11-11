@@ -32,7 +32,7 @@ ORDER BY
   END;
 
 -- name: ListBestSegmentsByName :many
--- A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport compete.
+-- A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport starting in [window_from, window_to) compete.
 SELECT
   workout_segments.*,
   workouts.start_time AS workout_start_time
@@ -40,16 +40,18 @@ FROM
   workout_segments
   JOIN workouts ON workouts.id = workout_segments.workout_id
 WHERE
-  workout_segments.user_id = $1
-  AND workout_segments.name = $2
-  AND workouts.sport = $4
+  workout_segments.user_id = sqlc.arg(user_id)
+  AND workout_segments.name = sqlc.arg(name)
+  AND workouts.sport = sqlc.arg(sport)
+  AND workouts.start_time >= sqlc.arg(window_from)
+  AND workouts.start_time < sqlc.arg(window_to)
 ORDER BY
   CASE
     WHEN workout_segments.kind = 'duration' THEN - workout_segments.distance_meters
     ELSE workout_segments.duration_seconds
   END
 LIMIT
-  $3;
+  sqlc.arg(page_limit);
 
 -- name: DeleteSegmentsByWorkout :exec
 DELETE FROM workout_segments
