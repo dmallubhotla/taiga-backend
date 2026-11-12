@@ -65,7 +65,7 @@ func TestExcludedWorkoutLeavesBestEffortsAndRoutes(t *testing.T) {
 	first := uploadWorkout(t, m, repo, alice, day1, fourK)
 	uploadWorkout(t, m, repo, alice, day2, fourK)
 	require.NoError(t, m.DetectRoutes(ctx, alice))
-	routes, err := m.Routes(ctx, alice)
+	routes, err := m.Routes(ctx, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, routes, 1)
 
@@ -80,7 +80,7 @@ func TestExcludedWorkoutLeavesBestEffortsAndRoutes(t *testing.T) {
 	assert.NotEqual(t, first.ID, efforts[0].WorkoutID)
 
 	require.NoError(t, m.DetectRoutes(ctx, alice))
-	routes, err = m.Routes(ctx, alice)
+	routes, err = m.Routes(ctx, models.Window{}, alice)
 	require.NoError(t, err)
 	assert.Empty(t, routes, "one run left is no route")
 

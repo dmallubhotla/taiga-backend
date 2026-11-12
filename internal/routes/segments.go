@@ -36,6 +36,7 @@ type compareResponse struct {
 func newSegmentRouter(m models.Model) http.Handler {
 	router := chi.NewRouter()
 	router.Get("/", getStandardDistancesFunc())
+	router.Get("/yearly-bests", getYearlyBestsFunc(m))
 	router.Get("/{name}/best", getBestSegmentsFunc(m))
 	return router
 }
@@ -200,5 +201,36 @@ func compareWorkoutsFunc(m models.Model) http.HandlerFunc {
 			}
 		}
 		writeJSON(w, resp)
+	}
+}
+
+// getYearlyBestsFunc is each year's best effort at every standard segment, for ?sport= and the years of ?tz=.
+func getYearlyBestsFunc(m models.Model) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		userToken, err := tokens.UserTokenFromContext(ctx)
+		if err != nil {
+			unauthorizedHandler(w, r)
+			return
+		}
+		sport := r.URL.Query().Get("sport")
+		if sport == "" {
+			sport = workouts.SportRunning
+		}
+		if !workouts.Scored(sport) {
+			badRequestError(w, fmt.Errorf("sport must be one of %s", strings.Join(workouts.ScoredSports, ", ")))
+			return
+		}
+		loc, err := parseLocation(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		years, err := m.YearlyBests(ctx, sport, loc, userToken)
+		if err != nil {
+			serverError(w, err)
+			return
+		}
+		writeJSON(w, years)
 	}
 }

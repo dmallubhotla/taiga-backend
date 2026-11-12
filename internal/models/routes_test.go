@@ -49,7 +49,7 @@ func TestDetectRoutes(t *testing.T) {
 	uploadHeading(t, m, repo, bob, 2, north, 300)
 
 	require.NoError(t, m.DetectRoutes(ctx, alice))
-	routes, err := m.Routes(ctx, alice)
+	routes, err := m.Routes(ctx, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, routes, 1, "the lone eastward run is not a route yet")
 	r := routes[0]
@@ -59,7 +59,7 @@ func TestDetectRoutes(t *testing.T) {
 	assert.Equal(t, latest.StartTime.Time, r.LatestStartTime.Time)
 	assert.Nil(t, r.Name)
 
-	detail, err := m.Route(ctx, r.ID, alice)
+	detail, err := m.Route(ctx, r.ID, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, detail.Workouts, 3)
 	assert.Equal(t, latest.ID, detail.Workouts[0].ID, "newest first")
@@ -71,13 +71,34 @@ func TestDetectRoutes(t *testing.T) {
 	_, err = m.WorkoutRoute(ctx, lone.ID, alice)
 	assert.ErrorIs(t, err, models.ErrNoRoute)
 
-	_, err = m.Route(ctx, r.ID, bob)
+	_, err = m.Route(ctx, r.ID, models.Window{}, bob)
 	assert.True(t, models.IsNotFound(err), "bob can't see alice's route: %v", err)
 	require.NoError(t, m.DetectRoutes(ctx, bob))
-	bobs, err := m.Routes(ctx, bob)
+	bobs, err := m.Routes(ctx, models.Window{}, bob)
 	require.NoError(t, err)
 	require.Len(t, bobs, 1, "runs are never matched across users")
 	assert.Equal(t, 2, bobs[0].RunCount)
+
+	t.Run("a window", func(t *testing.T) {
+		late := models.Window{From: time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC)}
+		routes, err := m.Routes(ctx, late, alice)
+		require.NoError(t, err)
+		require.Len(t, routes, 1)
+		assert.Equal(t, 1, routes[0].RunCount)
+		assert.Equal(t, latest.ID, *routes[0].BestWorkoutID, "the window's best, not the all-time one")
+		require.NotNil(t, routes[0].DistanceMiles, "the representative run's distance, though it's before the window")
+		assert.Equal(t, workouts.SportRunning, routes[0].Sport)
+
+		detail, err := m.Route(ctx, r.ID, late, alice)
+		require.NoError(t, err)
+		require.Len(t, detail.Workouts, 1)
+		assert.Equal(t, latest.ID, detail.Workouts[0].ID)
+		assert.NotEmpty(t, detail.Track)
+
+		before, err := m.Routes(ctx, models.Window{To: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)}, alice)
+		require.NoError(t, err)
+		assert.Empty(t, before, "a route not run in the window is left out")
+	})
 
 	t.Run("a rebuild keeps the route's id and name", func(t *testing.T) {
 		name := "River north"
@@ -87,7 +108,7 @@ func TestDetectRoutes(t *testing.T) {
 
 		uploadHeading(t, m, repo, alice, 5, east, 300)
 		require.NoError(t, m.DetectRoutes(ctx, alice))
-		routes, err := m.Routes(ctx, alice)
+		routes, err := m.Routes(ctx, models.Window{}, alice)
 		require.NoError(t, err)
 		require.Len(t, routes, 2)
 		assert.Equal(t, 2, routes[0].RunCount, "the eastward route, run most recently")
@@ -99,19 +120,19 @@ func TestDetectRoutes(t *testing.T) {
 	t.Run("deleting runs shrinks and then dissolves a route", func(t *testing.T) {
 		require.NoError(t, m.DeleteWorkout(ctx, fastest.ID, alice))
 		require.NoError(t, m.DetectRoutes(ctx, alice))
-		detail, err := m.Route(ctx, r.ID, alice)
+		detail, err := m.Route(ctx, r.ID, models.Window{}, alice)
 		require.NoError(t, err)
 		assert.Equal(t, 2, detail.RunCount)
 		assert.NotEmpty(t, detail.Track)
 
 		require.NoError(t, m.DeleteWorkout(ctx, *detail.RepresentativeWorkoutID, alice))
-		detail, err = m.Route(ctx, r.ID, alice)
+		detail, err = m.Route(ctx, r.ID, models.Window{}, alice)
 		require.NoError(t, err, "the route outlives its representative until detection runs")
 		assert.Nil(t, detail.RepresentativeWorkoutID)
 		assert.Empty(t, detail.Track)
 
 		require.NoError(t, m.DetectRoutes(ctx, alice))
-		_, err = m.Route(ctx, r.ID, alice)
+		_, err = m.Route(ctx, r.ID, models.Window{}, alice)
 		assert.True(t, models.IsNotFound(err), "one run left is no longer a route: %v", err)
 	})
 }
@@ -153,7 +174,7 @@ func TestSportsAreScoredApart(t *testing.T) {
 	assert.Equal(t, walk.ID, walks[0].WorkoutID)
 
 	require.NoError(t, m.DetectRoutes(ctx, alice))
-	routes, err := m.Routes(ctx, alice)
+	routes, err := m.Routes(ctx, models.Window{}, alice)
 	require.NoError(t, err)
 	require.Len(t, routes, 2, "one route each for runs and walks on the same path; rides get none")
 	sports := []string{routes[0].Sport, routes[1].Sport}
@@ -190,7 +211,7 @@ func TestTreadmillRunsAreNotScored(t *testing.T) {
 	assert.Equal(t, outdoor.ID, best[0].WorkoutID)
 
 	require.NoError(t, m.DetectRoutes(ctx, alice))
-	routes, err := m.Routes(ctx, alice)
+	routes, err := m.Routes(ctx, models.Window{}, alice)
 	require.NoError(t, err)
 	assert.Empty(t, routes, "indoor runs have no track to match the outdoor one")
 }

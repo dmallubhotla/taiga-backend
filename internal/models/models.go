@@ -58,6 +58,8 @@ type Model interface {
 	Workouts(ctx context.Context, query WorkoutQuery, userToken *tokens.UserToken) ([]*Workout, error)
 	// WorkoutTotals sums each sport's counted workouts starting in the window.
 	WorkoutTotals(ctx context.Context, window Window, userToken *tokens.UserToken) (*WorkoutTotals, error)
+	// PeriodicTotals sums each sport's counted workouts per local week or month (EveryWeek, EveryMonth) across the window.
+	PeriodicTotals(ctx context.Context, every string, window Window, loc *time.Location, userToken *tokens.UserToken) ([]*PeriodTotals, error)
 	AddWorkout(ctx context.Context, workout *Workout, userToken *tokens.UserToken) (*Workout, error)
 	UpdateWorkout(ctx context.Context, id int32, workout *Workout, userToken *tokens.UserToken) (*Workout, error)
 	DeleteWorkout(ctx context.Context, id int32, userToken *tokens.UserToken) error
@@ -67,6 +69,8 @@ type Model interface {
 	WorkoutSegments(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]*WorkoutSegment, error)
 	// BestSegments ranks only workouts of sport (one of workouts.ScoredSports).
 	BestSegments(ctx context.Context, name, sport string, limit int32, window Window, userToken *tokens.UserToken) ([]*SegmentEffort, error)
+	// YearlyBests is the best effort at every standard segment in each local year, for one sport.
+	YearlyBests(ctx context.Context, sport string, loc *time.Location, userToken *tokens.UserToken) ([]*YearBests, error)
 	CompareWorkouts(ctx context.Context, workoutIDs []int32, userToken *tokens.UserToken) ([]*WorkoutComparison, error)
 	WorkoutSeries(ctx context.Context, workoutID int32, userToken *tokens.UserToken) ([]byte, error)
 	// ReprocessWorkout rebuilds the workout's summary, segments and series from its activity file.
@@ -74,8 +78,8 @@ type Model interface {
 	// CorrectWorkout replaces a file-backed workout's corrections and reprocesses it with them.
 	CorrectWorkout(ctx context.Context, workoutID int32, corrections Corrections, userToken *tokens.UserToken, fileRepo filerepo.FileRepo) (*Workout, error)
 	EnqueueReprocessAll(ctx context.Context, now time.Time, userToken *tokens.UserToken) (int64, error)
-	Routes(ctx context.Context, userToken *tokens.UserToken) ([]*RouteSummary, error)
-	Route(ctx context.Context, id int32, userToken *tokens.UserToken) (*RouteDetail, error)
+	Routes(ctx context.Context, window Window, userToken *tokens.UserToken) ([]*RouteSummary, error)
+	Route(ctx context.Context, id int32, window Window, userToken *tokens.UserToken) (*RouteDetail, error)
 	RenameRoute(ctx context.Context, id int32, name *string, userToken *tokens.UserToken) (*RouteSummary, error)
 	WorkoutRoute(ctx context.Context, workoutID int32, userToken *tokens.UserToken) (*RouteSummary, error)
 	// EnqueueDetectRoutes is called after anything that changes the user's tracks: a new, reprocessed or deleted workout.

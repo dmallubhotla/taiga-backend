@@ -22,6 +22,10 @@ var (
 	windowEnd   = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
 )
 
+func (w Window) Contains(t time.Time) bool {
+	return (w.From.IsZero() || !t.Before(w.From)) && (w.To.IsZero() || t.Before(w.To))
+}
+
 func (w Window) bounds() (from, to pgtype.Timestamptz) {
 	f, t := windowStart, windowEnd
 	if !w.From.IsZero() {

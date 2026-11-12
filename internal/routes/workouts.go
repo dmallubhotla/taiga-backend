@@ -25,6 +25,7 @@ func newWorkoutRouter(m models.Model, fileRepo filerepo.FileRepo) http.Handler {
 	router.Get("/", getWorkoutsFunc(m))
 	router.Get("/compare", compareWorkoutsFunc(m))
 	router.Get("/totals", getWorkoutTotalsFunc(m))
+	router.Get("/totals/{every}", getPeriodicTotalsFunc(m))
 	router.Get("/{workoutid}", getWorkoutFunc(m))
 	router.Get("/{workoutid}/segments", getWorkoutSegmentsFunc(m))
 	router.Get("/{workoutid}/route", getWorkoutRouteFunc(m))
@@ -444,5 +445,42 @@ func getWorkoutTotalsFunc(m models.Model) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, totals)
+	}
+}
+
+// getPeriodicTotalsFunc sums the counted workouts per week or month of ?from=/?to=, at ?tz='s local midnights.
+func getPeriodicTotalsFunc(m models.Model) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		userToken, err := tokens.UserTokenFromContext(ctx)
+		if err != nil {
+			unauthorizedHandler(w, r)
+			return
+		}
+		every := chi.URLParam(r, "every")
+		if every != models.EveryWeek && every != models.EveryMonth {
+			notFoundHandler(w, r)
+			return
+		}
+		window, err := parseWindow(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		loc, err := parseLocation(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		periods, err := m.PeriodicTotals(ctx, every, window, loc, userToken)
+		if errors.Is(err, models.ErrTooManyPeriods) {
+			http.Error(w, fmt.Sprintf("the window spans more than %d %ss", models.MaxPeriods, every), http.StatusBadRequest)
+			return
+		}
+		if err != nil {
+			serverError(w, err)
+			return
+		}
+		writeJSON(w, periods)
 	}
 }

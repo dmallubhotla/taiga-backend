@@ -169,3 +169,21 @@ ORDER BY
   start_time
 LIMIT
   1;
+
+-- name: ListCountedWorkoutsInWindow :many
+-- What a periodic total needs of each counted workout starting in [window_from, window_to), oldest first; bucketing by local week or month happens in Go, since the two databases share no date functions.
+SELECT
+  sport,
+  start_time,
+  distance_miles,
+  time_seconds
+FROM
+  workouts
+WHERE
+  user_id = sqlc.arg(user_id)
+  AND excluded_reason = ''
+  AND start_time >= sqlc.arg(window_from)
+  AND start_time < sqlc.arg(window_to)
+ORDER BY
+  start_time,
+  id;

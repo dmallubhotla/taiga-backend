@@ -296,6 +296,26 @@ func TestTimeWindowParams(t *testing.T) {
 	require.Len(t, efforts, 1)
 	assert.Equal(t, earlier, efforts[0].WorkoutID)
 
+	status, body = alice.get("/workouts/totals/month?tz=America/Chicago")
+	require.Equal(t, http.StatusOK, status, string(body))
+	var months []models.PeriodTotals
+	require.NoError(t, json.Unmarshal(body, &months))
+	require.Len(t, months, 13, "every month from the first workout's to the last's")
+	assert.Len(t, months[0].Sports, 1)
+	assert.Empty(t, months[1].Sports)
+	assert.Contains(t, string(body), `-0`, "starts are local midnights with their offset")
+
+	status, body = alice.get("/segments/yearly-bests?tz=America/Chicago")
+	require.Equal(t, http.StatusOK, status, string(body))
+	var years []models.YearBests
+	require.NoError(t, json.Unmarshal(body, &years))
+	require.Len(t, years, 2)
+	assert.Equal(t, later, years[0].Efforts["1k"].WorkoutID)
+
+	status, body = alice.get("/routes?from=" + from)
+	require.Equal(t, http.StatusOK, status, string(body))
+	assert.JSONEq(t, `[]`, string(body))
+
 	for _, bad := range []string{
 		"/workouts?from=yesterday",
 		"/workouts?from=2026-02-01&to=2026-01-01",
@@ -304,8 +324,22 @@ func TestTimeWindowParams(t *testing.T) {
 		"/workouts?offset=-1",
 		"/workouts/totals?to=soon",
 		"/segments/1k/best?from=nope",
+		"/workouts/totals/week?tz=Mars/Olympus",
+		"/workouts/totals/week?tz=Local",
+		"/workouts/totals/week?from=1900-01-01&to=2100-01-01",
+		"/segments/yearly-bests?sport=cycling",
+		"/segments/yearly-bests?tz=nowhere",
+		"/routes?from=nope",
+		"/routes/1?to=nope",
 	} {
 		status, _ := alice.get(bad)
 		assert.Equal(t, http.StatusBadRequest, status, bad)
 	}
+}
+
+func TestPeriodicTotalsUnknownPeriodIsNotFound(t *testing.T) {
+	srv, m, toker := newAPI(t)
+	alice := newUserClient(t, srv, m, toker, "alice@example.com")
+	status, _ := alice.get("/workouts/totals/fortnight")
+	assert.Equal(t, http.StatusNotFound, status)
 }

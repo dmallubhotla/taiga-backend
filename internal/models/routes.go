@@ -21,7 +21,7 @@ const JobDetectRoutes = "detect_routes"
 // ErrNoRoute means the workout isn't on any route: it has no GPS, or no other run matches it yet.
 var ErrNoRoute = errors.New("workout is not on a route")
 
-// RouteSummary is a route with figures over its runs.
+// RouteSummary is a route with figures over its runs, or just those starting in a window.
 type RouteSummary struct {
 	ID   int32   `json:"id"`
 	Name *string `json:"name"`
@@ -37,7 +37,7 @@ type RouteSummary struct {
 	LatestStartTime pgtype.Timestamptz `json:"latest_start_time"`
 }
 
-// RouteDetail is a route with its runs, newest first, and the representative's track.
+// RouteDetail is a route with its runs (in the window, if one was given), newest first, and the representative's track.
 type RouteDetail struct {
 	RouteSummary
 	Workouts []*Workout `json:"workouts"`
@@ -45,13 +45,18 @@ type RouteDetail struct {
 	Track [][2]float64 `json:"track"`
 }
 
-func summarize(route *db.Route, runs []*Workout) *RouteSummary {
-	s := &RouteSummary{ID: route.ID, Name: route.Name, RepresentativeWorkoutID: route.RepresentativeWorkoutID, RunCount: len(runs)}
+// summarize takes the sport and distance from the representative run, wherever it falls, and the figures from the runs starting in the window.
+func summarize(route *db.Route, runs []*Workout, window Window) *RouteSummary {
+	s := &RouteSummary{ID: route.ID, Name: route.Name, RepresentativeWorkoutID: route.RepresentativeWorkoutID}
 	for _, w := range runs {
 		if s.RepresentativeWorkoutID != nil && w.ID == *s.RepresentativeWorkoutID {
 			s.DistanceMiles = w.DistanceMiles
 			s.Sport = w.Sport
 		}
+		if !window.Contains(w.StartTime.Time) {
+			continue
+		}
+		s.RunCount++
 		if w.TimeSeconds != nil && (s.BestTimeSeconds == nil || *w.TimeSeconds < *s.BestTimeSeconds) {
 			s.BestTimeSeconds, s.BestWorkoutID = w.TimeSeconds, &w.ID
 		}
@@ -86,8 +91,8 @@ func routeRuns(ctx context.Context, q db.Querier, userToken *tokens.UserToken) (
 	return runs, nil
 }
 
-// Routes lists the user's routes, most recently run first.
-func (m *storeModel) Routes(ctx context.Context, userToken *tokens.UserToken) ([]*RouteSummary, error) {
+// Routes lists the user's routes, most recently run first; given a window, only those run in it.
+func (m *storeModel) Routes(ctx context.Context, window Window, userToken *tokens.UserToken) ([]*RouteSummary, error) {
 	q, err := m.store.GetQuerier()
 	if err != nil {
 		return nil, err
@@ -102,7 +107,11 @@ func (m *storeModel) Routes(ctx context.Context, userToken *tokens.UserToken) ([
 	}
 	out := make([]*RouteSummary, 0, len(routes))
 	for _, r := range routes {
-		out = append(out, summarize(r, runs[r.ID]))
+		s := summarize(r, runs[r.ID], window)
+		if s.RunCount == 0 && window != (Window{}) {
+			continue
+		}
+		out = append(out, s)
 	}
 	slices.SortStableFunc(out, func(a, b *RouteSummary) int {
 		return b.LatestStartTime.Time.Compare(a.LatestStartTime.Time)
@@ -110,7 +119,7 @@ func (m *storeModel) Routes(ctx context.Context, userToken *tokens.UserToken) ([
 	return out, nil
 }
 
-func (m *storeModel) Route(ctx context.Context, id int32, userToken *tokens.UserToken) (*RouteDetail, error) {
+func (m *storeModel) Route(ctx context.Context, id int32, window Window, userToken *tokens.UserToken) (*RouteDetail, error) {
 	q, err := m.store.GetQuerier()
 	if err != nil {
 		return nil, err
@@ -123,9 +132,11 @@ func (m *storeModel) Route(ctx context.Context, id int32, userToken *tokens.User
 	if err != nil {
 		return nil, err
 	}
-	detail := &RouteDetail{RouteSummary: *summarize(route, runs[id]), Workouts: runs[id], Track: [][2]float64{}}
-	if detail.Workouts == nil {
-		detail.Workouts = []*Workout{}
+	detail := &RouteDetail{RouteSummary: *summarize(route, runs[id], window), Workouts: []*Workout{}, Track: [][2]float64{}}
+	for _, w := range runs[id] {
+		if window.Contains(w.StartTime.Time) {
+			detail.Workouts = append(detail.Workouts, w)
+		}
 	}
 	if route.RepresentativeWorkoutID != nil {
 		raw, err := q.GetWorkoutTrack(ctx, &db.GetWorkoutTrackParams{WorkoutID: *route.RepresentativeWorkoutID, UserID: userToken.ID})
@@ -157,7 +168,7 @@ func (m *storeModel) RenameRoute(ctx context.Context, id int32, name *string, us
 	if err != nil {
 		return nil, err
 	}
-	return summarize(route, runs[id]), nil
+	return summarize(route, runs[id], Window{}), nil
 }
 
 // WorkoutRoute is the route the workout is on; ErrNoRoute if none, not-found if the workout isn't the user's.
@@ -176,7 +187,7 @@ func (m *storeModel) WorkoutRoute(ctx context.Context, workoutID int32, userToke
 	if err != nil {
 		return nil, err
 	}
-	detail, err := m.Route(ctx, routeID, userToken)
+	detail, err := m.Route(ctx, routeID, Window{}, userToken)
 	if err != nil {
 		return nil, err
 	}

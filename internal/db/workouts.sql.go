@@ -249,6 +249,63 @@ func (q *Queries) GetWorkoutsByActivityFile(ctx context.Context, arg *GetWorkout
 	return items, nil
 }
 
+const listCountedWorkoutsInWindow = `-- name: ListCountedWorkoutsInWindow :many
+SELECT
+  sport,
+  start_time,
+  distance_miles,
+  time_seconds
+FROM
+  workouts
+WHERE
+  user_id = $1
+  AND excluded_reason = ''
+  AND start_time >= $2
+  AND start_time < $3
+ORDER BY
+  start_time,
+  id
+`
+
+type ListCountedWorkoutsInWindowParams struct {
+	UserID     int32              `json:"user_id"`
+	WindowFrom pgtype.Timestamptz `json:"window_from"`
+	WindowTo   pgtype.Timestamptz `json:"window_to"`
+}
+
+type ListCountedWorkoutsInWindowRow struct {
+	Sport         string             `json:"sport"`
+	StartTime     pgtype.Timestamptz `json:"start_time"`
+	DistanceMiles *float64           `json:"distance_miles"`
+	TimeSeconds   *float64           `json:"time_seconds"`
+}
+
+// What a periodic total needs of each counted workout starting in [window_from, window_to), oldest first; bucketing by local week or month happens in Go, since the two databases share no date functions.
+func (q *Queries) ListCountedWorkoutsInWindow(ctx context.Context, arg *ListCountedWorkoutsInWindowParams) ([]*ListCountedWorkoutsInWindowRow, error) {
+	rows, err := q.db.Query(ctx, listCountedWorkoutsInWindow, arg.UserID, arg.WindowFrom, arg.WindowTo)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListCountedWorkoutsInWindowRow{}
+	for rows.Next() {
+		var i ListCountedWorkoutsInWindowRow
+		if err := rows.Scan(
+			&i.Sport,
+			&i.StartTime,
+			&i.DistanceMiles,
+			&i.TimeSeconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkoutsByUser = `-- name: ListWorkoutsByUser :many
 SELECT
   id, distance_miles, time_seconds, speed_mph, pace_min_per_mile, start_time, end_time, activity_file_id, created_at, updated_at, user_id, processor_version, sport, sub_sport, excluded_reason, source, sport_override, user_excluded_reason
