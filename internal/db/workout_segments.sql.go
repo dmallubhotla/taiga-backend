@@ -169,6 +169,73 @@ func (q *Queries) ListBestSegmentsByName(ctx context.Context, arg *ListBestSegme
 	return items, nil
 }
 
+const listSegmentEffortsBySport = `-- name: ListSegmentEffortsBySport :many
+SELECT
+  workout_segments.id, workout_segments.workout_id, workout_segments.user_id, workout_segments.name, workout_segments.distance_meters, workout_segments.duration_seconds, workout_segments.start_offset_seconds, workout_segments.end_offset_seconds, workout_segments.created_at, workout_segments.kind,
+  workouts.start_time AS workout_start_time
+FROM
+  workout_segments
+  JOIN workouts ON workouts.id = workout_segments.workout_id
+WHERE
+  workout_segments.user_id = $1
+  AND workouts.sport = $2
+ORDER BY
+  workouts.start_time,
+  workout_segments.id
+`
+
+type ListSegmentEffortsBySportParams struct {
+	UserID int32  `json:"user_id"`
+	Sport  string `json:"sport"`
+}
+
+type ListSegmentEffortsBySportRow struct {
+	ID                 int32              `json:"id"`
+	WorkoutID          int32              `json:"workout_id"`
+	UserID             int32              `json:"user_id"`
+	Name               string             `json:"name"`
+	DistanceMeters     float64            `json:"distance_meters"`
+	DurationSeconds    float64            `json:"duration_seconds"`
+	StartOffsetSeconds float64            `json:"start_offset_seconds"`
+	EndOffsetSeconds   float64            `json:"end_offset_seconds"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	Kind               string             `json:"kind"`
+	WorkoutStartTime   pgtype.Timestamptz `json:"workout_start_time"`
+}
+
+// Every segment of the user's workouts of one sport, for picking each year's best at each segment in Go.
+func (q *Queries) ListSegmentEffortsBySport(ctx context.Context, arg *ListSegmentEffortsBySportParams) ([]*ListSegmentEffortsBySportRow, error) {
+	rows, err := q.db.Query(ctx, listSegmentEffortsBySport, arg.UserID, arg.Sport)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListSegmentEffortsBySportRow{}
+	for rows.Next() {
+		var i ListSegmentEffortsBySportRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkoutID,
+			&i.UserID,
+			&i.Name,
+			&i.DistanceMeters,
+			&i.DurationSeconds,
+			&i.StartOffsetSeconds,
+			&i.EndOffsetSeconds,
+			&i.CreatedAt,
+			&i.Kind,
+			&i.WorkoutStartTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSegmentsByWorkout = `-- name: ListSegmentsByWorkout :many
 SELECT
   id, workout_id, user_id, name, distance_meters, duration_seconds, start_offset_seconds, end_offset_seconds, created_at, kind

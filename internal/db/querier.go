@@ -69,10 +69,14 @@ type Querier interface {
 	ListActivityFilesWithoutWorkout(ctx context.Context, userID *int32) ([]*ActivityFile, error)
 	// A distance segment ranks by time, a duration segment by distance covered; only workouts of one sport starting in [window_from, window_to) compete.
 	ListBestSegmentsByName(ctx context.Context, arg *ListBestSegmentsByNameParams) ([]*ListBestSegmentsByNameRow, error)
+	// What a periodic total needs of each counted workout starting in [window_from, window_to), oldest first; bucketing by local week or month happens in Go, since the two databases share no date functions.
+	ListCountedWorkoutsInWindow(ctx context.Context, arg *ListCountedWorkoutsInWindowParams) ([]*ListCountedWorkoutsInWindowRow, error)
 	ListHatsByUser(ctx context.Context, userID *int32) ([]*Hat, error)
 	ListJobsByUser(ctx context.Context, arg *ListJobsByUserParams) ([]*Job, error)
 	ListJobsByUserAndState(ctx context.Context, arg *ListJobsByUserAndStateParams) ([]*Job, error)
 	ListRoutesByUser(ctx context.Context, userID int32) ([]*Route, error)
+	// Every segment of the user's workouts of one sport, for picking each year's best at each segment in Go.
+	ListSegmentEffortsBySport(ctx context.Context, arg *ListSegmentEffortsBySportParams) ([]*ListSegmentEffortsBySportRow, error)
 	// Distance segments shortest first, then duration segments shortest first.
 	ListSegmentsByWorkout(ctx context.Context, arg *ListSegmentsByWorkoutParams) ([]*WorkoutSegment, error)
 	ListWorkoutRoutesByUser(ctx context.Context, userID int32) ([]*WorkoutRoute, error)

@@ -226,9 +226,10 @@ The file is the source of truth, but files are sometimes wrong: a ride saved as 
 
 Years of history (an Endomondo archive goes back to 2016) make an all-time list long and all-time bests stale.
 
-- [x] **Restrict the workout list by time.** `GET /workouts?from=&to=&limit=&offset=`, and `GET /workouts/totals` for a window's count, distance and time per sport (counted workouts only) with the earliest start, so the frontend can list the years there are. The frontend opens on this year, keeps the period in the URL (`?period=`), and shows its totals above the list. A month picker isn't there yet.
-- [x] **Best efforts per year or window.** The same `from`/`to` on `GET /segments/{name}/best`. The best page picks all time, the last 12 months, the last 90 days or a year, and under all time shows the distance's best in each year. A table of every distance by year is still to do: it would take a call per distance per year, so it wants one backend query.
-- [ ] Route pages and trends take the same window, so a route's best can be this year's.
+- [x] **Restrict the workout list by time.** `GET /workouts?from=&to=&limit=&offset=`, and `GET /workouts/totals` for a window's count, distance and time per sport (counted workouts only) with the earliest start, so the frontend can list the years there are. The frontend opens on this year, keeps the period in the URL (`?period=`), and shows its totals above the list; a year narrows to a month.
+- [x] **Mileage per week or month.** `GET /workouts/totals/week` and `/month` sum each period of a window per sport, at the viewer's local midnights (`?tz=`), empty periods included so a chart has no gaps. The workout list charts it above the totals: weeks for a year or a month, months for all time.
+- [x] **Best efforts per year or window.** The same `from`/`to` on `GET /segments/{name}/best`. The best page picks all time, the last 12 months, the last 90 days or a year, and under all time shows every distance's best in each year from one call, `GET /segments/yearly-bests`.
+- [x] **Route pages take the same window**, so a route's best can be this year's: `?from=&to=` on `GET /routes` and `GET /routes/{id}`, and a period picker on both pages.
 
 ## Later
 

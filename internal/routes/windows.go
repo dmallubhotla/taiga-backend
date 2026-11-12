@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	// The image has no zoneinfo, so ?tz= needs the embedded copy.
+	_ "time/tzdata"
 
 	"gitea.deepak.science/deepak/taiga/internal/models"
 )
@@ -64,4 +66,17 @@ func parseWorkoutQuery(q url.Values) (models.WorkoutQuery, error) {
 		query.Offset = int32(offset)
 	}
 	return query, nil
+}
+
+// parseLocation reads ?tz= as an IANA zone such as America/Chicago, for bucketing by local day; UTC when absent.
+func parseLocation(q url.Values) (*time.Location, error) {
+	raw := q.Get("tz")
+	if raw == "" {
+		return time.UTC, nil
+	}
+	loc, err := time.LoadLocation(raw)
+	if err != nil || raw == "Local" {
+		return nil, fmt.Errorf("tz must be an IANA time zone such as America/Chicago, got %q", raw)
+	}
+	return loc, nil
 }

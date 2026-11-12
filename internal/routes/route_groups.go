@@ -42,7 +42,12 @@ func getRoutesFunc(m models.Model) http.HandlerFunc {
 			unauthorizedHandler(w, r)
 			return
 		}
-		routes, err := m.Routes(r.Context(), userToken)
+		window, err := parseWindow(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		routes, err := m.Routes(r.Context(), window, userToken)
 		if err != nil {
 			serverError(w, err)
 			return
@@ -68,7 +73,12 @@ func getRouteFunc(m models.Model) http.HandlerFunc {
 			notFoundHandler(w, r)
 			return
 		}
-		route, err := m.Route(r.Context(), id, userToken)
+		window, err := parseWindow(r.URL.Query())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		route, err := m.Route(r.Context(), id, window, userToken)
 		if models.IsNotFound(err) {
 			notFoundHandler(w, r)
 			return

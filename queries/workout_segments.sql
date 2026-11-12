@@ -58,3 +58,18 @@ DELETE FROM workout_segments
 WHERE
   workout_id = $1
   AND user_id = $2;
+
+-- name: ListSegmentEffortsBySport :many
+-- Every segment of the user's workouts of one sport, for picking each year's best at each segment in Go.
+SELECT
+  workout_segments.*,
+  workouts.start_time AS workout_start_time
+FROM
+  workout_segments
+  JOIN workouts ON workouts.id = workout_segments.workout_id
+WHERE
+  workout_segments.user_id = sqlc.arg(user_id)
+  AND workouts.sport = sqlc.arg(sport)
+ORDER BY
+  workouts.start_time,
+  workout_segments.id;

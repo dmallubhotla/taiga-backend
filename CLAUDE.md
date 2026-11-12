@@ -292,13 +292,15 @@ file_repo:
 - `PUT /workouts/{id}/corrections` - Replace a file-backed workout's corrections, `{"sport": "walking", "excluded_reason": "ran with a friend"}` (a FIT sport name; a reason of at most 64 characters), and return it reprocessed with them; a field left out or empty clears that correction. `400` for an unknown sport, `422` for a hand-entered workout
 - `POST /workouts/reprocess` - Queue reprocessing of all the user's file-backed workouts; `202` with `{enqueued}`, progress under `/jobs`
 - `GET /workouts/totals?from=&to=` - `{sports, first_start_time}`: per sport, the count (`workouts`), `distance_miles` and `time_seconds` of the workouts starting in the window that count (an `excluded_reason` keeps one out), most workouts first; and the earliest start of any workout listed in the window, so a client can offer the years there are (null when there are none)
+- `GET /workouts/totals/week` and `GET /workouts/totals/month`, `?from=&to=&tz=` - `[{start, sports}]`, the same per-sport sums for every week (from Monday) or month across the window, empty ones included, at the local midnights of `tz` (an IANA zone such as `America/Chicago`; default UTC). An open end stops at the first or last counted workout; a period straddling an edge only sums what's inside; `400` past 1000 periods
 - `GET /workouts/compare?ids=1,2` - Up to 10 workouts with segments keyed by name, plus `distances` (the segment names any of them have, durations last)
 - `GET /segments` - The standard segments: distances (`1k`, `1mi`, `3k`, `2mi`, `5k`, `5mi`, `10k`, `half`, `marathon`) with `meters`, then durations (`30min`, `1h`) with `seconds`, each with its `kind`
 - `GET /segments/{name}/best?sport=running|walking&limit=N&from=&to=` - The user's best efforts at that segment across workouts of one sport (default `running`; default 10, max 100) starting in the window (same `from`/`to` as `GET /workouts`; default all time): fastest for a distance, farthest for a duration
+- `GET /segments/yearly-bests?sport=running|walking&tz=` - `[{year, efforts}]`, newest first: for each local calendar year with any, the best effort at every standard segment, keyed by name (each effort as in `/best`)
 
 ### Routes API (requires JWT token)
-- `GET /routes` - The user's routes, most recently run first: `{id, name, sport, representative_workout_id, run_count, distance_miles, best_time_seconds, best_workout_id, latest_start_time}`
-- `GET /routes/{id}` - A route with its `workouts` (newest first) and `track`, the representative run's resampled `[lat, lon]` points
+- `GET /routes` - The user's routes, most recently run first; `?from=&to=` (as on `GET /workouts`) keeps routes run in the window, and counts only those runs: `{id, name, sport, representative_workout_id, run_count, distance_miles, best_time_seconds, best_workout_id, latest_start_time}`
+- `GET /routes/{id}` - A route with its `workouts` (newest first; `?from=&to=` keeps those in the window, and the figures follow) and `track`, the representative run's resampled `[lat, lon]` points
 - `PUT /routes/{id}` - Rename with `{"name": "..."}` (trimmed, at most 100 characters); an empty or null name clears it
 - `GET /workouts/{id}/route` - The route a workout is on; `404` when it has none (no GPS, or nothing else matches it yet)
 
