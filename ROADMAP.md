@@ -131,11 +131,13 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
 - [x] Compare view: overlay workouts' pace graphs aligned by distance.
 - [x] Workout page laid out as a desktop dashboard: map top left, splits top right, the graph along the bottom, sized to the screen.
 - [x] **Best efforts by time**: the farthest stretch in 30 minutes and an hour, stored as `kind = duration` segments beside the distance ones and ranked by distance; they show on the workout page, best efforts and compare. More durations (20 minutes, 2 hours) are one line in `StandardDurations`, and reprocessing backfills them.
-- [ ] **Quieter map** (feedback 2026-11-11). The map takes too much of the dashboard and the OSM style competes with the track: highways and landuse are as loud as the route.
-  - Give the map less of the grid, so splits and graphs get more room.
-  - A muted basemap (a light, desaturated style such as CARTO Positron, or a CSS greyscale filter on the OSM tiles as a stopgap), so road colours drop out.
-  - A more distinctive track on top: thicker, a casing (dark outline under the line) so it reads on any background, and stronger start/finish markers. A self-hosted vector style (PMTiles + MapLibre) would allow this fully, and would also keep the map's area away from a tile server.
-- [ ] **Grafana-style graph legend.** Drop the separate colour swatches and checkbox toggles above the graph; the legend under it lists each series with its colour and value at the cursor, and clicking an entry shows or hides that series.
+- [x] **Quieter map** (feedback 2026-11-11). The map took too much of the dashboard and the OSM style competed with the track.
+  - The map gets less of the grid (3:2 columns, half the height), so splits and graphs get more room.
+  - The OSM tiles are greyed by a CSS filter (inverted in dark mode), so road colours drop out. CARTO Positron was the first choice, but its tiles now need an API key.
+  - The track is drawn at full opacity over a dark casing, with larger start/finish markers.
+  - Still open: a self-hosted vector style (PMTiles + MapLibre) would give full control of the basemap, and would also keep the map's area away from a tile server.
+- [x] **Grafana-style graph legend.** The colour swatches and checkbox toggles above the graph are gone; the legend under it lists each series with its colour and value at the cursor, and clicking an entry shows or hides that series.
+- [ ] **Years on time axes** (feedback 2026-11-12). The date axes on the best-effort pace trend and a route's runs label ticks with month and day only (`timeAxis` in the frontend's `chart.ts`); the year shows only in the hover readout. Over several years of history the year is the part that matters most, so ticks should carry it, at least where the year changes.
 
 ### Series sampling: today, and upgrades for when they're needed
 
