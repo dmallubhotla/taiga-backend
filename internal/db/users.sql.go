@@ -103,6 +103,47 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (*GetUserRow, error) {
 	return &i, err
 }
 
+const getUserByEmail = `-- name: GetUserByEmail :one
+
+SELECT
+  id,
+  email,
+  display_name
+FROM
+  users
+WHERE
+  lower(email) = lower($1)
+`
+
+type GetUserByEmailRow struct {
+	ID          int32  `json:"id"`
+	Email       string `json:"email"`
+	DisplayName string `json:"display_name"`
+}
+
+// -- name: UpdateUser :exec
+// UPDATE users
+// SET
+//
+//	name = $2,
+//	updated_at = CURRENT_TIMESTAMP
+//
+// WHERE
+//
+//	id = $1;
+//
+// -- name: DeleteUser :exec
+// DELETE FROM users
+// WHERE
+//
+//	id = $1;
+func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (*GetUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, lower)
+	var i GetUserByEmailRow
+	err := row.Scan(&i.ID, &i.Email, &i.DisplayName)
+	return &i, err
+}
+
 const selectEmailPasswordForAuth = `-- name: SelectEmailPasswordForAuth :one
 SELECT
   id,
@@ -137,4 +178,20 @@ func (q *Queries) SelectEmailPasswordForAuth(ctx context.Context, email string) 
 		&i.Password,
 	)
 	return &i, err
+}
+
+const userHasPassword = `-- name: UserHasPassword :one
+SELECT
+  CAST(password IS NOT NULL AS BOOLEAN) AS has_password
+FROM
+  users
+WHERE
+  id = $1
+`
+
+func (q *Queries) UserHasPassword(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRow(ctx, userHasPassword, id)
+	var has_password bool
+	err := row.Scan(&has_password)
+	return has_password, err
 }

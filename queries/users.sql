@@ -66,3 +66,20 @@ RETURNING
 -- DELETE FROM users
 -- WHERE
 --   id = $1;
+-- name: GetUserByEmail :one
+SELECT
+  id,
+  email,
+  display_name
+FROM
+  users
+WHERE
+  lower(email) = lower($1);
+
+-- name: UserHasPassword :one
+SELECT
+  CAST(password IS NOT NULL AS BOOLEAN) AS has_password
+FROM
+  users
+WHERE
+  id = $1;

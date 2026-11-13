@@ -95,6 +95,11 @@ func (m *storeModel) VerifyUserByEmailPassword(ctx context.Context, email string
 		return nil, fmt.Errorf("couldn't select a user: %w", err)
 	}
 
+	// An account made through a provider has no password to sign in with.
+	if userWithPassword.Password == nil {
+		_, _ = hashPassword(password)
+		return nil, ErrInvalidLogin
+	}
 	err = bcrypt.CompareHashAndPassword(userWithPassword.Password, []byte(password))
 	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 		return nil, ErrInvalidLogin

@@ -6,6 +6,7 @@ import (
 
 	"gitea.deepak.science/deepak/taiga/internal/filerepo"
 	"gitea.deepak.science/deepak/taiga/internal/models"
+	"gitea.deepak.science/deepak/taiga/internal/oidc"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
 	"github.com/go-chi/chi/v5"
 )
@@ -17,6 +18,8 @@ import (
 
 type options struct {
 	registrationOpen bool
+	passwordLogin    bool
+	oidc             *oidc.Registry
 }
 
 type Option func(*options)
@@ -26,9 +29,19 @@ func WithRegistration(open bool) Option {
 	return func(o *options) { o.registrationOpen = open }
 }
 
+// WithPasswordLogin sets whether /auth/register and /auth/tokens work at all; on unless set.
+func WithPasswordLogin(on bool) Option {
+	return func(o *options) { o.passwordLogin = on }
+}
+
+// WithOIDC offers sign-in through the registry's providers.
+func WithOIDC(r *oidc.Registry) Option {
+	return func(o *options) { o.oidc = r }
+}
+
 // New creates a new handlers instance
 func New(m models.Model, tok tokens.Toker, fileRepo filerepo.FileRepo, opts ...Option) http.Handler {
-	o := options{registrationOpen: true}
+	o := options{registrationOpen: true, passwordLogin: true, oidc: &oidc.Registry{}}
 	for _, opt := range opts {
 		opt(&o)
 	}

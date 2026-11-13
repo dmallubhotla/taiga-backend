@@ -57,6 +57,15 @@ type User struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type UserIdentity struct {
+	ID          int32              `json:"id"`
+	UserID      int32              `json:"user_id"`
+	Issuer      string             `json:"issuer"`
+	Subject     string             `json:"subject"`
+	EmailAtLink string             `json:"email_at_link"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type Workout struct {
 	ID                 int32              `json:"id"`
 	DistanceMiles      *float64           `json:"distance_miles"`

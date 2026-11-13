@@ -57,13 +57,16 @@ Multiple accounts exist only so more than one person can use the same deployment
 
 ### Tasks
 
-- [ ] Config: `auth.*` section, provider list, secrets read from files; refuse to start if a provider's discovery fails at boot (log which).
-- [ ] Migration `user_identities` (next free number) (postgres + sqlite) and sqlc queries.
-- [ ] `internal/oidc`: provider registry from config, login redirect, callback handling, state/nonce/PKCE cookie.
-- [ ] Routes: `/auth/providers`, `/auth/oidc/{provider}/{login,callback}`, `/auth/identities` (list, link, unlink).
-- [ ] Tests against an in-process fake provider (e.g. `github.com/oauth2-proxy/mockoidc`): happy path, bad `state`, bad `nonce`, wrong audience, expired token, signup disabled, email auto-link on and off, `email_verified: false`.
-- [ ] Frontend: provider buttons on the login page from `/auth/providers`, a `#/login/callback` route that stores the token, and a linked-accounts section.
-- [ ] Docs: an authentik walkthrough (OAuth2/OpenID provider + application, redirect URI, scopes) as the worked example, plus the generic settings any provider needs.
+- [x] Config: `auth.*` section, provider list, secrets read from files; refuse to start if a provider's discovery fails at boot (log which).
+  - From env alone, `TAIGA_AUTH_OIDC` holds the list as JSON.
+- [x] Migration `user_identities` (000012) (postgres + sqlite) and sqlc queries.
+- [x] `internal/oidc`: provider registry from config, login redirect, callback handling, state/nonce/PKCE cookie.
+  - The cookie's HMAC key is derived from the token signing key, so a flow survives a restart and works across replicas.
+- [x] Routes: `/auth/providers`, `/auth/oidc/{provider}/{login,callback}`, `/auth/identities` (list, link, unlink).
+  - Linking is `POST /auth/identities/{provider}` returning `{url}` rather than a redirect, since a fetch carrying the bearer token can't navigate; the flow cookie remembers whom to link to.
+- [x] Tests against an in-process fake provider (`testsupport.FakeOIDC`, written for the job instead of mockoidc so each test can pick the audience, expiry and nonce): happy path, bad `state`, no or replayed flow cookie, bad `nonce`, wrong audience, expired token, the provider's own error, signup disabled, email auto-link on and off, `email_verified: false`, a new account without an email, linking and unlinking, password login off.
+- [x] Frontend (taiga-frontend#17): provider buttons on the login page from `/auth/providers`, a `#/login/callback` route that stores the token and takes it out of the URL, and an account page (`#/account`) to link and unlink providers.
+- [x] Docs: an authentik walkthrough plus the generic settings any provider needs (`docs/oidc.md`).
 
 **Exit criteria:** with only an authentik provider configured, a new user can sign in from the frontend and use every page; an existing password user can link authentik and then sign in either way; swapping in a second provider (e.g. Keycloak) needs config only.
 

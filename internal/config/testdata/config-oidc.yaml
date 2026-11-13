@@ -1,0 +1,12 @@
+auth:
+  password_login: false
+  public_base_url: "https://taiga.example.com"
+  oidc:
+    - name: authentik
+      display_name: "authentik"
+      issuer: "https://auth.example.com/application/o/taiga/"
+      client_id: "taiga"
+      client_secret_file: "/run/secrets/taiga-oidc-authentik"
+      scopes: [openid, email, profile]
+      allow_signup: false
+      link_by_verified_email: true

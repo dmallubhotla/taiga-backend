@@ -360,3 +360,43 @@ func TestRegistrationFromEnv(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "closed", cfg.Auth.Registration)
 }
+
+func TestOIDCProvidersFromFile(t *testing.T) {
+	clearEnvVars(t)
+	t.Chdir("testdata")
+	copyFile(t, "config-oidc.yaml", "config.yaml")
+	t.Cleanup(func() { _ = os.Remove("config.yaml") })
+
+	cfg, err := config.Load("config")
+	require.NoError(t, err)
+	assert.False(t, cfg.Auth.PasswordLogin)
+	assert.Equal(t, "https://taiga.example.com/api", cfg.Auth.APIBase())
+	require.Len(t, cfg.Auth.OIDC, 1)
+	p := cfg.Auth.OIDC[0]
+	assert.Equal(t, "authentik", p.Name)
+	assert.Equal(t, "https://auth.example.com/application/o/taiga/", p.Issuer)
+	assert.Equal(t, "/run/secrets/taiga-oidc-authentik", p.ClientSecretFile)
+	assert.Equal(t, []string{"openid", "email", "profile"}, p.Scopes)
+	require.NotNil(t, p.AllowSignup)
+	assert.False(t, *p.AllowSignup)
+	assert.True(t, p.LinkByVerifiedEmail)
+}
+
+func TestOIDCProvidersFromEnvJSON(t *testing.T) {
+	clearEnvVars(t)
+	t.Setenv("TAIGA_AUTH_OIDC", `[{"name":"authentik","issuer":"https://auth.example.com/","client_id":"taiga","client_secret_file":"/s"}]`)
+	t.Setenv("TAIGA_AUTH_API_BASE_URL", "https://api.example.com/")
+	t.Chdir(t.TempDir())
+
+	cfg, err := config.Load("config")
+	require.NoError(t, err)
+	assert.True(t, cfg.Auth.PasswordLogin, "password login defaults on")
+	assert.Equal(t, "https://api.example.com", cfg.Auth.APIBase())
+	require.Len(t, cfg.Auth.OIDC, 1)
+	assert.Equal(t, "taiga", cfg.Auth.OIDC[0].ClientID)
+	assert.Nil(t, cfg.Auth.OIDC[0].AllowSignup)
+
+	t.Setenv("TAIGA_AUTH_OIDC", `not json`)
+	_, err = config.Load("config")
+	assert.ErrorContains(t, err, "JSON list of providers")
+}
