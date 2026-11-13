@@ -65,7 +65,7 @@ Multiple accounts exist only so more than one person can use the same deployment
 - [x] Routes: `/auth/providers`, `/auth/oidc/{provider}/{login,callback}`, `/auth/identities` (list, link, unlink).
   - Linking is `POST /auth/identities/{provider}` returning `{url}` rather than a redirect, since a fetch carrying the bearer token can't navigate; the flow cookie remembers whom to link to.
 - [x] Tests against an in-process fake provider (`testsupport.FakeOIDC`, written for the job instead of mockoidc so each test can pick the audience, expiry and nonce): happy path, bad `state`, no or replayed flow cookie, bad `nonce`, wrong audience, expired token, the provider's own error, signup disabled, email auto-link on and off, `email_verified: false`, a new account without an email, linking and unlinking, password login off.
-- [ ] Frontend: provider buttons on the login page from `/auth/providers`, a `#/login/callback` route that stores the token, and a linked-accounts section.
+- [x] Frontend (taiga-frontend#17): provider buttons on the login page from `/auth/providers`, a `#/login/callback` route that stores the token and takes it out of the URL, and an account page (`#/account`) to link and unlink providers.
 - [x] Docs: an authentik walkthrough plus the generic settings any provider needs (`docs/oidc.md`).
 
 **Exit criteria:** with only an authentik provider configured, a new user can sign in from the frontend and use every page; an existing password user can link authentik and then sign in either way; swapping in a second provider (e.g. Keycloak) needs config only.
