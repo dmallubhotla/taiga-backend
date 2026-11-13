@@ -137,7 +137,7 @@ The FIT file is the source of truth; everything taiga computes from it (summary,
   - The track is drawn at full opacity over a dark casing, with larger start/finish markers.
   - Still open: a self-hosted vector style (PMTiles + MapLibre) would give full control of the basemap, and would also keep the map's area away from a tile server.
 - [x] **Grafana-style graph legend.** The colour swatches and checkbox toggles above the graph are gone; the legend under it lists each series with its colour and value at the cursor, and clicking an entry shows or hides that series.
-- [ ] **Years on time axes** (feedback 2026-11-12). The date axes on the best-effort pace trend and a route's runs label ticks with month and day only (`timeAxis` in the frontend's `chart.ts`); the year shows only in the hover readout. Over several years of history the year is the part that matters most, so ticks should carry it, at least where the year changes.
+- [x] **Years on time axes** (feedback 2026-11-12). The date axes on the best-effort pace trend and a route's runs labelled ticks with month and day only, so the year showed only in the hover readout. Now the first tick and each new year's first carry the year on a second line (`timeAxis` in the frontend's `chart.ts`); month steps drop the day, and year steps show just the year.
 
 ### Series sampling: today, and upgrades for when they're needed
 
