@@ -41,6 +41,10 @@ This is the taiga API: upload FIT files (or Endomondo export JSON, or TCX such a
   - Type-safe database operations
   - Compiled SQL queries with Go interfaces
 
+- **internal/oidc**: Sign-in through OpenID Connect providers (`docs/oidc.md`)
+  - Provider registry from `auth.oidc`, endpoints from each issuer's discovery document, checked at boot
+  - Authorization code flow with PKCE; state, nonce and verifier in a signed, HttpOnly cookie scoped to the callback path
+
 - **internal/tokens**: JWT token management
   - RSA key-based signing and verification
   - Middleware for route authentication
@@ -235,6 +239,18 @@ app:
 
 auth:
   registration: "open"             # "open" or "closed"; defaults to open only in development
+  password_login: true             # false turns off /auth/register and /auth/tokens (SSO only)
+  public_base_url: "https://taiga.example.com"  # the frontend's origin; needed for OIDC
+  # api_base_url defaults to public_base_url + "/api"; provider callbacks are {api_base_url}/auth/oidc/{name}/callback
+  oidc:                            # see docs/oidc.md; from env, TAIGA_AUTH_OIDC holds this list as JSON
+    - name: authentik
+      display_name: "authentik"
+      issuer: "https://auth.example.com/application/o/taiga/"
+      client_id: "..."
+      client_secret_file: "/run/secrets/taiga-oidc-authentik"
+      scopes: [openid, email, profile]   # the default
+      allow_signup: true               # the default: an unknown identity gets a new account
+      link_by_verified_email: false    # the default
 
 db:
   driver: "sqlite"                 # "sqlite" or "postgres"
@@ -264,9 +280,16 @@ file_repo:
 - `GET /` - Hello World with service info
 - `GET /ping` - Simple ping/pong response
 - `GET /health` - Health check with database connectivity status
-- `POST /auth/register` - User registration; `403` when `auth.registration` is closed (env `TAIGA_AUTH_REGISTRATION=open|closed`, default open in development and closed otherwise)
-- `GET /auth/providers` - What the login page should offer: `{password_login, registration_open, providers}` (OIDC providers arrive with ROADMAP M1)
-- `POST /auth/tokens` - User login with `{email, password}` (returns a JWT token)
+- `POST /auth/register` - User registration; `403` when `auth.registration` is closed (env `TAIGA_AUTH_REGISTRATION=open|closed`, default open in development and closed otherwise) or `auth.password_login` is off
+- `GET /auth/providers` - What the login page should offer: `{password_login, registration_open, providers: [{name, display_name}]}`
+- `POST /auth/tokens` - User login with `{email, password}` (returns a JWT token); `403` when `auth.password_login` is off
+- `GET /auth/oidc/{provider}/login` - Redirect to the provider to sign in
+- `GET /auth/oidc/{provider}/callback` - Where the provider sends the browser back; verifies the ID token, finds the account by (issuer, subject), links or creates one as the provider allows, and redirects to the frontend's `#/login/callback?token=…` (or `?error=…`), or to `#/account?linked=…` after linking
+
+### Linked sign-ins (requires JWT token)
+- `GET /auth/identities` - `{password, identities: [{id, provider, display_name, issuer, email_at_link, created_at}]}`; `password` is whether the user can also sign in with one
+- `POST /auth/identities/{provider}` - Start linking the provider to the signed-in account: `{url}` to send the browser to, which comes back through the callback
+- `DELETE /auth/identities/{id}` - Unlink; `409` when it's the user's only way to sign in
 
 ### Protected Endpoints (require JWT token)
 - `GET /hats` - List all hats

@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"gitea.deepak.science/deepak/taiga/internal/filerepo"
 	"gitea.deepak.science/deepak/taiga/internal/jobs"
 	"gitea.deepak.science/deepak/taiga/internal/models"
+	"gitea.deepak.science/deepak/taiga/internal/oidc"
 	"gitea.deepak.science/deepak/taiga/internal/routes"
 	"gitea.deepak.science/deepak/taiga/internal/tokens"
 )
@@ -57,8 +60,26 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize filerepo: %w", err)
 	}
 
+	// The flow cookie's key comes from the token signing key, so it survives restarts and is shared by replicas without another secret to manage.
+	privateKey, err := os.ReadFile(cfg.Tokens.PrivateKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading the token signing key: %w", err)
+	}
+	flowKey := sha256.Sum256(append([]byte("taiga oidc flow\x00"), privateKey...))
+	discoverCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	providers, err := oidc.New(discoverCtx, cfg.Auth, flowKey[:])
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("Password login: %v; OIDC providers: %d", cfg.Auth.PasswordLogin, len(providers.Providers()))
+
 	// Create routes handler
-	routesHandler := routes.New(m, toker, fileRepo, routes.WithRegistration(registrationOpen))
+	routesHandler := routes.New(m, toker, fileRepo,
+		routes.WithRegistration(registrationOpen),
+		routes.WithPasswordLogin(cfg.Auth.PasswordLogin),
+		routes.WithOIDC(providers),
+	)
 
 	// Create chi router for middleware
 	r := chi.NewRouter()

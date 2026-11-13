@@ -1,10 +1,12 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
 
@@ -46,6 +48,29 @@ type FileRepoConfig struct {
 type AuthConfig struct {
 	// "open" or "closed"; empty means open in development and closed everywhere else.
 	Registration string `mapstructure:"registration"`
+	// False turns off /auth/register and /auth/tokens, for a deployment that signs in only through OIDC.
+	PasswordLogin bool `mapstructure:"password_login"`
+	// The frontend's origin as the browser sees it; a provider sign-in ends with a redirect there.
+	PublicBaseURL string `mapstructure:"public_base_url"`
+	// Where the browser reaches this API, for the callback URL registered with each provider; defaults to public_base_url + "/api", the frontend's proxy.
+	APIBaseURL string         `mapstructure:"api_base_url"`
+	OIDC       []OIDCProvider `mapstructure:"oidc"`
+}
+
+// OIDCProvider is one OpenID Connect provider to offer at sign-in; its endpoints come from the issuer's discovery document.
+// The json tags let TAIGA_AUTH_OIDC hold the list as JSON.
+type OIDCProvider struct {
+	// Short and URL-safe: it's in the callback path.
+	Name             string   `mapstructure:"name" json:"name"`
+	DisplayName      string   `mapstructure:"display_name" json:"display_name"`
+	Issuer           string   `mapstructure:"issuer" json:"issuer"`
+	ClientID         string   `mapstructure:"client_id" json:"client_id"`
+	ClientSecretFile string   `mapstructure:"client_secret_file" json:"client_secret_file"`
+	Scopes           []string `mapstructure:"scopes" json:"scopes"`
+	// Nil means true: an unknown identity gets a new account.
+	AllowSignup *bool `mapstructure:"allow_signup" json:"allow_signup"`
+	// Sign an unknown identity into the account with the same email, only when the provider says the email is verified.
+	LinkByVerifiedEmail bool `mapstructure:"link_by_verified_email" json:"link_by_verified_email"`
 }
 
 type Config struct {
@@ -80,6 +105,8 @@ func Load(filename string) (*Config, error) {
 	v.SetDefault("file_repo.asset_path", "local/filerepo/")
 	v.SetDefault("file_repo.prefix_length", 2)
 
+	v.SetDefault("auth.password_login", true)
+
 	// Environment variable support
 	v.SetEnvPrefix("TAIGA")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -100,7 +127,11 @@ func Load(filename string) (*Config, error) {
 	}
 
 	var config Config
-	if err := v.Unmarshal(&config); err != nil {
+	if err := v.Unmarshal(&config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		oidcFromJSON,
+	))); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
@@ -138,6 +169,26 @@ func (c *Config) RegistrationOpen() (bool, error) {
 	default:
 		return false, fmt.Errorf("auth.registration must be \"open\" or \"closed\", got %q", c.Auth.Registration)
 	}
+}
+
+// APIBase is where the browser reaches this API, without a trailing slash.
+func (a *AuthConfig) APIBase() string {
+	if a.APIBaseURL != "" {
+		return strings.TrimSuffix(a.APIBaseURL, "/")
+	}
+	return strings.TrimSuffix(a.PublicBaseURL, "/") + "/api"
+}
+
+// oidcFromJSON reads the provider list from an env var, which can only hold a string.
+func oidcFromJSON(from reflect.Type, to reflect.Type, data any) (any, error) {
+	if from.Kind() != reflect.String || to != reflect.TypeFor[[]OIDCProvider]() {
+		return data, nil
+	}
+	var providers []OIDCProvider
+	if err := json.Unmarshal([]byte(data.(string)), &providers); err != nil {
+		return nil, fmt.Errorf("auth.oidc from the environment must be a JSON list of providers: %w", err)
+	}
+	return providers, nil
 }
 
 // IsProduction returns true if running in production mode
